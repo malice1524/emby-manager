@@ -226,11 +226,11 @@ body {
 /* ---- Poster Grid (Recently Added) ---- */
 .poster-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
   gap: 12px; margin-bottom: 28px;
+  grid-template-columns: repeat(3, 1fr);
 }
-@media (max-width: 768px) { .poster-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; } }
-@media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
+@media (min-width: 481px) { .poster-grid { grid-template-columns: repeat(4, 1fr); gap: 10px; } }
+@media (min-width: 769px) { .poster-grid { grid-template-columns: repeat(5, 1fr); gap: 12px; } }
 
 .poster-card {
   position: relative; border-radius: 12px; overflow: hidden;
