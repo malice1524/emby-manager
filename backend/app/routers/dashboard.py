@@ -135,3 +135,34 @@ async def get_recent_items(
             })
 
         return {"items": items}
+
+
+@router.get("/stats")
+async def get_dashboard_stats():
+    """Legacy stats endpoint with activity log."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        activity = await client.get(
+            f"{EMBY_URL}/System/ActivityLog/Entries",
+            params={"Limit": 15},
+            headers=HEADERS
+        )
+        system = await client.get(
+            f"{EMBY_URL}/System/Info",
+            headers=HEADERS
+        )
+
+        activity_data = activity.json() if activity.status_code == 200 else {"Items": []}
+        system_data = system.json() if system.status_code == 200 else {}
+
+        return {
+            "activity": [
+                {
+                    "name": a.get("Name", ""),
+                    "short_overview": a.get("ShortOverview", ""),
+                    "date": a.get("Date", ""),
+                    "severity": a.get("Severity", ""),
+                }
+                for a in activity_data.get("Items", [])[:15]
+            ],
+            "system": system_data,
+        }

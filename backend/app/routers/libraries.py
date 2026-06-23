@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query, HTTPException
 from ..config import EMBY_URL, HEADERS
 import httpx
 
@@ -42,3 +42,48 @@ async def get_libraries():
             })
 
         return {"libraries": libraries}
+
+
+@router.get("/{item_id}/items")
+async def get_library_items(
+    item_id: str,
+    limit: int = Query(default=30, le=100),
+    page: int = Query(default=0),
+    search: str = Query(default=""),
+):
+    """Get items within a library with pagination and search."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        params = {
+            "Recursive": "true",
+            "ParentId": item_id,
+            "Limit": limit,
+            "StartIndex": page * limit,
+            "SortBy": "SortName",
+            "SortOrder": "Ascending",
+        }
+        if search:
+            params["SearchTerm"] = search
+
+        resp = await client.get(
+            f"{EMBY_URL}/emby/Items",
+            params=params,
+            headers=HEADERS,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        items = []
+        for item in data.get("Items", []):
+            items.append({
+                "id": item.get("Id", ""),
+                "name": item.get("Name", "Unknown"),
+                "type": item.get("Type", ""),
+                "year": item.get("ProductionYear"),
+                "runtime_min": item.get("RunTimeTicks", 0) // 600000000
+                if item.get("RunTimeTicks") else None,
+            })
+
+        return {
+            "items": items,
+            "total": data.get("TotalRecordCount", 0),
+        }
