@@ -659,8 +659,7 @@ const Dashboard = {
       </div>
 
       <!-- Item Detail Dialog -->
-      <el-dialog v-model="showDetail" :title="detailItem?.name" :width="isMobile?'94%':'520px'" top="5vh"
-                 @opened="$el.querySelector('.el-dialog__body')?.scrollTo(0,0)">
+      <el-dialog v-model="showDetail" :title="detailItem?.name" :width="isMobile?'94%':'520px'" top="5vh">
         <div v-if="detailItem" style="text-align:center">
           <img v-if="detailItem.image_url" 
                :src="detailItem.image_url"
@@ -746,7 +745,7 @@ const Dashboard = {
       recent: [], activity: [], loaded: false,
       showDetail: false, detailItem: null, expanded: false, showDetailDel: false, showLibDel: false,
       isMobile: window.innerWidth < 640,
-      libraries: [], activeLibrary: '', libraryName: ''
+      libraries: [], activeLibrary: '', libraryName: '', _excludeIds: ''
     }
   },
   computed: {
