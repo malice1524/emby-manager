@@ -106,12 +106,13 @@ body {
 .sidebar-overlay { display: none; }
 
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); width: 260px; }
+  .sidebar { transform: translateX(-100%); width: 260px; top: 0; z-index: 200; }
   .sidebar.open { transform: translateX(0); }
+  .sidebar .sidebar-logo { padding-top: 4px; }
   .main { margin-left: 0; padding: 16px 14px; }
   .topbar {
     display: flex; align-items: center; gap: 12px;
-    padding: 14px 16px; position: sticky; top: 0; z-index: 100;
+    padding: 14px 16px; position: sticky; top: 0; z-index: 150;
     background: rgba(10,10,20,0.8);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -120,7 +121,7 @@ body {
   .topbar .menu-btn { font-size: 20px; cursor: pointer; color: var(--text); line-height: 1; }
   .topbar h2 { font-size: 16px; font-weight: 600; }
   .sidebar-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 85;
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 180;
   }
   .sidebar-overlay.show { display: block; }
 }
@@ -396,6 +397,32 @@ body {
 /* Empty state */
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
 
+/* ---- Users Grid ---- */
+.users-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;
+}
+@media (max-width: 480px) { .users-grid { grid-template-columns: 1fr; } }
+
+.user-card { padding: 18px; }
+.user-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.user-card .u-avatar {
+  width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  box-shadow: 0 2px 12px rgba(108,92,231,0.3);
+}
+.user-card .u-avatar.admin { background: linear-gradient(135deg, #fd79a8, #e84393); }
+.user-card .u-avatar.disabled { background: rgba(255,255,255,0.1); color: var(--text-muted); box-shadow: none; }
+.user-card .u-meta { flex: 1; }
+.user-card .u-name { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+.user-card .u-tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; margin-right: 4px; }
+.user-card .u-tag.admin { background: rgba(253,121,168,0.15); color: var(--pink); }
+.user-card .u-tag.normal { background: rgba(0,206,201,0.15); color: var(--green); }
+.user-card .u-tag.disabled { background: rgba(255,118,117,0.15); color: var(--red); }
+.user-card .u-info { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.user-card .u-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
 /* Page header */
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
 .page-header h1 { font-size: 20px; font-weight: 600; }
@@ -560,12 +587,13 @@ const Dashboard = {
       </div>
 
       <!-- Item Detail Dialog -->
-      <el-dialog v-model="showDetail" :title="detailItem?.name" :width="isMobile?'92%':'520px'" top="20px">
+      <el-dialog v-model="showDetail" :title="detailItem?.name" :width="isMobile?'94%':'520px'" top="5vh"
+                 @opened="$el.querySelector('.el-dialog__body')?.scrollTo(0,0)">
         <div v-if="detailItem" style="text-align:center">
-          <img v-if="detailItem.backdrop_url || detailItem.image_url" 
-               :src="detailItem.backdrop_url || detailItem.image_url"
-               style="width:100%;border-radius:10px;max-height:200px;object-fit:cover"
-               @error="$event.target.src=detailItem.image_url">
+          <img v-if="detailItem.image_url" 
+               :src="detailItem.image_url"
+               style="width:40%;border-radius:10px;aspect-ratio:2/3;object-fit:cover;margin:0 auto;display:block"
+               @error="$event.target.style.display='none'">
           <p style="margin-top:12px;font-size:14px;color:var(--text-dim);line-height:1.6;text-align:left" 
              v-if="detailItem.overview">{{detailItem.overview}}</p>
 
@@ -586,14 +614,14 @@ const Dashboard = {
 
           <!-- TMDB / IMDB Links -->
           <div style="margin-top:10px;display:flex;gap:10px;justify-content:center">
-            <a v-if="detailItem.tmdb_url" :href="detailItem.tmdb_url" target="_blank" 
-               style="padding:6px 16px;border-radius:8px;background:#0d253f;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:4px;text-decoration:none">
+            <span v-if="detailItem.tmdb_url" @click="openUrl(detailItem.tmdb_url)"
+                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#0d253f;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:4px">
               🌐 TMDB
-            </a>
-            <a v-if="detailItem.imdb_url" :href="detailItem.imdb_url" target="_blank"
-               style="padding:6px 16px;border-radius:8px;background:#f5c518;color:#000;font-size:12px;display:inline-flex;align-items:center;gap:4px;text-decoration:none">
+            </span>
+            <span v-if="detailItem.imdb_url" @click="openUrl(detailItem.imdb_url)"
+                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#f5c518;color:#000;font-size:12px;display:inline-flex;align-items:center;gap:4px">
               🎬 IMDb
-            </a>
+            </span>
           </div>
 
           <!-- Cast -->
@@ -601,15 +629,17 @@ const Dashboard = {
             <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-dim)">🎭 演员</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px">
               <div v-for="(actor,i) in detailItem.cast.slice(0,12)" :key="i"
-                   style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                   style="display:flex;flex-direction:column;align-items:center;gap:2px;max-width:68px">
                 <div style="width:48px;height:48px;border-radius:50%;background:var(--glass);border:1px solid var(--glass-border);
                            display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--accent)">
                   {{actor.name[0]}}
                 </div>
-                <div style="font-size:10px;color:var(--text-dim);text-align:center;line-height:1.2;max-width:56px;word-break:break-all">
+                <div style="font-size:10px;color:var(--text-dim);text-align:center;line-height:1.2;max-width:64px;
+                            overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="actor.name">
                   {{actor.name}}
                 </div>
-                <div style="font-size:9px;color:var(--text-muted)" v-if="actor.role">{{actor.role}}</div>
+                <div style="font-size:9px;color:var(--text-muted);max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" 
+                     v-if="actor.role" :title="actor.role">{{actor.role}}</div>
               </div>
             </div>
           </div>
@@ -628,21 +658,36 @@ const Dashboard = {
   },
   async mounted(){
     window.addEventListener('resize', ()=>{ this.isMobile = window.innerWidth < 640 })
-    try {
-      const [ov, rec, act, libs] = await Promise.all([
-        fetchJSON('/dashboard/overview'),
-        fetchJSON('/dashboard/recent?limit=18'),
-        fetchJSON('/dashboard/stats'),
-        fetchJSON('/libraries'),
-      ])
-      this.data = ov
-      this.recent = rec.items || []
-      this.activity = (act.activity || []).slice(0, 8)
-      this.libraries = libs.libraries || []
-    } catch(e) { console.error(e) }
-    this.loaded = true
+    await this.refreshAll()
+    this._poll = setInterval(() => this.refreshStats(), 30000)
   },
+  beforeUnmount(){ if(this._poll) clearInterval(this._poll) },
   methods: {
+    async refreshAll(){
+      try {
+        const [ov, rec, act, libs] = await Promise.all([
+          fetchJSON('/dashboard/overview'),
+          fetchJSON('/dashboard/recent?limit=18'),
+          fetchJSON('/dashboard/stats'),
+          fetchJSON('/libraries'),
+        ])
+        this.data = ov
+        this.recent = rec.items || []
+        this.activity = (act.activity || []).slice(0, 8)
+        this.libraries = libs.libraries || []
+      } catch(e) { console.error(e) }
+      this.loaded = true
+    },
+    async refreshStats(){
+      try {
+        const [ov, act] = await Promise.all([
+          fetchJSON('/dashboard/overview'),
+          fetchJSON('/dashboard/stats'),
+        ])
+        this.data = ov
+        this.activity = (act.activity || []).slice(0, 8)
+      } catch(e) { /* silent */ }
+    },
     async filterLibrary(id, name){
       this.activeLibrary = id; this.libraryName = name || '';
       try {
@@ -652,6 +697,7 @@ const Dashboard = {
       } catch(e) { console.error(e) }
     },
     fmtTime(d){ if(!d)return''; const t=new Date(d); return t.toLocaleDateString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) },
+    openUrl(url){ window.open(url, '_blank') },
     async openItem(item){
       this.showDetail = true
       this.detailItem = item  // show basic info first
@@ -671,28 +717,28 @@ const Users = {
         <div class="section-title" style="margin-bottom:0">👥 用户管理</div>
         <el-button type="primary" size="default" @click="showAdd=true">+ 新建用户</el-button>
       </div>
-      <div class="glass-card" style="padding:8px;overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <el-table :data="users" v-loading="loading" stripe size="default">
-          <el-table-column prop="name" label="用户名" width="120"/>
-          <el-table-column label="角色" width="80">
-            <template #default="s"><el-tag :type="s.row.is_admin?'danger':'info'" size="small" effect="dark">{{s.row.is_admin?'管理员':'用户'}}</el-tag></template>
-          </el-table-column>
-          <el-table-column label="状态" width="80">
-            <template #default="s"><el-tag :type="s.row.is_disabled?'danger':'success'" size="small" effect="dark">{{s.row.is_disabled?'已禁用':'正常'}}</el-tag></template>
-          </el-table-column>
-          <el-table-column label="远程" width="60">
-            <template #default="s">{{s.row.enable_remote_access?'✅':'❌'}}</template>
-          </el-table-column>
-          <el-table-column label="操作" min-width="200">
-            <template #default="s">
-              <el-button size="small" @click="openPassword(s.row)">改密</el-button>
-              <el-button size="small" @click="toggleDisable(s.row)">{{s.row.is_disabled?'启用':'禁用'}}</el-button>
-              <el-popconfirm title="确定删除？" @confirm="delUser(s.row)">
-                <template #reference><el-button size="small" type="danger">删除</el-button></template>
-              </el-popconfirm>
-            </template>
-          </el-table-column>
-        </el-table>
+      <div class="users-grid" v-loading="loading">
+        <div class="user-card glass-card" v-for="u in users" :key="u.id">
+          <div class="user-card-top">
+            <div class="u-avatar" :class="{admin:u.is_admin,disabled:u.is_disabled}">{{u.name[0]}}</div>
+            <div class="u-meta">
+              <div class="u-name">{{u.name}}</div>
+              <span class="u-tag admin" v-if="u.is_admin">管理员</span>
+              <span class="u-tag" :class="u.is_disabled?'disabled':'normal'">{{u.is_disabled?'已禁用':'正常'}}</span>
+            </div>
+          </div>
+          <div class="u-info">
+            <span>📅 注册 {{fmtDate(u.created)}}</span>
+            <span>🕐 最近上线 {{fmtDate(u.last_active)}}</span>
+          </div>
+          <div class="u-actions">
+            <el-button size="small" @click="openPassword(u)">改密</el-button>
+            <el-button size="small" @click="toggleDisable(u)">{{u.is_disabled?'启用':'禁用'}}</el-button>
+            <el-popconfirm title="确定删除？" @confirm="delUser(u)">
+              <template #reference><el-button size="small" type="danger">删除</el-button></template>
+            </el-popconfirm>
+          </div>
+        </div>
       </div>
 
       <el-dialog v-model="showAdd" title="新建用户" :width="isMobile?'92%':'420px'">
@@ -715,7 +761,8 @@ const Users = {
   data(){ return {users:[],loading:false,showAdd:false,showPwd:false,newName:'',newPw:'',targetUser:null,isMobile:window.innerWidth<640} },
   async mounted(){ await this.load(); window.addEventListener('resize',()=>{this.isMobile=window.innerWidth<640}) },
   methods: {
-    async load(){ this.loading=true; this.users=await fetchJSON('/users'); this.loading=false },
+    async load(){ this.loading=true; const d=await fetchJSON('/users'); this.users=d.users||[]; this.loading=false },
+    fmtDate(d){ if(!d)return'-'; const t=new Date(d); const now=new Date(); const diff=now-t; if(diff<864e5) return t.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}); return t.toLocaleDateString('zh-CN',{month:'short',day:'numeric'}) },
     async addUser(){ await fetchJSON('/users?name='+encodeURIComponent(this.newName),{method:'POST'}); this.showAdd=false; this.newName=''; this.load(); ElementPlus.ElMessage.success('用户已创建') },
     async delUser(u){ await fetchJSON('/users/'+u.id,{method:'DELETE'}); this.load(); ElementPlus.ElMessage.success('已删除') },
     openPassword(u){ this.targetUser=u; this.newPw=''; this.showPwd=true },
@@ -757,7 +804,7 @@ const Libraries = {
     </div>
   `,
   data(){ return {libraries:[],showItems:false,curLib:null,items:[],itemsLoading:false,total:0,page:1,search:'',isMobile:window.innerWidth<640} },
-  async mounted(){ this.libraries = await fetchJSON('/libraries'); window.addEventListener('resize',()=>{this.isMobile=window.innerWidth<640}) },
+  async mounted(){ const d=await fetchJSON('/libraries'); this.libraries=d.libraries||[]; window.addEventListener('resize',()=>{this.isMobile=window.innerWidth<640}) },
   methods: {
     async openLib(lib){ this.curLib=lib; this.page=1; this.search=''; this.showItems=true; await this.loadItems() },
     async loadItems(){

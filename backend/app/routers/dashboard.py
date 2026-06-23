@@ -136,7 +136,6 @@ async def get_recent_items(
                 "overview": (item.get("Overview") or "")[:200],
                 "rating": item.get("CommunityRating"),
                 "image_url": f"/api/dashboard/images/{item_id}?w=400" if has_image else None,
-                "backdrop_url": f"/api/dashboard/images/{item_id}?w=800" if has_image else None,
             })
 
         return {"items": items}
