@@ -117,6 +117,7 @@ async def get_recent_items(
     types: str = Query(default="Movie,Series"),
     parent_id: str = Query(default=""),
     exclude_parent_ids: str = Query(default=""),
+    search: str = Query(default=""),
 ):
     """Get recently added media items (image URLs use proxy).
     exclude_parent_ids: comma-separated library IDs to exclude.
@@ -156,6 +157,8 @@ async def get_recent_items(
         }
         if parent_id:
             params["ParentId"] = parent_id
+        if search:
+            params["SearchTerm"] = search
 
         resp = await client.get(
             f"{EMBY_URL}/emby/Items",
