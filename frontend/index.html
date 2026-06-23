@@ -208,7 +208,7 @@ body {
 /* ---- Poster Grid (Recently Added) ---- */
 .poster-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 12px; margin-bottom: 28px;
 }
 @media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; } }
@@ -428,8 +428,8 @@ body {
 }
 .el-overlay { background: rgba(0,0,0,0.6) !important; }
 @media (min-width: 769px) {
-  .el-overlay { margin-left: 240px; }
-  .el-dialog { margin-left: 120px !important; }
+  .el-overlay { margin-left: 240px; width: calc(100% - 240px); }
+  .el-dialog { transform: translateX(calc(-50% + 120px)) !important; }
 }
 .el-dialog__header { border-bottom: 1px solid var(--glass-border); }
 .el-dialog__title { color: var(--text); font-weight: 600; }
@@ -528,7 +528,7 @@ body {
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
     </nav>
-    <div class="sidebar-version">v1.02</div>
+    <div class="sidebar-version">v1.04</div>
   </aside>
 
   <!-- Main -->
@@ -783,19 +783,21 @@ const Dashboard = {
           fetchJSON('/libraries'),
         ])
         this.data = ov
-        this.recent = rec.items || []
         this.activity = (act.activity || []).slice(0, 8)
         this.libraries = (libs.libraries || []).filter(function(l) {
           return l.name !== '欧美自拍' && l.name !== '亚洲自拍' && l.name !== '日本有码'
         })
-        // Find excluded library IDs for poster wall
+        // Find excluded library IDs
         var allLibs = libs.libraries || []
         var excludeNames = {'欧美自拍':1,'亚洲自拍':1,'日本有码':1}
         this._excludeIds = allLibs.filter(function(l){return excludeNames[l.name]}).map(function(l){return l.id}).join(',')
-        // Re-fetch recent with exclusion if no specific library selected
-        if(!this.activeLibrary && this._excludeIds) {
-          try { const r2 = await fetchJSON('/dashboard/recent?limit=18&exclude_parent_ids='+this._excludeIds); this.recent = r2.items || [] } catch(e) {}
-        }
+        // Fetch recent with exclusion immediately
+        try {
+          var url = '/dashboard/recent?limit=18'
+          if(this._excludeIds) url += '&exclude_parent_ids='+this._excludeIds
+          const r2 = await fetchJSON(url)
+          this.recent = r2.items || []
+        } catch(e) { this.recent = rec.items || [] }
       } catch(e) { console.error(e) }
       this.loaded = true
     },
@@ -822,26 +824,24 @@ const Dashboard = {
     fmtTime(d){ if(!d)return''; const t=new Date(d); return t.toLocaleDateString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) },
     openUrl(url){ window.open(url, '_blank') },
     async deleteDetailItem(){
-      if(!this.detailItem) return
+      if(!this.detailItem || !this.detailItem.id) return
       try {
-        const res = await fetch('/api/dashboard/item/'+this.detailItem.id, {method:'DELETE'})
-        if(!res.ok) throw new Error('删除失败')
+        const res = await fetchJSON('/dashboard/item/'+this.detailItem.id, {method:'DELETE'})
         ElementPlus.ElMessage.success('已删除')
         this.showDetailDel = false
         this.showDetail = false
         setTimeout(() => this.refreshAll(), 100)
-      } catch(e) { ElementPlus.ElMessage.error('删除失败：'+e.message); this.showDetailDel = false }
+      } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showDetailDel = false }
     },
     async deleteLibItem(){
-      if(!this.libDetailItem) return
+      if(!this.libDetailItem || !this.libDetailItem.id) return
       try {
-        const res = await fetch('/api/dashboard/item/'+this.libDetailItem.id, {method:'DELETE'})
-        if(!res.ok) throw new Error('删除失败')
+        const res = await fetchJSON('/dashboard/item/'+this.libDetailItem.id, {method:'DELETE'})
         ElementPlus.ElMessage.success('已删除')
         this.showLibDel = false
         this.showDetail = false
         setTimeout(() => this.loadItems(), 100)
-      } catch(e) { ElementPlus.ElMessage.error('删除失败：'+e.message); this.showLibDel = false }
+      } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showLibDel = false }
     },
     async openItem(item){
       this.showDetail = true; this.expanded = false
@@ -1078,7 +1078,11 @@ const routes = [
   {path:'/users',component:Users},
   {path:'/libraries',component:Libraries},
 ]
-const router = VueRouter.createRouter({history:VueRouter.createWebHashHistory(),routes})
+const router = VueRouter.createRouter({
+  history:VueRouter.createWebHashHistory(),
+  routes,
+  scrollBehavior(){ return {top:0,left:0} }
+})
 
 const app = Vue.createApp({})
 app.use(router)
