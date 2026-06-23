@@ -289,6 +289,22 @@ body {
 .session-chip .u-name { font-weight: 600; color: var(--text); }
 .session-chip .u-device { font-size: 10px; color: var(--text-muted); }
 
+/* ---- Library Filter Chips ---- */
+.lib-filter {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
+}
+.filter-chip {
+  padding: 5px 14px; border-radius: 20px; font-size: 12px; cursor: pointer;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  color: var(--text-dim); transition: all 0.2s ease;
+  user-select: none; -webkit-user-select: none; white-space: nowrap;
+}
+.filter-chip:hover { border-color: var(--glass-border-hover); color: var(--text); }
+.filter-chip.active {
+  background: rgba(108,92,231,0.2); border-color: var(--accent);
+  color: #fff;
+}
+
 /* Two column for sections */
 .dash-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
 @media (max-width: 768px) { .dash-sections { grid-template-columns: 1fr; } }
@@ -481,7 +497,19 @@ const Dashboard = {
       </div>
 
       <!-- Recently Added Poster Wall -->
-      <div class="section-title">🆕 最近添加</div>
+      <div class="section-title">
+        🆕 最近添加
+        <span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:auto" v-if="libraryName">{{libraryName}}</span>
+      </div>
+
+      <!-- Library Filter Chips -->
+      <div class="lib-filter" v-if="libraries.length">
+        <span class="filter-chip" :class="{active:!activeLibrary}" @click="filterLibrary('')">全部</span>
+        <span class="filter-chip" v-for="lib in libraries" :key="lib.id"
+              :class="{active:activeLibrary===lib.id}"
+              @click="filterLibrary(lib.id, lib.name)">{{lib.name}}</span>
+      </div>
+
       <div class="poster-grid" v-if="recent.length">
         <div class="poster-card fade-in" v-for="(item,i) in recent" :key="item.id"
              :style="'animation-delay:'+(i*0.04)+'s'"
@@ -532,17 +560,58 @@ const Dashboard = {
       </div>
 
       <!-- Item Detail Dialog -->
-      <el-dialog v-model="showDetail" :title="detailItem?.name" :width="isMobile?'92%':'500px'">
+      <el-dialog v-model="showDetail" :title="detailItem?.name" :width="isMobile?'92%':'520px'" top="20px">
         <div v-if="detailItem" style="text-align:center">
-          <img v-if="detailItem.backdrop_url" :src="detailItem.backdrop_url"
-               style="width:100%;border-radius:10px;max-height:240px;object-fit:cover">
-          <p style="margin-top:14px;font-size:14px;color:var(--text-dim);line-height:1.6">
-            {{detailItem.overview||'暂无简介'}}
-          </p>
-          <div style="margin-top:12px;display:flex;gap:16px;justify-content:center;font-size:13px;color:var(--text-muted)">
-            <span v-if="detailItem.year">{{detailItem.year}}</span>
+          <img v-if="detailItem.backdrop_url || detailItem.image_url" 
+               :src="detailItem.backdrop_url || detailItem.image_url"
+               style="width:100%;border-radius:10px;max-height:200px;object-fit:cover"
+               @error="$event.target.src=detailItem.image_url">
+          <p style="margin-top:12px;font-size:14px;color:var(--text-dim);line-height:1.6;text-align:left" 
+             v-if="detailItem.overview">{{detailItem.overview}}</p>
+
+          <!-- Info Row -->
+          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--text-muted)">
+            <span v-if="detailItem.year">📅 {{detailItem.year}}</span>
             <span v-if="detailItem.rating">⭐ {{detailItem.rating}}</span>
             <span>{{detailItem.type==='Series'?'电视剧':'电影'}}</span>
+          </div>
+
+          <!-- Genres -->
+          <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;justify-content:center" v-if="detailItem.genres?.length">
+            <span v-for="g in detailItem.genres" :key="g" 
+                  style="padding:2px 10px;border-radius:20px;background:var(--glass);font-size:11px;border:1px solid var(--glass-border);color:var(--text-dim)">
+              {{g}}
+            </span>
+          </div>
+
+          <!-- TMDB / IMDB Links -->
+          <div style="margin-top:10px;display:flex;gap:10px;justify-content:center">
+            <a v-if="detailItem.tmdb_url" :href="detailItem.tmdb_url" target="_blank" 
+               style="padding:6px 16px;border-radius:8px;background:#0d253f;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:4px;text-decoration:none">
+              🌐 TMDB
+            </a>
+            <a v-if="detailItem.imdb_url" :href="detailItem.imdb_url" target="_blank"
+               style="padding:6px 16px;border-radius:8px;background:#f5c518;color:#000;font-size:12px;display:inline-flex;align-items:center;gap:4px;text-decoration:none">
+              🎬 IMDb
+            </a>
+          </div>
+
+          <!-- Cast -->
+          <div style="margin-top:12px;text-align:left" v-if="detailItem.cast?.length">
+            <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-dim)">🎭 演员</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <div v-for="(actor,i) in detailItem.cast.slice(0,12)" :key="i"
+                   style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                <div style="width:48px;height:48px;border-radius:50%;background:var(--glass);border:1px solid var(--glass-border);
+                           display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--accent)">
+                  {{actor.name[0]}}
+                </div>
+                <div style="font-size:10px;color:var(--text-dim);text-align:center;line-height:1.2;max-width:56px;word-break:break-all">
+                  {{actor.name}}
+                </div>
+                <div style="font-size:9px;color:var(--text-muted)" v-if="actor.role">{{actor.role}}</div>
+              </div>
+            </div>
           </div>
         </div>
       </el-dialog>
@@ -553,26 +622,44 @@ const Dashboard = {
       data: {media:{},server:{},users:{},sessions:{}},
       recent: [], activity: [], loaded: false,
       showDetail: false, detailItem: null,
-      isMobile: window.innerWidth < 640
+      isMobile: window.innerWidth < 640,
+      libraries: [], activeLibrary: '', libraryName: ''
     }
   },
   async mounted(){
     window.addEventListener('resize', ()=>{ this.isMobile = window.innerWidth < 640 })
     try {
-      const [ov, rec, act] = await Promise.all([
+      const [ov, rec, act, libs] = await Promise.all([
         fetchJSON('/dashboard/overview'),
         fetchJSON('/dashboard/recent?limit=18'),
         fetchJSON('/dashboard/stats'),
+        fetchJSON('/libraries'),
       ])
       this.data = ov
       this.recent = rec.items || []
       this.activity = (act.activity || []).slice(0, 8)
+      this.libraries = libs.libraries || []
     } catch(e) { console.error(e) }
     this.loaded = true
   },
   methods: {
+    async filterLibrary(id, name){
+      this.activeLibrary = id; this.libraryName = name || '';
+      try {
+        const url = id ? '/dashboard/recent?limit=18&parent_id='+id : '/dashboard/recent?limit=18'
+        const rec = await fetchJSON(url)
+        this.recent = rec.items || []
+      } catch(e) { console.error(e) }
+    },
     fmtTime(d){ if(!d)return''; const t=new Date(d); return t.toLocaleDateString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) },
-    openItem(item){ this.detailItem = item; this.showDetail = true }
+    async openItem(item){
+      this.showDetail = true
+      this.detailItem = item  // show basic info first
+      try {
+        const detail = await fetchJSON('/dashboard/item/'+item.id)
+        this.detailItem = detail
+      } catch(e) { /* keep basic info */ }
+    }
   }
 }
 

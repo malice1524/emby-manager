@@ -101,19 +101,24 @@ async def get_dashboard_overview():
 async def get_recent_items(
     limit: int = Query(default=12, ge=1, le=50),
     types: str = Query(default="Movie,Series"),
+    parent_id: str = Query(default=""),
 ):
     """Get recently added media items (image URLs use proxy)."""
     async with httpx.AsyncClient(timeout=30) as client:
+        params = {
+            "Recursive": "true",
+            "SortBy": "DateCreated",
+            "SortOrder": "Descending",
+            "IncludeItemTypes": types,
+            "Limit": limit,
+            "Fields": "PrimaryImageAspectRatio,Overview,CommunityRating",
+        }
+        if parent_id:
+            params["ParentId"] = parent_id
+
         resp = await client.get(
             f"{EMBY_URL}/emby/Items",
-            params={
-                "Recursive": "true",
-                "SortBy": "DateCreated",
-                "SortOrder": "Descending",
-                "IncludeItemTypes": types,
-                "Limit": limit,
-                "Fields": "PrimaryImageAspectRatio,Overview,CommunityRating",
-            },
+            params=params,
             headers=HEADERS,
         )
         resp.raise_for_status()
@@ -135,6 +140,52 @@ async def get_recent_items(
             })
 
         return {"items": items}
+
+
+@router.get("/item/{item_id}")
+async def get_item_detail(item_id: str):
+    """Get detailed item info including TMDB ID, cast, genres."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            f"{EMBY_URL}/Users/fb1f0470dfae4ecc8649529346f199fc/Items/{item_id}",
+            params={
+                "Fields": "ProviderIds,People,Genres,CommunityRating,Overview,ProductionYear",
+            },
+            headers=HEADERS,
+        )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        data = resp.json()
+        provider_ids = data.get("ProviderIds", {})
+        tmdb_id = provider_ids.get("Tmdb")
+        imdb_id = provider_ids.get("Imdb")
+        item_type = data.get("Type", "Movie")
+        tmdb_type = "tv" if item_type == "Series" else "movie"
+
+        cast = []
+        for p in data.get("People", []):
+            cast.append({
+                "name": p.get("Name", ""),
+                "role": p.get("Role", ""),
+                "type": p.get("Type", ""),
+            })
+
+        return {
+            "id": item_id,
+            "name": data.get("Name", ""),
+            "overview": data.get("Overview", ""),
+            "type": item_type,
+            "year": data.get("ProductionYear"),
+            "rating": data.get("CommunityRating"),
+            "genres": data.get("Genres", []),
+            "tmdb_id": tmdb_id,
+            "imdb_id": imdb_id,
+            "tmdb_url": f"https://www.themoviedb.org/{tmdb_type}/{tmdb_id}" if tmdb_id else None,
+            "imdb_url": f"https://www.imdb.com/title/{imdb_id}" if imdb_id else None,
+            "cast": cast,
+            "image_url": f"/api/dashboard/images/{item_id}?w=400",
+        }
 
 
 @router.get("/stats")
