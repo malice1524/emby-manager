@@ -410,21 +410,21 @@ body {
   </div>
   <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-  <div class="layout">
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-logo">
-        <div class="icon">🎬</div>
-        <h2>Emby</h2>
-      </div>
-      <nav>
-        <a href="#/" onclick="navClose()"><span class="nav-icon">📊</span> 仪表盘</a>
-        <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
-        <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
-      </nav>
-    </aside>
+  <!-- Sidebar (outside layout to avoid z-index issues) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="icon">🎬</div>
+      <h2>Emby</h2>
+    </div>
+    <nav>
+      <a href="#/" onclick="navClose()"><span class="nav-icon">📊</span> 仪表盘</a>
+      <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
+      <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
+    </nav>
+  </aside>
 
-    <!-- Main -->
+  <!-- Main -->
+  <div class="layout">
     <main class="main">
       <router-view></router-view>
     </main>

@@ -2,11 +2,11 @@ version: "3.8"
 
 services:
   emby-manager:
-    build: .
+    image: 1524566636/emby-manager:latest
     container_name: emby-manager
     environment:
-      - EMBY_URL=http://47.109.19.131:8116
-      - EMBY_API_KEY=你的Emby_API_Key
+      - EMBY_URL=http://192.168.1.7:8096
+      - EMBY_API_KEY=859413e6f23e4c42b2a095682ef5c068
     ports:
       - "8117:8000"
     restart: unless-stopped

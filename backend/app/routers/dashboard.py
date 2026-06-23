@@ -1,25 +1,35 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
+from fastapi.responses import Response
 from ..config import EMBY_URL, HEADERS
 import httpx
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
-def _make_image_url(item_id: str, max_width: int = 400) -> str:
-    """Construct Emby primary image URL."""
-    return f"{EMBY_URL}/emby/Items/{item_id}/Images/Primary?maxWidth={max_width}&api_key={HEADERS['X-Emby-Token']}"
-
-
-def _make_backdrop_url(item_id: str, max_width: int = 800) -> str:
-    """Construct Emby backdrop image URL."""
-    return f"{EMBY_URL}/emby/Items/{item_id}/Images/Backdrop?maxWidth={max_width}&api_key={HEADERS['X-Emby-Token']}"
+@router.get("/images/{item_id}")
+async def proxy_image(item_id: str, w: int = Query(default=400, ge=50, le=1200)):
+    """Proxy Emby images through backend to avoid cross-origin/LAN issues."""
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{EMBY_URL}/emby/Items/{item_id}/Images/Primary",
+                params={"maxWidth": w, "api_key": HEADERS["X-Emby-Token"]},
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=404)
+            return Response(
+                content=resp.content,
+                media_type=resp.headers.get("content-type", "image/jpeg"),
+                headers={"Cache-Control": "public, max-age=86400"},
+            )
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Image proxy timeout")
 
 
 @router.get("/overview")
 async def get_dashboard_overview():
     """Aggregated overview for the dashboard."""
     async with httpx.AsyncClient(timeout=30) as client:
-        # Parallel fetches
         import asyncio
 
         async def fetch_counts():
@@ -47,13 +57,11 @@ async def get_dashboard_overview():
             fetch_libraries(), fetch_system()
         )
 
-        # Count admins
         admin_count = 0
         for u in users:
             if u.get("Policy", {}).get("IsAdministrator", False):
                 admin_count += 1
 
-        # Active streams
         active_streams = []
         for s in sessions:
             np = s.get("NowPlayingItem", {})
@@ -65,7 +73,6 @@ async def get_dashboard_overview():
                 "now_playing": np.get("Name", "Idle") if np else "Idle",
                 "play_state": s.get("PlayState", {}).get("PlayMethod", "Idle"),
                 "item_id": item_id,
-                "image_url": _make_image_url(item_id, 200) if item_id else None,
             })
 
         return {
@@ -95,7 +102,7 @@ async def get_recent_items(
     limit: int = Query(default=12, ge=1, le=50),
     types: str = Query(default="Movie,Series"),
 ):
-    """Get recently added media items with poster URLs."""
+    """Get recently added media items (image URLs use proxy)."""
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(
             f"{EMBY_URL}/emby/Items",
@@ -123,8 +130,8 @@ async def get_recent_items(
                 "year": item.get("ProductionYear"),
                 "overview": (item.get("Overview") or "")[:200],
                 "rating": item.get("CommunityRating"),
-                "image_url": _make_image_url(item_id, 400) if has_image else None,
-                "backdrop_url": _make_backdrop_url(item_id, 800) if has_image else None,
+                "image_url": f"/api/dashboard/images/{item_id}?w=400" if has_image else None,
+                "backdrop_url": f"/api/dashboard/images/{item_id}?w=800" if has_image else None,
             })
 
         return {"items": items}
