@@ -428,8 +428,8 @@ body {
 }
 .el-overlay { background: rgba(0,0,0,0.6) !important; }
 @media (min-width: 769px) {
-  .el-overlay { margin-left: 240px; width: calc(100% - 240px); }
-  .el-dialog { transform: translateX(calc(-50% + 120px)) !important; }
+  .el-overlay { margin-left: 240px; }
+  .el-dialog { max-width: calc(100vw - 280px) !important; left: calc(240px + (100vw - 240px) / 2) !important; transform: translateX(-50%) !important; margin-left: 0 !important; }
 }
 .el-dialog__header { border-bottom: 1px solid var(--glass-border); }
 .el-dialog__title { color: var(--text); font-weight: 600; }
@@ -528,7 +528,7 @@ body {
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
     </nav>
-    <div class="sidebar-version">v1.04</div>
+    <div class="sidebar-version">v1.05</div>
   </aside>
 
   <!-- Main -->

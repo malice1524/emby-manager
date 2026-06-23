@@ -267,13 +267,37 @@ async def get_dashboard_stats():
         }
 
 
+async def _get_user_token(client: httpx.AsyncClient) -> str:
+    """Get a user access token for admin operations."""
+    from ..config import EMBY_ADMIN_USER, EMBY_ADMIN_PW
+    if not EMBY_ADMIN_PW:
+        return ""
+    try:
+        auth_header = 'MediaBrowser Client="Emby Manager", Device="Server", DeviceId="emby-manager", Version="1.0.0"'
+        resp = await client.post(
+            f"{EMBY_URL}/emby/Users/AuthenticateByName",
+            json={"Username": EMBY_ADMIN_USER, "Pw": EMBY_ADMIN_PW},
+            headers={"X-Emby-Authorization": auth_header},
+        )
+        if resp.status_code == 200:
+            return resp.json().get("AccessToken", "")
+    except Exception:
+        pass
+    return ""
+
+
 @router.delete("/item/{item_id}")
 async def delete_media_item(item_id: str):
     """Delete a media item from Emby."""
     async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.delete(
+        token = await _get_user_token(client)
+        if not token:
+            raise HTTPException(status_code=403, detail="Delete requires EMBY_ADMIN_PW environment variable")
+        
+        resp = await client.request(
+            "DELETE",
             f"{EMBY_URL}/emby/Items/{item_id}",
-            headers=HEADERS,
+            headers={"X-Emby-Token": token},
         )
         if resp.status_code not in (200, 204):
             raise HTTPException(status_code=resp.status_code, detail="Failed to delete item")
