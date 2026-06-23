@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Emby Manager</title>
+<link rel="icon" href="lib/favicon.png">
 <link rel="stylesheet" href="lib/element-plus.css"/>
 <script src="lib/vue.js"></script>
 <script src="lib/vue-router.js"></script>
@@ -43,7 +44,8 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: 100dvh;
   overflow-x: hidden;
 }
 
@@ -57,11 +59,11 @@ body {
 }
 
 /* ---- Layout ---- */
-.layout { display: flex; min-height: 100vh; position: relative; z-index: 1 }
+.layout { display: flex; min-height: 100dvh; position: relative; z-index: 1 }
 
 /* ---- Sidebar ---- */
 .sidebar {
-  width: 240px; min-height: 100vh;
+  width: 240px; min-height: 100dvh;
   background: rgba(10,10,20,0.85);
   backdrop-filter: blur(30px) saturate(180%);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
@@ -211,7 +213,7 @@ body {
   grid-template-columns: repeat(5, 1fr);
   gap: 12px; margin-bottom: 28px;
 }
-@media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; } }
+@media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
 
 .poster-card {
   position: relative; border-radius: 10px; overflow: hidden;
@@ -428,8 +430,8 @@ body {
 }
 .el-overlay { background: rgba(0,0,0,0.6) !important; }
 @media (min-width: 769px) {
-  .el-overlay { margin-left: 240px; }
-  .el-dialog { max-width: calc(100vw - 280px) !important; left: calc(240px + (100vw - 240px) / 2) !important; transform: translateX(-50%) !important; margin-left: 0 !important; }
+  .el-overlay { margin-left: 240px; width: calc(100% - 240px); }
+  .el-dialog { transform: translateX(calc(-50% + 120px)) !important; }
 }
 .el-dialog__header { border-bottom: 1px solid var(--glass-border); }
 .el-dialog__title { color: var(--text); font-weight: 600; }
@@ -528,7 +530,7 @@ body {
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
     </nav>
-    <div class="sidebar-version">v1.05</div>
+    <div class="sidebar-version">v1.06</div>
   </aside>
 
   <!-- Main -->
@@ -596,7 +598,6 @@ const Dashboard = {
 
       <!-- Library Filter Chips -->
       <div class="lib-filter" v-if="libraries.length">
-        <span class="filter-chip" :class="{active:!activeLibrary}" @click="filterLibrary('')">全部</span>
         <span class="filter-chip" v-for="lib in libraries" :key="lib.id"
               :class="{active:activeLibrary===lib.id}"
               @click="filterLibrary(lib.id, lib.name)">{{lib.name}}</span>
@@ -791,13 +792,19 @@ const Dashboard = {
         var allLibs = libs.libraries || []
         var excludeNames = {'欧美自拍':1,'亚洲自拍':1,'日本有码':1}
         this._excludeIds = allLibs.filter(function(l){return excludeNames[l.name]}).map(function(l){return l.id}).join(',')
-        // Fetch recent with exclusion immediately
+        // Set default to 动画电影
+        var defaultLibId = ''
+        for(var i=0;i<allLibs.length;i++){if(allLibs[i].name==='动画电影'){defaultLibId=allLibs[i].id;break}}
+        // Fetch recent with default library
         try {
           var url = '/dashboard/recent?limit=18'
-          if(this._excludeIds) url += '&exclude_parent_ids='+this._excludeIds
+          if(defaultLibId) url += '&parent_id='+defaultLibId
+          else if(this._excludeIds) url += '&exclude_parent_ids='+this._excludeIds
           const r2 = await fetchJSON(url)
           this.recent = r2.items || []
-        } catch(e) { this.recent = rec.items || [] }
+          this.activeLibrary = defaultLibId
+          this.libraryName = defaultLibId ? '动画电影' : ''
+        } catch(e) {}
       } catch(e) { console.error(e) }
       this.loaded = true
     },
@@ -816,7 +823,6 @@ const Dashboard = {
       try {
         var url = '/dashboard/recent?limit=18'
         if(id) url += '&parent_id='+id
-        else if(this._excludeIds) url += '&exclude_parent_ids='+this._excludeIds
         const rec = await fetchJSON(url)
         this.recent = rec.items || []
       } catch(e) { console.error(e) }
