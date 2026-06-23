@@ -116,15 +116,42 @@ async def get_recent_items(
     limit: int = Query(default=12, ge=1, le=50),
     types: str = Query(default="Movie,Series"),
     parent_id: str = Query(default=""),
+    exclude_parent_ids: str = Query(default=""),
 ):
-    """Get recently added media items (image URLs use proxy)."""
+    """Get recently added media items (image URLs use proxy).
+    exclude_parent_ids: comma-separated library IDs to exclude.
+    """
     async with httpx.AsyncClient(timeout=30) as client:
+        # If excluding libraries, fetch their item IDs first
+        excluded_ids = set()
+        if exclude_parent_ids:
+            for pid in exclude_parent_ids.split(","):
+                pid = pid.strip()
+                if not pid:
+                    continue
+                try:
+                    eresp = await client.get(
+                        f"{EMBY_URL}/emby/Items",
+                        params={
+                            "Recursive": "true",
+                            "ParentId": pid,
+                            "Limit": 200,
+                            "Fields": "",
+                        },
+                        headers=HEADERS,
+                    )
+                    if eresp.status_code == 200:
+                        for eitem in eresp.json().get("Items", []):
+                            excluded_ids.add(eitem.get("Id", ""))
+                except Exception:
+                    pass
+
         params = {
             "Recursive": "true",
             "SortBy": "DateCreated",
             "SortOrder": "Descending",
             "IncludeItemTypes": types,
-            "Limit": limit,
+            "Limit": limit + 100,
             "Fields": "PrimaryImageAspectRatio,Overview,CommunityRating",
         }
         if parent_id:
@@ -141,6 +168,8 @@ async def get_recent_items(
         items = []
         for item in data.get("Items", []):
             item_id = item.get("Id", "")
+            if item_id in excluded_ids:
+                continue
             has_image = bool(item.get("ImageTags", {}).get("Primary"))
             items.append({
                 "id": item_id,
@@ -151,6 +180,8 @@ async def get_recent_items(
                 "rating": item.get("CommunityRating"),
                 "image_url": f"/api/dashboard/images/{item_id}?w=400" if has_image else None,
             })
+            if len(items) >= limit:
+                break
 
         return {"items": items}
 

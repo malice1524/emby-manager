@@ -421,7 +421,7 @@ body {
 .el-overlay { background: rgba(0,0,0,0.6) !important; }
 @media (min-width: 769px) {
   .el-overlay { margin-left: 240px; }
-  .el-dialog { margin-left: 120px !important; }
+  .el-dialog { max-width: calc(100vw - 280px) !important; }
 }
 .el-dialog__header { border-bottom: 1px solid var(--glass-border); }
 .el-dialog__title { color: var(--text); font-weight: 600; }
@@ -438,31 +438,46 @@ body {
 /* Empty state */
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
 
-/* ---- Users Grid ---- */
-.users-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;
+/* ---- User List (Vertical) ---- */
+.user-list { display: flex; flex-direction: column; gap: 8px; }
+.user-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px;
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
 }
-@media (max-width: 480px) { .users-grid { grid-template-columns: 1fr; } }
+.user-row:hover { border-color: var(--glass-border-hover); background: var(--glass-hover); }
 
-.user-card { padding: 18px; }
-.user-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-.user-card .u-avatar {
-  width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+.user-row .ur-avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px; font-weight: 700; color: #fff;
+  font-size: 18px; font-weight: 700; color: #fff;
   background: linear-gradient(135deg, #6c5ce7, #a29bfe);
   box-shadow: 0 2px 12px rgba(108,92,231,0.3);
 }
-.user-card .u-avatar.admin { background: linear-gradient(135deg, #fd79a8, #e84393); }
-.user-card .u-avatar.disabled { background: rgba(255,255,255,0.1); color: var(--text-muted); box-shadow: none; }
-.user-card .u-meta { flex: 1; }
-.user-card .u-name { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
-.user-card .u-tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; margin-right: 4px; }
-.user-card .u-tag.admin { background: rgba(253,121,168,0.15); color: var(--pink); }
-.user-card .u-tag.normal { background: rgba(0,206,201,0.15); color: var(--green); }
-.user-card .u-tag.disabled { background: rgba(255,118,117,0.15); color: var(--red); }
-.user-card .u-info { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
-.user-card .u-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.user-row .ur-avatar.admin { background: linear-gradient(135deg, #fd79a8, #e84393); }
+.user-row .ur-avatar.disabled { background: rgba(255,255,255,0.1); color: var(--text-muted); box-shadow: none; }
+
+.user-row .ur-meta { flex: 1; min-width: 0; }
+.user-row .ur-name { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+.user-row .ur-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.user-row .ur-tag {
+  font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500;
+}
+.user-row .ur-tag.admin { background: rgba(253,121,168,0.15); color: var(--pink); }
+.user-row .ur-tag.normal { background: rgba(0,206,201,0.15); color: var(--green); }
+.user-row .ur-tag.disabled { background: rgba(255,118,117,0.15); color: var(--red); }
+.user-row .ur-tag.date { background: rgba(255,255,255,0.04); color: var(--text-muted); font-size: 10px; }
+
+.user-row .ur-actions { display: flex; gap: 4px; flex-shrink: 0; }
+@media (max-width: 480px) {
+  .user-row { flex-wrap: wrap; }
+  .user-row .ur-actions { width: 100%; justify-content: flex-end; padding-top: 4px; }
+}
 
 /* Page header */
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
@@ -686,7 +701,7 @@ const Dashboard = {
               🌐 TMDB
             </span>
             <span v-if="detailItem.imdb_url" @click="openUrl(detailItem.imdb_url)"
-                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#353b48;color:#e8e8f0;font-size:12px;display:inline-flex;align-items:center;gap:4px">
+                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#0d253f;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:4px">
               🎬 IMDb
             </span>
           </div>
@@ -747,7 +762,7 @@ const Dashboard = {
   async mounted(){
     window.addEventListener('resize', ()=>{ this.isMobile = window.innerWidth < 640 })
     await this.refreshAll()
-    this._poll = setInterval(() => this.refreshStats(), 30000)
+    this._poll = setInterval(() => this.refreshStats(), 15000)
   },
   beforeUnmount(){ if(this._poll) clearInterval(this._poll) },
   methods: {
@@ -765,6 +780,17 @@ const Dashboard = {
         this.libraries = (libs.libraries || []).filter(function(l) {
           return l.name !== '欧美自拍' && l.name !== '亚洲自拍' && l.name !== '日本有码'
         })
+        // Find excluded library IDs for poster wall
+        var allLibs = libs.libraries || []
+        var excludeNames = {'欧美自拍':1,'亚洲自拍':1,'日本有码':1}
+        this._excludeIds = allLibs.filter(function(l){return excludeNames[l.name]}).map(function(l){return l.id}).join(',')
+        // Re-fetch recent with exclusion if no specific library selected
+        if(!this.activeLibrary && this._excludeIds) {
+          try { const r2 = await fetchJSON('/dashboard/recent?limit=18&exclude_parent_ids='+encodeURIComponent(this._excludeIds)); this.recent = r2.items || [] } catch(e) {}
+        }
+      } catch(e) { console.error(e) }
+      this.loaded = true
+    },
       } catch(e) { console.error(e) }
       this.loaded = true
     },
@@ -781,7 +807,9 @@ const Dashboard = {
     async filterLibrary(id, name){
       this.activeLibrary = id; this.libraryName = name || '';
       try {
-        const url = id ? '/dashboard/recent?limit=18&parent_id='+id : '/dashboard/recent?limit=18'
+        var url = '/dashboard/recent?limit=18'
+        if(id) url += '&parent_id='+id
+        else if(this._excludeIds) url += '&exclude_parent_ids='+encodeURIComponent(this._excludeIds)
         const rec = await fetchJSON(url)
         this.recent = rec.items || []
       } catch(e) { console.error(e) }
@@ -791,20 +819,24 @@ const Dashboard = {
     async deleteDetailItem(){
       if(!this.detailItem) return
       try {
-        await fetchJSON('/dashboard/item/'+this.detailItem.id, {method:'DELETE'})
+        const res = await fetch('/api/dashboard/item/'+this.detailItem.id, {method:'DELETE'})
+        if(!res.ok) throw new Error('删除失败')
         ElementPlus.ElMessage.success('已删除')
-        this.showDetail = false; this.showDetailDel = false
-        await this.refreshAll()
-      } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showDetailDel = false }
+        this.showDetailDel = false
+        this.showDetail = false
+        setTimeout(() => this.refreshAll(), 100)
+      } catch(e) { ElementPlus.ElMessage.error('删除失败：'+e.message); this.showDetailDel = false }
     },
     async deleteLibItem(){
       if(!this.libDetailItem) return
       try {
-        await fetchJSON('/dashboard/item/'+this.libDetailItem.id, {method:'DELETE'})
+        const res = await fetch('/api/dashboard/item/'+this.libDetailItem.id, {method:'DELETE'})
+        if(!res.ok) throw new Error('删除失败')
         ElementPlus.ElMessage.success('已删除')
-        this.showDetail = false; this.showLibDel = false
-        await this.loadItems()
-      } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showLibDel = false }
+        this.showLibDel = false
+        this.showDetail = false
+        setTimeout(() => this.loadItems(), 100)
+      } catch(e) { ElementPlus.ElMessage.error('删除失败：'+e.message); this.showLibDel = false }
     },
     async openItem(item){
       this.showDetail = true; this.expanded = false
@@ -826,24 +858,22 @@ const Users = {
         <div class="section-title" style="margin-bottom:0">👥 用户管理</div>
         <el-button type="primary" size="default" @click="showAdd=true">+ 新建用户</el-button>
       </div>
-      <div class="users-grid" v-loading="loading">
-        <div class="user-card glass-card" v-for="u in users" :key="u.id">
-          <div class="user-card-top">
-            <div class="u-avatar" :class="{admin:u.is_admin,disabled:u.is_disabled}"
-                 :style="u.avatar_url ? 'background-image:url('+u.avatar_url+');background-size:cover;background-position:center' : ''">
-              {{u.avatar_url ? '' : (u.name ? u.name[0].toUpperCase() : '?')}}
-            </div>
-            <div class="u-meta">
-              <div class="u-name">{{u.name}}</div>
-              <span class="u-tag admin" v-if="u.is_admin">管理员</span>
-              <span class="u-tag" :class="u.is_disabled?'disabled':'normal'">{{u.is_disabled?'已禁用':'正常'}}</span>
+      <div class="user-list" v-loading="loading">
+        <div class="user-row" v-for="u in users" :key="u.id">
+          <div class="ur-avatar" :class="{admin:u.is_admin,disabled:u.is_disabled}"
+               :style="u.avatar_url ? 'background-image:url('+u.avatar_url+');background-size:cover;background-position:center' : ''">
+            {{u.avatar_url ? '' : (u.name ? u.name[0].toUpperCase() : '?')}}
+          </div>
+          <div class="ur-meta">
+            <div class="ur-name">{{u.name}}</div>
+            <div class="ur-tags">
+              <span class="ur-tag admin" v-if="u.is_admin">管理员</span>
+              <span class="ur-tag" :class="u.is_disabled?'disabled':'normal'">{{u.is_disabled?'已禁用':'正常'}}</span>
+              <span class="ur-tag date">📅 {{fmtDate(u.created)}}</span>
+              <span class="ur-tag date">🕐 {{fmtDate(u.last_active)}}</span>
             </div>
           </div>
-          <div class="u-info">
-            <span>📅 注册 {{fmtDate(u.created)}}</span>
-            <span>🕐 最近上线 {{fmtDate(u.last_active)}}</span>
-          </div>
-          <div class="u-actions">
+          <div class="ur-actions">
             <el-button size="small" @click="openPassword(u)">改密</el-button>
             <el-button size="small" @click="toggleDisable(u)">{{u.is_disabled?'启用':'禁用'}}</el-button>
             <el-popconfirm title="确定删除？" @confirm="delUser(u)">
@@ -851,6 +881,7 @@ const Users = {
             </el-popconfirm>
           </div>
         </div>
+      </div>
       </div>
 
       <el-dialog v-model="showAdd" title="新建用户" :width="isMobile?'92%':'420px'">
@@ -960,7 +991,7 @@ const Libraries = {
             <span v-if="libDetailItem.tmdb_url" @click="openUrl(libDetailItem.tmdb_url)"
                   style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#0d253f;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:4px">🌐 TMDB</span>
             <span v-if="libDetailItem.imdb_url" @click="openUrl(libDetailItem.imdb_url)"
-                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#353b48;color:#e8e8f0;font-size:12px;display:inline-flex;align-items:center;gap:4px">🎬 IMDb</span>
+                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#0d253f;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:4px">🎬 IMDb</span>
           </div>
 
           <!-- Delete -->
