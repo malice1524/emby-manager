@@ -793,7 +793,7 @@ const Dashboard = {
         var excludeNames = {'欧美自拍':1,'亚洲自拍':1,'日本有码':1}
         this._excludeIds = allLibs.filter(function(l){return excludeNames[l.name]}).map(function(l){return l.id}).join(',')
         // Set default to 动画电影
-        var defaultLibId = ''
+        var defaultLibId = ""
         for(var i=0;i<allLibs.length;i++){if(allLibs[i].name==='动画电影'){defaultLibId=allLibs[i].id;break}}
         // Fetch recent with default library
         try {
