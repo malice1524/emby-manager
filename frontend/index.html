@@ -99,6 +99,12 @@ body {
 .sidebar nav a .nav-icon { font-size: 18px; opacity: 0.7; width: 20px; text-align: center }
 .sidebar nav a.router-link-active .nav-icon { opacity: 1 }
 
+.sidebar-version {
+  position: absolute; bottom: 16px; left: 0; right: 0; text-align: center;
+  font-size: 11px; color: var(--text-muted); letter-spacing: 0.3px;
+  padding: 8px 0;
+}
+
 .main { margin-left: 240px; flex: 1; padding: 32px 40px; max-width: 100% }
 
 /* ---- Mobile ---- */
@@ -124,6 +130,8 @@ body {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 180;
   }
   .sidebar-overlay.show { display: block; }
+  .el-dialog.is-fullscreen { z-index: 2001 !important; }
+  .el-overlay { z-index: 2000 !important; }
 }
 
 /* ---- Glass Card ---- */
@@ -421,7 +429,7 @@ body {
 .el-overlay { background: rgba(0,0,0,0.6) !important; }
 @media (min-width: 769px) {
   .el-overlay { margin-left: 240px; }
-  .el-dialog { max-width: calc(100vw - 280px) !important; }
+  .el-dialog { margin-left: 120px !important; }
 }
 .el-dialog__header { border-bottom: 1px solid var(--glass-border); }
 .el-dialog__title { color: var(--text); font-weight: 600; }
@@ -520,6 +528,7 @@ body {
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
     </nav>
+    <div class="sidebar-version">v1.02</div>
   </aside>
 
   <!-- Main -->
@@ -785,7 +794,7 @@ const Dashboard = {
         this._excludeIds = allLibs.filter(function(l){return excludeNames[l.name]}).map(function(l){return l.id}).join(',')
         // Re-fetch recent with exclusion if no specific library selected
         if(!this.activeLibrary && this._excludeIds) {
-          try { const r2 = await fetchJSON('/dashboard/recent?limit=18&exclude_parent_ids='+encodeURIComponent(this._excludeIds)); this.recent = r2.items || [] } catch(e) {}
+          try { const r2 = await fetchJSON('/dashboard/recent?limit=18&exclude_parent_ids='+this._excludeIds); this.recent = r2.items || [] } catch(e) {}
         }
       } catch(e) { console.error(e) }
       this.loaded = true
@@ -805,7 +814,7 @@ const Dashboard = {
       try {
         var url = '/dashboard/recent?limit=18'
         if(id) url += '&parent_id='+id
-        else if(this._excludeIds) url += '&exclude_parent_ids='+encodeURIComponent(this._excludeIds)
+        else if(this._excludeIds) url += '&exclude_parent_ids='+this._excludeIds
         const rec = await fetchJSON(url)
         this.recent = rec.items || []
       } catch(e) { console.error(e) }
@@ -927,7 +936,8 @@ const Libraries = {
       </div>
 
       <!-- Library Items Dialog - Poster Gallery -->
-      <el-dialog v-model="showItems" :title="curLib?.name" :width="isMobile?'96%':'85%'" top="12px" :fullscreen="isMobile">
+      <el-dialog v-model="showItems" :title="curLib?.name" :width="isMobile?'96%':'85%'" top="12px" :fullscreen="isMobile"
+                 :style="isMobile ? 'margin-top:50px' : ''">
         <el-input v-model="search" placeholder="搜索媒体..." size="large" style="margin-bottom:14px" @input="onSearch" clearable/>
 
         <div v-if="itemsLoading" style="text-align:center;padding:60px 0;color:var(--text-muted)">加载中...</div>
