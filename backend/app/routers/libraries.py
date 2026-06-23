@@ -50,8 +50,11 @@ async def get_library_items(
     limit: int = Query(default=30, le=100),
     page: int = Query(default=0),
     search: str = Query(default=""),
+    types: str = Query(default=""),
 ):
-    """Get items within a library with pagination and search."""
+    """Get items within a library with pagination and search.
+    types=movies -> Movie only, types=tvshows -> Series only.
+    """
     async with httpx.AsyncClient(timeout=30) as client:
         params = {
             "Recursive": "true",
@@ -61,6 +64,12 @@ async def get_library_items(
             "SortBy": "SortName",
             "SortOrder": "Ascending",
         }
+        if types == "tvshows":
+            params["IncludeItemTypes"] = "Series"
+        elif types == "movies":
+            params["IncludeItemTypes"] = "Movie"
+        elif types:
+            params["IncludeItemTypes"] = types
         if search:
             params["SearchTerm"] = search
 
@@ -81,6 +90,7 @@ async def get_library_items(
                 "year": item.get("ProductionYear"),
                 "runtime_min": item.get("RunTimeTicks", 0) // 600000000
                 if item.get("RunTimeTicks") else None,
+                "has_image": bool(item.get("ImageTags", {}).get("Primary")),
             })
 
         return {

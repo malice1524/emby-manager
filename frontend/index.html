@@ -203,7 +203,7 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px; margin-bottom: 28px;
 }
-@media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; } }
+@media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; } }
 
 .poster-card {
   position: relative; border-radius: 10px; overflow: hidden;
@@ -248,6 +248,11 @@ body {
 .poster-type.series { background: rgba(0,206,201,0.7); }
 .poster-type.movie { background: rgba(108,92,231,0.7); }
 
+.poster-placeholder {
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:28px;color:var(--text-muted);
+}
+
 /* ---- Activity Feed ---- */
 .activity-feed {
   display: flex; flex-direction: column; gap: 0;
@@ -272,6 +277,36 @@ body {
 .sessions-row {
   display: flex; flex-wrap: wrap; gap: 8px;
 }
+
+/* ---- Now Playing ---- */
+.nowplaying-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px; border-radius: 10px;
+  border-bottom: 1px solid var(--glass-border);
+  transition: background 0.2s ease;
+}
+.nowplaying-item:last-child { border-bottom: none; }
+.nowplaying-item:hover { background: var(--glass); }
+
+.np-poster {
+  width: 44px; height: 66px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
+  background: var(--glass); border: 1px solid var(--glass-border);
+}
+.np-poster img { width:100%; height:100%; object-fit:cover; }
+.np-poster-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--text-muted); }
+
+.np-info { flex: 1; min-width:0; }
+.np-user { font-size:13px; font-weight:600; color:var(--text); }
+.np-title { font-size:11px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:2px 0 6px; }
+.np-progress { display:flex; align-items:center; gap:6px; }
+.np-bar-bg { flex:1; height:3px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden; }
+.np-bar-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width 0.5s ease; }
+.np-pct { font-size:10px; color:var(--text-muted); min-width:32px; text-align:right; }
+
+.np-status { font-size:18px; flex-shrink:0; }
+.np-status.playing { color:var(--green); }
+.np-status.paused { color:var(--orange); }
+.np-status.idle { color:var(--text-muted); }
 .session-chip {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 14px; border-radius: 24px;
@@ -384,6 +419,10 @@ body {
   box-shadow: 0 8px 40px rgba(0,0,0,0.4);
 }
 .el-overlay { background: rgba(0,0,0,0.6) !important; }
+@media (min-width: 769px) {
+  .el-overlay { margin-left: 240px; }
+  .el-dialog { margin-left: 120px !important; }
+}
 .el-dialog__header { border-bottom: 1px solid var(--glass-border); }
 .el-dialog__title { color: var(--text); font-weight: 600; }
 .el-input__wrapper {
@@ -574,17 +613,33 @@ const Dashboard = {
 
         <!-- Active Sessions -->
         <div class="glass-block">
-          <div class="section-title" style="margin-bottom:10px">📺 在线会话</div>
-          <div class="sessions-row" v-if="data.sessions?.streams?.length">
-            <div class="session-chip" v-for="s in data.sessions.streams" :key="s.username+s.device">
-              <div class="u-avatar">{{s.username[0]}}</div>
-              <div class="u-info">
-                <div class="u-name">{{s.username}}</div>
-                <div class="u-device">{{s.client}} · {{s.device}}</div>
+          <div class="section-title" style="margin-bottom:10px">📺 正在播放</div>
+          <div v-if="data.sessions?.streams?.length">
+            <div class="nowplaying-item" v-for="s in activePlaying" :key="s.username+s.device">
+              <div class="np-poster">
+                <img v-if="s.image_url" :src="s.image_url" @error="$event.target.style.display='none'">
+                <div v-else class="np-poster-fallback">🎬</div>
+              </div>
+              <div class="np-info">
+                <div class="np-user">{{s.username}}</div>
+                <div class="np-title">{{s.now_playing}}</div>
+                <div class="np-progress">
+                  <div class="np-bar-bg">
+                    <div class="np-bar-fill" :style="'width:'+s.progress+'%'"></div>
+                  </div>
+                  <div class="np-pct">{{s.progress}}%</div>
+                </div>
+              </div>
+              <div class="np-status" :class="s.play_state">
+                {{s.play_state==='playing'?'▶':'⏸'}}
               </div>
             </div>
+            <!-- idle users collapsed -->
+            <div v-if="idleCount" style="padding:8px 12px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--glass-border)">
+              其他 {{idleCount}} 人在线
+            </div>
           </div>
-          <div v-else class="empty-state" style="padding:20px">暂无在线会话</div>
+          <div v-else class="empty-state" style="padding:20px">暂无播放</div>
         </div>
       </div>
 
@@ -594,7 +649,7 @@ const Dashboard = {
         <div v-if="detailItem" style="text-align:center">
           <img v-if="detailItem.image_url" 
                :src="detailItem.image_url"
-               style="width:40%;border-radius:10px;aspect-ratio:2/3;object-fit:cover;margin:0 auto;display:block"
+               style="width:40%;border-radius:10px;aspect-ratio:2/3;object-fit:cover;margin:12px auto 0;display:block"
                @error="$event.target.style.display='none'">
 
           <!-- Overview with clamp -->
@@ -631,9 +686,17 @@ const Dashboard = {
               🌐 TMDB
             </span>
             <span v-if="detailItem.imdb_url" @click="openUrl(detailItem.imdb_url)"
-                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#f5c518;color:#000;font-size:12px;display:inline-flex;align-items:center;gap:4px">
+                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#353b48;color:#e8e8f0;font-size:12px;display:inline-flex;align-items:center;gap:4px">
               🎬 IMDb
             </span>
+          </div>
+
+          <!-- Delete Button -->
+          <div style="margin-bottom:12px;text-align:center">
+            <span v-if="showDetailDel" @click="deleteDetailItem"
+                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#ff4757;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:4px">确认删除？</span>
+            <span v-else @click="showDetailDel=true"
+                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:rgba(255,71,87,0.15);color:var(--red);font-size:12px;display:inline-flex;align-items:center;gap:4px">🗑 删除</span>
           </div>
 
           <!-- Cast -->
@@ -642,7 +705,10 @@ const Dashboard = {
             <div style="display:flex;flex-wrap:wrap;gap:10px">
               <div v-for="(actor,i) in detailItem.cast.slice(0,12)" :key="i"
                    style="display:flex;flex-direction:column;align-items:center;gap:3px;width:64px">
-                <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#4834d4);
+                <div v-if="actor.avatar_url"
+                     :style="'width:46px;height:46px;border-radius:50%;background-image:url('+actor.avatar_url+');background-size:cover;background-position:center;border:1px solid var(--glass-border)'">
+                </div>
+                <div v-else style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#4834d4);
                            display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#fff">
                   {{actor.name ? actor.name[0] : '?'}}
                 </div>
@@ -663,9 +729,19 @@ const Dashboard = {
     return {
       data: {media:{},server:{},users:{},sessions:{}},
       recent: [], activity: [], loaded: false,
-      showDetail: false, detailItem: null, expanded: false,
+      showDetail: false, detailItem: null, expanded: false, showDetailDel: false, showLibDel: false,
       isMobile: window.innerWidth < 640,
       libraries: [], activeLibrary: '', libraryName: ''
+    }
+  },
+  computed: {
+    activePlaying(){
+      if(!this.data.sessions?.streams) return []
+      return this.data.sessions.streams.filter(s => s.has_playing)
+    },
+    idleCount(){
+      if(!this.data.sessions?.streams) return 0
+      return this.data.sessions.streams.filter(s => !s.has_playing).length
     }
   },
   async mounted(){
@@ -686,7 +762,9 @@ const Dashboard = {
         this.data = ov
         this.recent = rec.items || []
         this.activity = (act.activity || []).slice(0, 8)
-        this.libraries = libs.libraries || []
+        this.libraries = (libs.libraries || []).filter(function(l) {
+          return l.name !== '欧美自拍' && l.name !== '亚洲自拍' && l.name !== '日本有码'
+        })
       } catch(e) { console.error(e) }
       this.loaded = true
     },
@@ -710,6 +788,24 @@ const Dashboard = {
     },
     fmtTime(d){ if(!d)return''; const t=new Date(d); return t.toLocaleDateString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) },
     openUrl(url){ window.open(url, '_blank') },
+    async deleteDetailItem(){
+      if(!this.detailItem) return
+      try {
+        await fetchJSON('/dashboard/item/'+this.detailItem.id, {method:'DELETE'})
+        ElementPlus.ElMessage.success('已删除')
+        this.showDetail = false; this.showDetailDel = false
+        await this.refreshAll()
+      } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showDetailDel = false }
+    },
+    async deleteLibItem(){
+      if(!this.libDetailItem) return
+      try {
+        await fetchJSON('/dashboard/item/'+this.libDetailItem.id, {method:'DELETE'})
+        ElementPlus.ElMessage.success('已删除')
+        this.showDetail = false; this.showLibDel = false
+        await this.loadItems()
+      } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showLibDel = false }
+    },
     async openItem(item){
       this.showDetail = true; this.expanded = false
       this.detailItem = item
@@ -733,7 +829,10 @@ const Users = {
       <div class="users-grid" v-loading="loading">
         <div class="user-card glass-card" v-for="u in users" :key="u.id">
           <div class="user-card-top">
-            <div class="u-avatar" :class="{admin:u.is_admin,disabled:u.is_disabled}">{{u.name ? u.name[0].toUpperCase() : '?'}}</div>
+            <div class="u-avatar" :class="{admin:u.is_admin,disabled:u.is_disabled}"
+                 :style="u.avatar_url ? 'background-image:url('+u.avatar_url+');background-size:cover;background-position:center' : ''">
+              {{u.avatar_url ? '' : (u.name ? u.name[0].toUpperCase() : '?')}}
+            </div>
             <div class="u-meta">
               <div class="u-name">{{u.name}}</div>
               <span class="u-tag admin" v-if="u.is_admin">管理员</span>
@@ -755,7 +854,8 @@ const Users = {
       </div>
 
       <el-dialog v-model="showAdd" title="新建用户" :width="isMobile?'92%':'420px'">
-        <el-input v-model="newName" placeholder="输入用户名" size="large"/>
+        <el-input v-model="newName" placeholder="输入用户名" size="large" style="margin-bottom:10px"/>
+        <el-input v-model="newPw" type="password" placeholder="输入密码" show-password size="large"/>
         <template #footer>
           <el-button @click="showAdd=false">取消</el-button>
           <el-button type="primary" @click="addUser" :disabled="!newName">创建</el-button>
@@ -763,23 +863,24 @@ const Users = {
       </el-dialog>
 
       <el-dialog v-model="showPwd" title="修改密码" :width="isMobile?'92%':'420px'">
-        <el-input v-model="newPw" type="password" placeholder="新密码" show-password size="large"/>
+        <el-input v-model="newPw" type="password" placeholder="新密码" show-password size="large" style="margin-bottom:10px"/>
+        <el-input v-model="newPwConfirm" type="password" placeholder="确认密码" show-password size="large"/>
         <template #footer>
           <el-button @click="showPwd=false">取消</el-button>
-          <el-button type="primary" @click="changePwd" :disabled="!newPw">确认</el-button>
+          <el-button type="primary" @click="changePwd" :disabled="!newPw || newPw!==newPwConfirm">确认</el-button>
         </template>
       </el-dialog>
     </div>
   `,
-  data(){ return {users:[],loading:false,showAdd:false,showPwd:false,newName:'',newPw:'',targetUser:null,isMobile:window.innerWidth<640} },
+  data(){ return {users:[],loading:false,showAdd:false,showPwd:false,newName:'',newPw:'',newPwConfirm:'',targetUser:null,isMobile:window.innerWidth<640} },
   async mounted(){ await this.load(); window.addEventListener('resize',()=>{this.isMobile=window.innerWidth<640}) },
   methods: {
     async load(){ this.loading=true; const d=await fetchJSON('/users'); this.users=d.users||[]; this.loading=false },
     fmtDate(d){ if(!d)return'-'; const t=new Date(d); const now=new Date(); const diff=now-t; if(diff<864e5) return t.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}); return t.toLocaleDateString('zh-CN',{month:'short',day:'numeric'}) },
-    async addUser(){ await fetchJSON('/users?name='+encodeURIComponent(this.newName),{method:'POST'}); this.showAdd=false; this.newName=''; this.load(); ElementPlus.ElMessage.success('用户已创建') },
+    async addUser(){ await fetchJSON('/users?name='+encodeURIComponent(this.newName)+'&password='+encodeURIComponent(this.newPw),{method:'POST'}); this.showAdd=false; this.newName=''; this.newPw=''; this.load(); ElementPlus.ElMessage.success('用户已创建') },
     async delUser(u){ await fetchJSON('/users/'+u.id,{method:'DELETE'}); this.load(); ElementPlus.ElMessage.success('已删除') },
-    openPassword(u){ this.targetUser=u; this.newPw=''; this.showPwd=true },
-    async changePwd(){ await fetchJSON('/users/'+this.targetUser.id+'/password',{method:'PUT',body:JSON.stringify({new_pw:this.newPw})}); this.showPwd=false; ElementPlus.ElMessage.success('密码已修改') },
+    openPassword(u){ this.targetUser=u; this.newPw=''; this.newPwConfirm=''; this.showPwd=true },
+    async changePwd(){ await fetchJSON('/users/'+this.targetUser.id+'/password',{method:'PUT',body:JSON.stringify({new_pw:this.newPw})}); this.showPwd=false; this.newPw=''; this.newPwConfirm=''; ElementPlus.ElMessage.success('密码已修改') },
     async toggleDisable(u){ await fetchJSON('/users/'+u.id+'/policy',{method:'PUT',body:JSON.stringify({IsDisabled:!u.is_disabled})}); this.load() },
   }
 }
@@ -807,10 +908,11 @@ const Libraries = {
         <div class="poster-grid" v-else-if="items.length">
           <div class="poster-card fade-in" v-for="(item,i) in items" :key="item.id"
                :style="'animation-delay:'+(i*0.03)+'s'" @click="openLibItem(item)">
-            <img :src="'/api/dashboard/images/'+item.id+'?w=300'" loading="lazy" alt=""
+            <img v-if="item.has_image" :src="'/api/dashboard/images/'+item.id+'?w=300'" loading="lazy" alt=""
                  @error="$event.target.style.display='none'">
+            <div v-else class="poster-placeholder">🎬</div>
             <div class="poster-type" :class="item.type==='Series'?'series':'movie'">
-              {{item.type==='Series'?'剧集':'电影'}}
+              {{item.type==='Series'?'剧集':item.type==='Movie'?'电影':'?'}}
             </div>
             <div class="poster-overlay">
               <div class="tt">{{item.name}}</div>
@@ -829,7 +931,7 @@ const Libraries = {
       <el-dialog v-model="showDetail" :title="libDetailItem?.name" :width="isMobile?'94%':'520px'" top="5vh">
         <div v-if="libDetailItem" style="text-align:center">
           <img v-if="libDetailItem.image_url" :src="libDetailItem.image_url"
-               style="width:40%;border-radius:10px;aspect-ratio:2/3;object-fit:cover;margin:0 auto;display:block;max-height:280px"
+               style="width:40%;border-radius:10px;aspect-ratio:2/3;object-fit:cover;margin:12px auto 0;display:block;max-height:280px"
                @error="$event.target.style.display='none'">
 
           <div style="margin-top:12px;text-align:left" v-if="libDetailItem.overview">
@@ -858,7 +960,15 @@ const Libraries = {
             <span v-if="libDetailItem.tmdb_url" @click="openUrl(libDetailItem.tmdb_url)"
                   style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#0d253f;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:4px">🌐 TMDB</span>
             <span v-if="libDetailItem.imdb_url" @click="openUrl(libDetailItem.imdb_url)"
-                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#f5c518;color:#000;font-size:12px;display:inline-flex;align-items:center;gap:4px">🎬 IMDb</span>
+                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#353b48;color:#e8e8f0;font-size:12px;display:inline-flex;align-items:center;gap:4px">🎬 IMDb</span>
+          </div>
+
+          <!-- Delete -->
+          <div style="margin-bottom:12px;text-align:center">
+            <span v-if="showLibDel" @click="deleteLibItem"
+                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:#ff4757;color:#fff;font-size:12px">确认删除？</span>
+            <span v-else @click="showLibDel=true"
+                  style="cursor:pointer;padding:6px 16px;border-radius:8px;background:rgba(255,71,87,0.15);color:var(--red);font-size:12px">🗑 删除</span>
           </div>
 
           <div style="text-align:left" v-if="libDetailItem.cast?.length">
@@ -866,7 +976,10 @@ const Libraries = {
             <div style="display:flex;flex-wrap:wrap;gap:10px">
               <div v-for="(actor,i) in libDetailItem.cast.slice(0,12)" :key="i"
                    style="display:flex;flex-direction:column;align-items:center;gap:3px;width:64px">
-                <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#4834d4);
+                <div v-if="actor.avatar_url"
+                     :style="'width:46px;height:46px;border-radius:50%;background-image:url('+actor.avatar_url+');background-size:cover;background-position:center;border:1px solid var(--glass-border)'">
+                </div>
+                <div v-else style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#4834d4);
                            display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#fff">
                   {{actor.name?actor.name[0]:'?'}}
                 </div>
@@ -906,6 +1019,7 @@ const Libraries = {
       if(!this.curLib)return; this.itemsLoading=true;
       const params = new URLSearchParams({page:this.page-1, limit:30});
       if(this.search) params.set('search', this.search);
+      if(this.curLib.type) params.set('types', this.curLib.type);
       const data = await fetchJSON('/libraries/'+this.curLib.id+'/items?'+params);
       this.items=data.items||[]; this.total=data.total||0;
       this.itemsLoading=false;

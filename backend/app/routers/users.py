@@ -5,6 +5,11 @@ import httpx
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
+def _avatar_url(user_id: str) -> str:
+    """User avatar proxied through our backend."""
+    return f"/api/dashboard/images/{user_id}?w=80&type=user"
+
+
 @router.get("")
 async def get_users():
     async with httpx.AsyncClient(timeout=30) as client:
@@ -19,9 +24,11 @@ async def get_users():
             if detail_resp.status_code == 200:
                 detail = detail_resp.json()
                 policy = detail.get("Policy", {})
+                has_image = bool(detail.get("PrimaryImageTag"))
                 users.append({
                     "id": user_id,
                     "name": u.get("Name", "Unknown"),
+                    "avatar_url": _avatar_url(user_id) if has_image else None,
                     "has_password": detail.get("HasPassword", False),
                     "is_admin": policy.get("IsAdministrator", False),
                     "is_disabled": policy.get("IsDisabled", False),
@@ -34,8 +41,8 @@ async def get_users():
 
 
 @router.post("")
-async def create_user(name: str = Query(...)):
-    """Create a new Emby user."""
+async def create_user(name: str = Query(...), password: str = Query(default="")):
+    """Create a new Emby user with optional password."""
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(
             f"{EMBY_URL}/emby/Users/New",
@@ -44,7 +51,17 @@ async def create_user(name: str = Query(...)):
         )
         if resp.status_code not in (200, 204):
             raise HTTPException(status_code=resp.status_code, detail="Failed to create user")
-        return {"status": "ok"}
+        user_data = resp.json()
+        user_id = user_data.get("Id")
+
+        # Set password if provided
+        if password and user_id:
+            await client.post(
+                f"{EMBY_URL}/emby/Users/{user_id}/Password",
+                json={"NewPw": password},
+                headers=HEADERS,
+            )
+        return {"status": "ok", "id": user_id}
 
 
 @router.delete("/{user_id}")

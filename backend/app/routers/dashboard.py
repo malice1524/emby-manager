@@ -7,14 +7,20 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
 @router.get("/images/{item_id}")
-async def proxy_image(item_id: str, w: int = Query(default=400, ge=50, le=1200)):
-    """Proxy Emby images through backend to avoid cross-origin/LAN issues."""
+async def proxy_image(
+    item_id: str,
+    w: int = Query(default=400, ge=50, le=1200),
+    type: str = Query(default="item"),
+):
+    """Proxy Emby images through backend.
+    type=item -> Item images, type=user -> User profile images."""
     try:
         async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(
-                f"{EMBY_URL}/emby/Items/{item_id}/Images/Primary",
-                params={"maxWidth": w, "api_key": HEADERS["X-Emby-Token"]},
-            )
+            if type == "user":
+                url = f"{EMBY_URL}/emby/Users/{item_id}/Images/Primary"
+            else:
+                url = f"{EMBY_URL}/emby/Items/{item_id}/Images/Primary"
+            resp = await client.get(url, params={"maxWidth": w, "api_key": HEADERS["X-Emby-Token"]})
             if resp.status_code != 200:
                 raise HTTPException(status_code=404)
             return Response(
@@ -65,14 +71,22 @@ async def get_dashboard_overview():
         active_streams = []
         for s in sessions:
             np = s.get("NowPlayingItem", {})
+            play_state = s.get("PlayState", {})
             item_id = np.get("Id", "")
+            has_playing = bool(np)
+            position_ticks = play_state.get("PositionTicks", 0) if has_playing else 0
+            runtime_ticks = np.get("RunTimeTicks", 0) if has_playing else 0
+            progress = (position_ticks / runtime_ticks * 100) if runtime_ticks > 0 else 0
             active_streams.append({
                 "username": s.get("UserName", "Unknown"),
                 "client": s.get("Client", "Unknown"),
                 "device": s.get("DeviceName", "Unknown"),
-                "now_playing": np.get("Name", "Idle") if np else "Idle",
-                "play_state": s.get("PlayState", {}).get("PlayMethod", "Idle"),
+                "now_playing": np.get("Name", "Idle") if has_playing else None,
+                "play_state": "playing" if (has_playing and not play_state.get("IsPaused", True)) else "paused" if has_playing else "idle",
                 "item_id": item_id,
+                "progress": round(progress, 1),
+                "has_playing": has_playing,
+                "image_url": f"/api/dashboard/images/{item_id}?w=200" if item_id else None,
             })
 
         return {
@@ -164,10 +178,14 @@ async def get_item_detail(item_id: str):
 
         cast = []
         for p in data.get("People", []):
+            pid = p.get("Id", "")
+            has_img = bool(p.get("PrimaryImageTag"))
             cast.append({
                 "name": p.get("Name", ""),
                 "role": p.get("Role", ""),
                 "type": p.get("Type", ""),
+                "person_id": pid,
+                "avatar_url": f"/api/dashboard/images/{pid}?w=100" if pid and has_img else None,
             })
 
         return {
@@ -216,3 +234,16 @@ async def get_dashboard_stats():
             ],
             "system": system_data,
         }
+
+
+@router.delete("/item/{item_id}")
+async def delete_media_item(item_id: str):
+    """Delete a media item from Emby."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.delete(
+            f"{EMBY_URL}/emby/Items/{item_id}",
+            headers=HEADERS,
+        )
+        if resp.status_code not in (200, 204):
+            raise HTTPException(status_code=resp.status_code, detail="Failed to delete item")
+        return {"status": "ok"}
