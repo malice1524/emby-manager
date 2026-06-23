@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Emby Manager</title>
+<link rel="stylesheet" href="lib/element-plus.css"/>
+<script src="lib/vue.js"></script>
+<script src="lib/vue-router.js"></script>
+<script src="lib/element-plus.js"></script>
+
+<style>
+/* Using system fonts for offline reliability */
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root {
+  --bg: #0a0a14;
+  --surface: rgba(255,255,255,0.03);
+  --glass: rgba(255,255,255,0.06);
+  --glass-hover: rgba(255,255,255,0.10);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-border-hover: rgba(255,255,255,0.15);
+  --text: #e8e8f0;
+  --text-dim: rgba(255,255,255,0.5);
+  --text-muted: rgba(255,255,255,0.35);
+  --accent: #6c5ce7;
+  --accent-glow: rgba(108,92,231,0.4);
+  --accent2: #a29bfe;
+  --green: #00cec9;
+  --green-glow: rgba(0,206,201,0.4);
+  --pink: #fd79a8;
+  --pink-glow: rgba(253,121,168,0.4);
+  --orange: #fdcb6e;
+  --orange-glow: rgba(253,203,110,0.4);
+  --red: #ff7675;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background ambient */
+.bg-ambient {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(108,92,231,0.12), transparent),
+    radial-gradient(ellipse 60% 50% at 90% 90%, rgba(0,206,201,0.08), transparent),
+    radial-gradient(ellipse 50% 50% at 10% 80%, rgba(253,121,168,0.06), transparent);
+}
+
+/* ---- Layout ---- */
+.layout { display: flex; min-height: 100vh; position: relative; z-index: 1 }
+
+/* ---- Sidebar ---- */
+.sidebar {
+  width: 240px; min-height: 100vh;
+  background: rgba(10,10,20,0.85);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-right: 1px solid var(--glass-border);
+  padding: 28px 0;
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 90;
+  transition: transform var(--transition);
+}
+.sidebar-logo {
+  padding: 0 24px; margin-bottom: 36px;
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar-logo .icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.sidebar-logo h2 {
+  font-size: 17px; font-weight: 600; color: var(--text);
+  letter-spacing: -0.3px;
+}
+.sidebar nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 24px; margin: 2px 12px;
+  color: var(--text-dim); text-decoration: none;
+  font-size: 14px; font-weight: 450;
+  border-radius: 10px; transition: all var(--transition);
+}
+.sidebar nav a:hover { color: var(--text); background: var(--glass); }
+.sidebar nav a.router-link-active {
+  color: #fff; background: rgba(108,92,231,0.15);
+  box-shadow: inset 0 0 0 1px rgba(108,92,231,0.25);
+}
+.sidebar nav a .nav-icon { font-size: 18px; opacity: 0.7; width: 20px; text-align: center }
+.sidebar nav a.router-link-active .nav-icon { opacity: 1 }
+
+.main { margin-left: 240px; flex: 1; padding: 32px 40px; max-width: 100% }
+
+/* ---- Mobile ---- */
+.topbar { display: none; }
+.sidebar-overlay { display: none; }
+
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); width: 260px; }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; padding: 16px 14px; }
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; position: sticky; top: 0; z-index: 100;
+    background: rgba(10,10,20,0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .topbar .menu-btn { font-size: 20px; cursor: pointer; color: var(--text); line-height: 1; }
+  .topbar h2 { font-size: 16px; font-weight: 600; }
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 85;
+  }
+  .sidebar-overlay.show { display: block; }
+}
+
+/* ---- Glass Card ---- */
+.glass-card {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  transition: all var(--transition);
+}
+.glass-card:hover {
+  border-color: var(--glass-border-hover);
+  background: var(--glass-hover);
+}
+
+/* ============ DASHBOARD — Gallery Style ============ */
+
+/* Hero banner */
+.hero {
+  position: relative; overflow: hidden;
+  border-radius: 20px; margin-bottom: 28px;
+  padding: 36px 32px;
+  background: linear-gradient(135deg, rgba(108,92,231,0.15), rgba(0,206,201,0.08));
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+.hero::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 70% 100% at 30% 20%, rgba(108,92,231,0.12), transparent),
+              radial-gradient(ellipse 50% 100% at 80% 50%, rgba(0,206,201,0.06), transparent);
+}
+.hero-server {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+  position: relative; z-index: 1;
+}
+.hero-avatar {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent), #4834d4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; box-shadow: 0 4px 20px rgba(108,92,231,0.4);
+}
+.hero-server h2 { font-size: 20px; font-weight: 600; }
+.hero-server span { font-size: 12px; color: var(--text-muted); }
+
+.hero-stats {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 12px;
+  position: relative; z-index: 1;
+}
+@media (max-width: 480px) { .hero-stats { grid-template-columns: repeat(2,1fr); } }
+.hero-stat {
+  text-align: center; padding: 12px 8px;
+  border-radius: 12px; background: rgba(255,255,255,0.03);
+  border: 1px solid transparent;
+  transition: all 0.25s ease;
+}
+.hero-stat:hover { border-color: var(--glass-border); background: rgba(255,255,255,0.05); }
+.hero-stat .val {
+  font-size: 28px; font-weight: 700; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #e8e8f0 30%, var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-stat .lbl { font-size: 11px; color: var(--text-dim); margin-top: 2px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ---- Section Title ---- */
+.section-title {
+  font-size: 16px; font-weight: 600; margin-bottom: 14px;
+  letter-spacing: -0.2px; display: flex; align-items: center; gap: 8px;
+}
+
+/* ---- Poster Grid (Recently Added) ---- */
+.poster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px; margin-bottom: 28px;
+}
+@media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; } }
+
+.poster-card {
+  position: relative; border-radius: 10px; overflow: hidden;
+  aspect-ratio: 2/3; cursor: pointer;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  transform-origin: center center;
+}
+.poster-card:hover {
+  transform: scale(1.06); z-index: 10;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px var(--glass-border-hover);
+  border-color: rgba(255,255,255,0.2);
+}
+.poster-card img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform 0.4s ease;
+}
+.poster-card:hover img { transform: scale(1.1); }
+
+.poster-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 12px 10px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.85) 40%);
+  pointer-events: none;
+}
+.poster-overlay .tt {
+  font-size: 12px; font-weight: 600; color: #fff;
+  line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.poster-overlay .yr {
+  font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 2px;
+}
+.poster-type {
+  position: absolute; top: 8px; left: 8px; z-index: 2;
+  font-size: 9px; padding: 3px 8px; border-radius: 20px;
+  font-weight: 600; text-transform: uppercase;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff; letter-spacing: 0.5px;
+}
+.poster-type.series { background: rgba(0,206,201,0.7); }
+.poster-type.movie { background: rgba(108,92,231,0.7); }
+
+/* ---- Activity Feed ---- */
+.activity-feed {
+  display: flex; flex-direction: column; gap: 0;
+  max-height: 320px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--glass-border) transparent;
+}
+.activity-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 8px;
+  transition: background 0.15s ease;
+  font-size: 13px;
+}
+.activity-item:hover { background: var(--glass); }
+.activity-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  background: var(--accent);
+}
+.activity-item .act-text { flex: 1; color: var(--text-dim); line-height: 1.4; }
+.activity-item .act-time { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+
+/* ---- Sessions Row ---- */
+.sessions-row {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.session-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 24px;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  transition: all 0.2s ease; font-size: 12px;
+}
+.session-chip:hover { border-color: var(--glass-border-hover); background: var(--glass-hover); }
+.session-chip .u-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--accent), #6c5ce7);
+  color: #fff; font-size: 12px; font-weight: 600;
+  flex-shrink: 0;
+}
+.session-chip .u-info { line-height: 1.3; }
+.session-chip .u-name { font-weight: 600; color: var(--text); }
+.session-chip .u-device { font-size: 10px; color: var(--text-muted); }
+
+/* Two column for sections */
+.dash-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+@media (max-width: 768px) { .dash-sections { grid-template-columns: 1fr; } }
+
+/* Glass card for sections */
+.glass-block {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+/* ---- Library Grid ---- */
+.lib-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+@media (max-width: 768px) { .lib-grid { grid-template-columns: repeat(2,1fr); gap: 10px; } }
+@media (max-width: 480px) { .lib-grid { grid-template-columns: 1fr; } }
+
+.lib-card {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 18px; cursor: pointer;
+  transition: all var(--transition);
+  position: relative; overflow: hidden;
+}
+.lib-card::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(108,92,231,0.12), transparent 60%);
+  opacity: 0; transition: opacity var(--transition);
+}
+.lib-card:hover { border-color: var(--glass-border-hover); transform: translateY(-2px); }
+.lib-card:hover::after { opacity: 1; }
+.lib-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.lib-card p { font-size: 11px; color: var(--text-dim); margin: 2px 0; }
+.lib-card .path { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-card .type-badge {
+  display: inline-block; font-size: 10px; padding: 2px 8px;
+  border-radius: 20px; font-weight: 500; margin-bottom: 6px;
+  background: rgba(108,92,231,0.15); color: var(--accent2);
+}
+.lib-card.tv .type-badge { background: rgba(0,206,201,0.15); color: var(--green); }
+
+/* ---- Table Override ---- */
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(255,255,255,0.04);
+  --el-table-border-color: var(--glass-border);
+  --el-table-text-color: var(--text);
+  --el-table-header-text-color: var(--text-dim);
+  --el-table-row-hover-bg-color: var(--glass);
+}
+.el-table th.el-table__cell { border-bottom: 1px solid var(--glass-border); font-weight: 500; }
+.el-table td.el-table__cell { border-bottom: 1px solid var(--glass-border); }
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: rgba(255,255,255,0.02);
+}
+
+/* ---- Element Plus Overrides ---- */
+.el-button--primary {
+  --el-button-bg-color: var(--accent);
+  --el-button-border-color: var(--accent);
+  --el-button-hover-bg-color: #7c6ff7;
+  --el-button-hover-border-color: #7c6ff7;
+}
+.el-dialog {
+  --el-dialog-bg-color: rgba(20,20,35,0.95);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+}
+.el-dialog__header { border-bottom: 1px solid var(--glass-border); }
+.el-dialog__title { color: var(--text); font-weight: 600; }
+.el-input__wrapper {
+  background: var(--glass) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: none !important; border-radius: 8px !important;
+}
+.el-input__inner { color: var(--text) !important; }
+.el-tag { border: none !important; font-weight: 500; }
+.el-pagination button { background: var(--glass) !important; border-color: var(--glass-border) !important; color: var(--text-dim) !important; }
+.el-pagination button:disabled { opacity: 0.4; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
+
+/* Page header */
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.page-header h1 { font-size: 20px; font-weight: 600; }
+
+/* ---- Animations ---- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeInUp 0.5s ease both; }
+.fade-in-1 { animation-delay: 0.05s; }
+.fade-in-2 { animation-delay: 0.10s; }
+.fade-in-3 { animation-delay: 0.15s; }
+.fade-in-4 { animation-delay: 0.20s; }
+.fade-in-5 { animation-delay: 0.25s; }
+.fade-in-6 { animation-delay: 0.30s; }
+</style>
+</head>
+<body>
+
+<div class="bg-ambient"></div>
+
+<div id="app">
+  <!-- Mobile Top Bar -->
+  <div class="topbar">
+    <span class="menu-btn" onclick="toggleSidebar()">☰</span>
+    <h2>Emby</h2>
+  </div>
+  <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="icon">🎬</div>
+        <h2>Emby</h2>
+      </div>
+      <nav>
+        <a href="#/" onclick="navClose()"><span class="nav-icon">📊</span> 仪表盘</a>
+        <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
+        <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <router-view></router-view>
+    </main>
+  </div>
+</div>
+
+<script>
+function toggleSidebar() {
+  var s = document.getElementById('sidebar');
+  var o = document.querySelector('.sidebar-overlay');
+  s.classList.toggle('open'); o.classList.toggle('show');
+}
+function navClose() { setTimeout(toggleSidebar, 120); }
+
+const API = '/api'
+
+async function fetchJSON(url, opts = {}) {
+  const res = await fetch(API+url, {headers:{'Content-Type':'application/json'},...opts})
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail||res.statusText) }
+  return res.json()
+}
+
+// ---- Dashboard (Gallery Style) ----
+const Dashboard = {
+  template: `
+    <div>
+      <!-- Hero Banner -->
+      <div class="hero fade-in">
+        <div class="hero-server">
+          <div class="hero-avatar">🎬</div>
+          <div>
+            <h2>{{data.server?.name||'Emby'}}</h2>
+            <span>v{{data.server?.version||'?'}} · {{data.users?.total||0}} 用户</span>
+          </div>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat fade-in fade-in-1">
+            <div class="val">{{data.media?.movies||0}}</div>
+            <div class="lbl">电影</div>
+          </div>
+          <div class="hero-stat fade-in fade-in-2">
+            <div class="val">{{data.media?.series||0}}</div>
+            <div class="lbl">剧集</div>
+          </div>
+          <div class="hero-stat fade-in fade-in-3">
+            <div class="val">{{data.media?.episodes||0}}</div>
+            <div class="lbl">单集</div>
+          </div>
+          <div class="hero-stat fade-in fade-in-4">
+            <div class="val">{{data.sessions?.active||0}}</div>
+            <div class="lbl">在线</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recently Added Poster Wall -->
+      <div class="section-title">🆕 最近添加</div>
+      <div class="poster-grid" v-if="recent.length">
+        <div class="poster-card fade-in" v-for="(item,i) in recent" :key="item.id"
+             :style="'animation-delay:'+(i*0.04)+'s'"
+             @click="openItem(item)">
+          <img :src="item.image_url" loading="lazy" alt=""
+               @error="$event.target.style.display='none'"
+               @load="$event.target.style.display=''">
+          <div class="poster-type" :class="item.type==='Series'?'series':'movie'">
+            {{item.type==='Series'?'剧集':'电影'}}
+          </div>
+          <div class="poster-overlay">
+            <div class="tt">{{item.name}}</div>
+            <div class="yr" v-if="item.year">{{item.year}}</div>
+          </div>
+        </div>
+      </div>
+      <div v-else-if="!recent.length && loaded" class="empty-state">暂无内容</div>
+
+      <!-- Two-Column Sections -->
+      <div class="dash-sections">
+        <!-- Activity -->
+        <div class="glass-block">
+          <div class="section-title" style="margin-bottom:10px">📜 最近活动</div>
+          <div class="activity-feed" v-if="activity.length">
+            <div class="activity-item" v-for="(a,i) in activity" :key="i">
+              <div class="activity-dot"></div>
+              <div class="act-text">{{a.name}}</div>
+              <div class="act-time">{{fmtTime(a.date)}}</div>
+            </div>
+          </div>
+          <div v-else class="empty-state" style="padding:20px">暂无活动</div>
+        </div>
+
+        <!-- Active Sessions -->
+        <div class="glass-block">
+          <div class="section-title" style="margin-bottom:10px">📺 在线会话</div>
+          <div class="sessions-row" v-if="data.sessions?.streams?.length">
+            <div class="session-chip" v-for="s in data.sessions.streams" :key="s.username+s.device">
+              <div class="u-avatar">{{s.username[0]}}</div>
+              <div class="u-info">
+                <div class="u-name">{{s.username}}</div>
+                <div class="u-device">{{s.client}} · {{s.device}}</div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-state" style="padding:20px">暂无在线会话</div>
+        </div>
+      </div>
+
+      <!-- Item Detail Dialog -->
+      <el-dialog v-model="showDetail" :title="detailItem?.name" :width="isMobile?'92%':'500px'">
+        <div v-if="detailItem" style="text-align:center">
+          <img v-if="detailItem.backdrop_url" :src="detailItem.backdrop_url"
+               style="width:100%;border-radius:10px;max-height:240px;object-fit:cover">
+          <p style="margin-top:14px;font-size:14px;color:var(--text-dim);line-height:1.6">
+            {{detailItem.overview||'暂无简介'}}
+          </p>
+          <div style="margin-top:12px;display:flex;gap:16px;justify-content:center;font-size:13px;color:var(--text-muted)">
+            <span v-if="detailItem.year">{{detailItem.year}}</span>
+            <span v-if="detailItem.rating">⭐ {{detailItem.rating}}</span>
+            <span>{{detailItem.type==='Series'?'电视剧':'电影'}}</span>
+          </div>
+        </div>
+      </el-dialog>
+    </div>
+  `,
+  data(){
+    return {
+      data: {media:{},server:{},users:{},sessions:{}},
+      recent: [], activity: [], loaded: false,
+      showDetail: false, detailItem: null,
+      isMobile: window.innerWidth < 640
+    }
+  },
+  async mounted(){
+    window.addEventListener('resize', ()=>{ this.isMobile = window.innerWidth < 640 })
+    try {
+      const [ov, rec, act] = await Promise.all([
+        fetchJSON('/dashboard/overview'),
+        fetchJSON('/dashboard/recent?limit=18'),
+        fetchJSON('/dashboard/stats'),
+      ])
+      this.data = ov
+      this.recent = rec.items || []
+      this.activity = (act.activity || []).slice(0, 8)
+    } catch(e) { console.error(e) }
+    this.loaded = true
+  },
+  methods: {
+    fmtTime(d){ if(!d)return''; const t=new Date(d); return t.toLocaleDateString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) },
+    openItem(item){ this.detailItem = item; this.showDetail = true }
+  }
+}
+
+// ---- Users ----
+const Users = {
+  template: `
+    <div>
+      <div class="page-header">
+        <div class="section-title" style="margin-bottom:0">👥 用户管理</div>
+        <el-button type="primary" size="default" @click="showAdd=true">+ 新建用户</el-button>
+      </div>
+      <div class="glass-card" style="padding:8px;overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <el-table :data="users" v-loading="loading" stripe size="default">
+          <el-table-column prop="name" label="用户名" width="120"/>
+          <el-table-column label="角色" width="80">
+            <template #default="s"><el-tag :type="s.row.is_admin?'danger':'info'" size="small" effect="dark">{{s.row.is_admin?'管理员':'用户'}}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="状态" width="80">
+            <template #default="s"><el-tag :type="s.row.is_disabled?'danger':'success'" size="small" effect="dark">{{s.row.is_disabled?'已禁用':'正常'}}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="远程" width="60">
+            <template #default="s">{{s.row.enable_remote_access?'✅':'❌'}}</template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="200">
+            <template #default="s">
+              <el-button size="small" @click="openPassword(s.row)">改密</el-button>
+              <el-button size="small" @click="toggleDisable(s.row)">{{s.row.is_disabled?'启用':'禁用'}}</el-button>
+              <el-popconfirm title="确定删除？" @confirm="delUser(s.row)">
+                <template #reference><el-button size="small" type="danger">删除</el-button></template>
+              </el-popconfirm>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <el-dialog v-model="showAdd" title="新建用户" :width="isMobile?'92%':'420px'">
+        <el-input v-model="newName" placeholder="输入用户名" size="large"/>
+        <template #footer>
+          <el-button @click="showAdd=false">取消</el-button>
+          <el-button type="primary" @click="addUser" :disabled="!newName">创建</el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog v-model="showPwd" title="修改密码" :width="isMobile?'92%':'420px'">
+        <el-input v-model="newPw" type="password" placeholder="新密码" show-password size="large"/>
+        <template #footer>
+          <el-button @click="showPwd=false">取消</el-button>
+          <el-button type="primary" @click="changePwd" :disabled="!newPw">确认</el-button>
+        </template>
+      </el-dialog>
+    </div>
+  `,
+  data(){ return {users:[],loading:false,showAdd:false,showPwd:false,newName:'',newPw:'',targetUser:null,isMobile:window.innerWidth<640} },
+  async mounted(){ await this.load(); window.addEventListener('resize',()=>{this.isMobile=window.innerWidth<640}) },
+  methods: {
+    async load(){ this.loading=true; this.users=await fetchJSON('/users'); this.loading=false },
+    async addUser(){ await fetchJSON('/users?name='+encodeURIComponent(this.newName),{method:'POST'}); this.showAdd=false; this.newName=''; this.load(); ElementPlus.ElMessage.success('用户已创建') },
+    async delUser(u){ await fetchJSON('/users/'+u.id,{method:'DELETE'}); this.load(); ElementPlus.ElMessage.success('已删除') },
+    openPassword(u){ this.targetUser=u; this.newPw=''; this.showPwd=true },
+    async changePwd(){ await fetchJSON('/users/'+this.targetUser.id+'/password',{method:'PUT',body:JSON.stringify({new_pw:this.newPw})}); this.showPwd=false; ElementPlus.ElMessage.success('密码已修改') },
+    async toggleDisable(u){ await fetchJSON('/users/'+u.id+'/policy',{method:'PUT',body:JSON.stringify({IsDisabled:!u.is_disabled})}); this.load() },
+  }
+}
+
+// ---- Libraries ----
+const Libraries = {
+  template: `
+    <div>
+      <div class="section-title">📂 媒体库</div>
+      <div class="lib-grid">
+        <div class="lib-card fade-in" :class="{tv: lib.type==='tvshows'}" v-for="(lib,i) in libraries" :key="lib.id" :style="'animation-delay:'+(i*0.03)+'s'" @click.stop="openLib(lib)">
+          <span class="type-badge">{{ lib.type==='tvshows' ? '电视剧' : '电影' }}</span>
+          <h3>{{lib.name}}</h3>
+          <p>{{lib.locations.length}} 个路径</p>
+          <p class="path">{{lib.locations[0]||''}}</p>
+        </div>
+      </div>
+
+      <el-dialog v-model="showItems" :title="curLib?.name" :width="isMobile?'96%':'85%'" top="12px" :fullscreen="isMobile">
+        <el-input v-model="search" placeholder="搜索媒体..." size="large" style="margin-bottom:14px" @input="loadItems" clearable/>
+        <el-table :data="items" v-loading="itemsLoading" max-height="420" stripe size="default">
+          <el-table-column prop="name" label="名称" min-width="200"/>
+          <el-table-column label="类型" width="60">
+            <template #default="s">{{s.row.type==='Movie'?'电影':s.row.type==='Series'?'剧集':s.row.type==='Episode'?'集':'?'}}</template>
+          </el-table-column>
+          <el-table-column prop="year" label="年份" width="70"/>
+          <el-table-column prop="runtime_min" label="分钟" width="60">
+            <template #default="s">{{s.row.runtime_min||'-'}}</template>
+          </el-table-column>
+        </el-table>
+        <div style="margin-top:14px;text-align:center">
+          <el-pagination small background layout="prev,next" :total="total" :page-size="30" v-model:current-page="page" @current-change="loadItems"/>
+        </div>
+      </el-dialog>
+    </div>
+  `,
+  data(){ return {libraries:[],showItems:false,curLib:null,items:[],itemsLoading:false,total:0,page:1,search:'',isMobile:window.innerWidth<640} },
+  async mounted(){ this.libraries = await fetchJSON('/libraries'); window.addEventListener('resize',()=>{this.isMobile=window.innerWidth<640}) },
+  methods: {
+    async openLib(lib){ this.curLib=lib; this.page=1; this.search=''; this.showItems=true; await this.loadItems() },
+    async loadItems(){
+      if(!this.curLib)return; this.itemsLoading=true
+      const params = new URLSearchParams({page:this.page-1,limit:30})
+      if(this.search) params.set('search',this.search)
+      const data = await fetchJSON('/libraries/'+this.curLib.id+'/items?'+params)
+      this.items=data.items||[]; this.total=data.total||0; this.itemsLoading=false
+    }
+  }
+}
+
+// ---- Router ----
+const routes = [
+  {path:'/',component:Dashboard},
+  {path:'/users',component:Users},
+  {path:'/libraries',component:Libraries},
+]
+const router = VueRouter.createRouter({history:VueRouter.createWebHashHistory(),routes})
+
+const app = Vue.createApp({})
+app.use(router)
+app.use(ElementPlus)
+app.mount('#app')
+</script>
+</body>
+</html>
