@@ -61,8 +61,6 @@ async def get_library_items(
             "ParentId": item_id,
             "Limit": limit,
             "StartIndex": page * limit,
-        }
-        if types == "tvshows":
             params["IncludeItemTypes"] = "Series"
         elif types == "movies":
             params["IncludeItemTypes"] = "Movie"
