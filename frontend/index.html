@@ -213,6 +213,7 @@ body {
   grid-template-columns: repeat(5, 1fr);
   gap: 12px; margin-bottom: 28px;
 }
+@media (max-width: 768px) { .poster-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; } }
 @media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
 
 .poster-card {
@@ -447,12 +448,20 @@ body {
 
 /* Library dialog scroll body */
 .lib-scroll-body {
-  max-height: 65vh; overflow-y: auto; overflow-x: hidden;
+  max-height: calc(100vh - 200px);
+  min-height: 200px;
+  overflow-y: auto; overflow-x: hidden;
   scrollbar-width: thin; scrollbar-color: var(--glass-border) transparent;
   padding-right: 4px;
 }
 .lib-scroll-body::-webkit-scrollbar { width: 4px; }
 .lib-scroll-body::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 2px; }
+
+/* Prevent body scroll when dialog open */
+body.el-popup-parent--hidden { overflow: hidden; }
+.el-dialog__body { overflow: hidden !important; }
+.el-dialog { max-height: 90vh; display: flex; flex-direction: column; }
+.el-dialog .el-dialog__body { flex: 1; overflow: hidden !important; padding: 0 20px !important; }
 
 /* Empty state */
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
@@ -801,9 +810,9 @@ const Dashboard = {
         var allLibs = libs.libraries || []
         var excludeNames = {'欧美自拍':1,'亚洲自拍':1,'日本有码':1}
         this._excludeIds = allLibs.filter(function(l){return excludeNames[l.name]}).map(function(l){return l.id}).join(',')
-        // Set default to 动画电影
+        // Set default to 欧美电影
         var defaultLibId = ''
-        for(var i=0;i<allLibs.length;i++){if(allLibs[i].name==='动画电影'){defaultLibId=allLibs[i].id;break}}
+        for(var i=0;i<allLibs.length;i++){if(allLibs[i].name==='欧美电影'){defaultLibId=allLibs[i].id;break}}
         // Fetch recent with default library
         try {
           var url = '/dashboard/recent?limit=18'
@@ -812,7 +821,7 @@ const Dashboard = {
           const r2 = await fetchJSON(url)
           this.recent = r2.items || []
           this.activeLibrary = defaultLibId
-          this.libraryName = defaultLibId ? '动画电影' : ''
+          this.libraryName = defaultLibId ? '欧美电影' : ''
         } catch(e) {}
       } catch(e) { console.error(e) }
       this.loaded = true
@@ -1076,12 +1085,14 @@ const Libraries = {
   methods: {
     openUrl(url){ window.open(url, '_blank') },
     onGlobalSearch(){
-      if(!this.libSearch || this.libSearch.length < 1) { this.searchResults = null; return }
       if(this._gsTimer) clearTimeout(this._gsTimer)
+      var query = this.libSearch
+      if(!query || query.trim() === '') { this.searchResults = null; return }
       this._gsTimer = setTimeout(() => {
-        fetchJSON('/dashboard/recent?limit=50&search='+encodeURIComponent(this.libSearch)).then(function(d){
-          this.searchResults = d.items || []
-        }.bind(this)).catch(function(){})
+        var me = this
+        fetchJSON('/dashboard/recent?limit=50&search='+encodeURIComponent(query)).then(function(d){
+          me.searchResults = d.items || []
+        }).catch(function(){ me.searchResults = [] })
       }, 300)
     },
     clearGlobalSearch(){ this.searchResults = null },
