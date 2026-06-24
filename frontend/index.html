@@ -970,7 +970,11 @@ const Libraries = {
         <div class="lib-card fade-in" :class="{tv: lib.type==='tvshows'}" v-for="(lib,i) in libraries" :key="lib.id" :style="'animation-delay:'+(i*0.03)+'s'" @click.stop="openLib(lib)">
           <span class="type-badge">{{ lib.type==='tvshows' ? '电视剧' : '电影' }}</span>
           <h3>{{lib.name}}</h3>
-          <p>{{lib.counts.total}} 个媒体</p>
+          <p>
+            <template v-if="lib.type==='tvshows'">{{lib.counts.series}} 部剧集</template>
+            <template v-else-if="lib.type==='movies'">{{lib.counts.movies}} 部电影</template>
+            <template v-else>{{lib.counts.total}} 个媒体</template>
+          </p>
         </div>
       </div>
       <div class="poster-grid" v-if="searchResults">
