@@ -45,7 +45,7 @@ async def get_libraries():
                 "id": folder.get("ItemId", ""),
                 "name": folder.get("Name", "Unknown"),
                 "type": folder.get("CollectionType", "mixed"),
-                "locations": folder.get("Locations", []),
+                "locations": [],
                 "counts": {
                     "movies": counts.get("MovieCount", 0),
                     "series": counts.get("SeriesCount", 0),
