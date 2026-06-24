@@ -474,7 +474,7 @@ body {
   padding-right: 4px;
 }
 @media (max-width: 768px) {
-  .lib-scroll-body { max-height: calc(100vh - 200px); }
+  .lib-scroll-body { max-height: calc(100dvh - 200px); padding-bottom: 20px; }
 }
 .lib-scroll-body::-webkit-scrollbar { width: 4px; }
 .lib-scroll-body::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 2px; }
@@ -484,6 +484,9 @@ body.el-popup-parent--hidden { overflow: hidden; }
 .el-dialog__body { overflow: hidden !important; }
 .el-dialog { max-height: 90vh; display: flex; flex-direction: column; }
 .el-dialog .el-dialog__body { flex: 1; overflow: hidden !important; padding: 0 20px !important; }
+@media (max-width: 768px) {
+  .el-dialog .el-dialog__body { padding-bottom: calc(20px + env(safe-area-inset-bottom, 10px)) !important; }
+}
 
 /* Empty state */
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
