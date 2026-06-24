@@ -11,7 +11,7 @@ Emby Manager
 ### 核心功能
 - 📊 **仪表盘** — 服务器状态、媒体统计、活跃会话实时监控
 - 👥 **用户管理** — 创建/删除用户、修改密码、启用/禁用账户
-- 📂 **媒体库** — 所有媒体库浏览、海报墙展示、TMDB 详情查看
+- 📂 **媒体库** — 所有媒体库浏览、海报墙展示、按类型显示数量统计
 - 🖼️ **海报浏览** — 瀑布流加载、海报缩放、点击查看详情
 - 🌐 **跨网络访问** — 图片代理功能，解决内外网跨域问题
 - 🔍 **全局搜索** — 跨所有媒体库搜索媒体内容
@@ -52,22 +52,24 @@ Emby Manager
 emby-manager/
 ├── .github/workflows/       # GitHub Actions 工作流
 │   └── deploy.yml           # 自动构建 Docker 镜像并推送到 Docker Hub
-├── backend/                 # Python FastAPI 后端
+├── backend/                 # Python FastAPI 后端（主代码）
 │   ├── app/                 # 应用主目录
 │   │   ├── __init__.py
 │   │   ├── main.py          # FastAPI 入口、路由注册、静态文件服务
 │   │   ├── config.py        # 环境变量配置（Emby URL、API Key、管理员凭据）
-│   │   ├── emby_client.py   # Emby API 客户端封装
 │   │   └── routers/         # 路由模块
 │   │       ├── dashboard.py # 仪表盘 API（概览、最近添加、图片代理、删除媒体）
 │   │       ├── users.py     # 用户管理 API（CRUD、密码、策略）
-│   │       └── libraries.py # 媒体库 API（列表、子项查询）
+│   │       └── libraries.py # 媒体库 API（列表、真实数量统计、子项查询）
 │   ├── requirements.txt     # Python 依赖
 │   └── static/              # 前端静态文件（构建后复制至此）
 │       ├── index.html       # Vue SPA 入口
 │       ├── favicon.png      # 网站图标
 │       ├── VERSION          # 版本号文件
 │       └── lib/             # 前端依赖库（Vue、Element Plus 等）
+├── app/                     # 后端代码副本（必须与 backend/app/ 同步修改）
+│   └── routers/
+│       └── libraries.py
 ├── frontend/                # 前端源码
 │   ├── index.html           # 完整 SPA（Vue 3 + Element Plus）
 │   ├── nginx.conf           # Nginx 配置（前端独立部署时使用）
@@ -140,12 +142,14 @@ emby-manager/
 
 ### ✅ 媒体库管理
 - [x] 媒体库列表（卡片展示）
+- [x] 按类型显示数量（电影类显示电影数、剧集类显示剧集数、混合类显示总数）
 - [x] 搜索所有媒体库
 - [x] 媒体库排序跟随 Emby 用户视图顺序
 - [x] 海报墙展示媒体库内容
 - [x] 瀑布流加载（滚动到底部自动加载更多）
 - [x] 媒体搜索（实时搜索关键词）
 - [x] 详情弹窗（TMDB/IMDb 链接、演员列表）
+- [x] 详情弹窗删除按钮
 
 ### ✅ UI/UX
 - [x] 暗色毛玻璃主题
@@ -156,6 +160,10 @@ emby-manager/
 - [x] 100dvh 适配浏览器底部导航栏
 - [x] 海报卡片 hover 缩放动效
 - [x] 移动端海报 3 列布局
+- [x] 移动端弹窗顶部避开 topbar（:top 动态绑定）
+- [x] 弹窗禁止拖动（:draggable="false" + CSS 固定居中）
+- [x] 弹窗底部安全区域适配（safe-area-inset-bottom）
+- [x] 弹窗滚动区域使用 100dvh 防止底部被遮挡
 
 ### ✅ 图片
 - [x] Emby 图片跨域代理
@@ -187,7 +195,7 @@ emby-manager/
 |--------|------|------|--------|
 | EMBY_URL | 是 | Emby 服务器地址 | http://localhost:8096 |
 | EMBY_API_KEY | 是 | Emby API Key | — |
-| EMBY_ADMIN_USER | 否 | Emby 管理员用户名（删除功能需要） | "" |
+| EMBY_ADMIN_USER | 否 | Emby 管理员用户名（删除功能需要） | "Malice" |
 | EMBY_ADMIN_PW | 否 | Emby 管理员密码（删除功能需要） | "" |
 
 ### 配置文件说明

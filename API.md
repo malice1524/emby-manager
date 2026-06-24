@@ -138,16 +138,24 @@ curl http://localhost:8117/api/health
 
 ### 获取媒体库列表
 - **请求地址**: `GET /api/libraries`
+- **请求参数**: 无
 - **返回参数**:
 ```json
 {
   "libraries": [{
-    "id": "129", "name": "动画电影", "type": "movies",
-    "locations": ["/media/电影/动画电影"],
-    "counts": { "movies": 5832, "series": 206, "episodes": 5817, "total": 11855 }
+    "id": "f930834e...", "name": "欧美电影", "type": "movies",
+    "locations": [],
+    "counts": { "movies": 359, "series": 0, "episodes": 0, "albums": 0, "songs": 0, "total": 359 }
+  }, {
+    "id": "a1b2c3d4...", "name": "国产剧集", "type": "tvshows",
+    "locations": [],
+    "counts": { "movies": 0, "series": 45, "episodes": 1450, "albums": 0, "songs": 0, "total": 1495 }
   }]
 }
 ```
+- **实现说明**:
+  - 使用 `/emby/Items?ParentId={id}&Recursive=true&Limit=0&IncludeItemTypes={type}` 分别查询各类型数量
+  - Emby 的 `/Items/Counts?ParentId=xxx` 接口**忽略 ParentId 参数**，始终返回全局数据，已弃用
 
 ### 获取媒体库内容
 - **请求地址**: `GET /api/libraries/{item_id}/items`
@@ -156,8 +164,8 @@ curl http://localhost:8117/api/health
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|------|--------|------|
 | limit | int | 否 | 30 | 返回数量（1-100） |
-| page | int | 否 | 0 | 页码 |
-| search | string | 否 | "" | 搜索关键词 |
-| types | string | 否 | "" | 媒体类型：movies/tvshows |
+| page | int | 否 | 0 | 页码（从0开始） |
+| search | string | 否 | "" | 搜索关键词（匹配名称） |
+| types | string | 否 | "" | 媒体类型过滤：movies/tvshows |
 
 - **返回参数**: `{"items": [{"id": "41019", "name": "冰雪奇缘", "type": "Movie", "year": 2013, "runtime_min": 102, "has_image": true}], "total": 76}`
