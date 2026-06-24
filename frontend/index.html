@@ -885,11 +885,11 @@ const Dashboard = {
     async deleteLibItem(){
       if(!this.libDetailItem || !this.libDetailItem.id) return
       try {
-        const res = await fetchJSON('/dashboard/item/'+this.libDetailItem.id, {method:'DELETE'})
+        await fetchJSON('/dashboard/item/'+this.libDetailItem.id, {method:'DELETE'})
         ElementPlus.ElMessage.success('已删除')
         this.showLibDel = false
         this.showDetail = false
-        setTimeout(() => this.loadItems(), 100)
+        this.$nextTick(() => this.loadItems(false))
       } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showLibDel = false }
     },
     async openItem(item){
@@ -1170,6 +1170,7 @@ const Libraries = {
       this.loadingMore=false;
     },
     async openLibItem(item){
+      this.showLibDel = false
       this.showDetail=true; this.libExpanded=false;
       this.libDetailItem=item;
       try {
