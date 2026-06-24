@@ -467,11 +467,11 @@ body {
 
 /* Library dialog scroll body */
 .lib-scroll-body {
-  max-height: calc(100vh - 240px);
+  max-height: calc(100dvh - 200px);
   min-height: 200px;
   overflow-y: auto; overflow-x: hidden;
   scrollbar-width: thin; scrollbar-color: var(--glass-border) transparent;
-  padding-right: 4px;
+  padding-right: 4px; padding-bottom: 12px;
 }
 @media (max-width: 768px) {
   .lib-scroll-body { max-height: calc(100dvh - 200px); padding-bottom: 20px; }
@@ -482,7 +482,7 @@ body {
 /* Prevent body scroll when dialog open */
 body.el-popup-parent--hidden { overflow: hidden; }
 .el-dialog__body { overflow: hidden !important; }
-.el-dialog { max-height: 90vh; display: flex; flex-direction: column; }
+.el-dialog { max-height: 90dvh; display: flex; flex-direction: column; }
 .el-dialog .el-dialog__body { flex: 1; overflow: hidden !important; padding: 0 20px !important; }
 @media (max-width: 768px) {
   .el-dialog .el-dialog__body { padding-bottom: calc(20px + env(safe-area-inset-bottom, 10px)) !important; }
