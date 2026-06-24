@@ -451,7 +451,7 @@ body {
 .el-overlay { background: rgba(0,0,0,0.6) !important; }
 @media (min-width: 769px) {
   .el-overlay { margin-left: 240px; }
-  .el-dialog { left: calc(120px + 50vw) !important; transform: translateX(-50%) !important; margin-left: 0 !important; max-width: calc(100vw - 280px) !important; }
+  .el-dialog { left: 50% !important; transform: translateX(-50%) !important; margin-left: 0 !important; max-width: calc(100vw - 280px) !important; margin-left: 120px !important; }
 }
 .el-dialog__header { border-bottom: 1px solid var(--glass-border); }
 .el-dialog__title { color: var(--text); font-weight: 600; }
@@ -997,7 +997,7 @@ const Libraries = {
 
       <!-- Library Items Dialog - Infinite Scroll Gallery -->
       <el-dialog v-model="showItems" :title="curLib?.name" :width="isMobile?'96%':'85%'" :top="isMobile?'56px':'12px'"
-                 :lock-scroll="true" @opened="onDialogOpened" @closed="onDialogClosed">
+                 :lock-scroll="true" :draggable="false" @opened="onDialogOpened" @closed="onDialogClosed">
         <el-input v-model="search" placeholder="搜索媒体..." size="large" style="margin:6px 0 14px" @input="onSearch" clearable/>
 
         <div class="lib-scroll-body" ref="scrollBody" @scroll="onScroll">
