@@ -467,11 +467,14 @@ body {
 
 /* Library dialog scroll body */
 .lib-scroll-body {
-  max-height: calc(100vh - 200px);
+  max-height: calc(100vh - 240px);
   min-height: 200px;
   overflow-y: auto; overflow-x: hidden;
   scrollbar-width: thin; scrollbar-color: var(--glass-border) transparent;
   padding-right: 4px;
+}
+@media (max-width: 768px) {
+  .lib-scroll-body { max-height: calc(100vh - 200px); }
 }
 .lib-scroll-body::-webkit-scrollbar { width: 4px; }
 .lib-scroll-body::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 2px; }
@@ -1000,7 +1003,7 @@ const Libraries = {
       <!-- Library Items Dialog - Infinite Scroll Gallery -->
       <el-dialog v-model="showItems" :title="curLib?.name" :width="isMobile?'96%':'85%'" :top="isMobile?'56px':'12px'"
                  :lock-scroll="true" @opened="onDialogOpened" @closed="onDialogClosed">
-        <el-input v-model="search" placeholder="搜索媒体..." size="large" style="margin-bottom:14px" @input="onSearch" clearable/>
+        <el-input v-model="search" placeholder="搜索媒体..." size="large" style="margin:6px 0 14px" @input="onSearch" clearable/>
 
         <div class="lib-scroll-body" ref="scrollBody" @scroll="onScroll">
           <div v-if="itemsLoading && !page" style="text-align:center;padding:60px 0;color:var(--text-muted)">加载中...</div>
