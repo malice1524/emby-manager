@@ -52,7 +52,7 @@ async def get_libraries():
                     "episodes": counts.get("EpisodeCount", 0),
                     "albums": counts.get("AlbumCount", 0),
                     "songs": counts.get("SongCount", 0),
-                    "total": sum(counts.values()) if isinstance(counts, dict) else 0,
+                    "total": counts.get("MovieCount", 0) + counts.get("SeriesCount", 0) + counts.get("EpisodeCount", 0) + counts.get("AlbumCount", 0) + counts.get("SongCount", 0),
                 },
             })
 
