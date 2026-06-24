@@ -7,7 +7,7 @@ router = APIRouter(prefix="/api/libraries", tags=["libraries"])
 
 @router.get("")
 async def get_libraries():
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=60) as client:
         # Get user's library view order
         users_resp = await client.get(f"{EMBY_URL}/emby/Users", headers=HEADERS)
         uid = ""
@@ -28,32 +28,52 @@ async def get_libraries():
                     "ItemId": item.get("Id", ""),
                     "Name": item.get("Name", "Unknown"),
                     "CollectionType": item.get("CollectionType", "mixed"),
-                    "Locations": item.get("Locations", []),
                 })
+
+        import asyncio
+
+        async def get_lib_counts(folder):
+            parent_id = folder["ItemId"]
+            async def count_type(itype):
+                r = await client.get(
+                    f"{EMBY_URL}/emby/Items",
+                    headers=HEADERS,
+                    params={
+                        "ParentId": parent_id,
+                        "Recursive": "true",
+                        "Limit": 0,
+                        "IncludeItemTypes": itype,
+                    }
+                )
+                if r.status_code == 200:
+                    return r.json().get("TotalRecordCount", 0)
+                return 0
+
+            c_movies, c_series, c_episodes, c_albums, c_songs = await asyncio.gather(
+                count_type("Movie"),
+                count_type("Series"),
+                count_type("Episode"),
+                count_type("MusicAlbum"),
+                count_type("Audio"),
+            )
+            return {
+                "movies": c_movies,
+                "series": c_series,
+                "episodes": c_episodes,
+                "albums": c_albums,
+                "songs": c_songs,
+                "total": c_movies + c_series + c_episodes + c_albums + c_songs,
+            }
 
         libraries = []
         for folder in folders:
-
-            size_info = await client.get(
-                f"{EMBY_URL}/Items/Counts",
-                headers=HEADERS,
-                params={"ParentId": folder.get("ItemId", "")}
-            )
-            counts = size_info.json() if size_info.status_code == 200 else {}
-
+            counts = await get_lib_counts(folder)
             libraries.append({
                 "id": folder.get("ItemId", ""),
                 "name": folder.get("Name", "Unknown"),
                 "type": folder.get("CollectionType", "mixed"),
                 "locations": [],
-                "counts": {
-                    "movies": counts.get("MovieCount", 0),
-                    "series": counts.get("SeriesCount", 0),
-                    "episodes": counts.get("EpisodeCount", 0),
-                    "albums": counts.get("AlbumCount", 0),
-                    "songs": counts.get("SongCount", 0),
-                    "total": counts.get("MovieCount", 0) + counts.get("SeriesCount", 0) + counts.get("EpisodeCount", 0) + counts.get("AlbumCount", 0) + counts.get("SongCount", 0),
-                },
+                "counts": counts,
             })
 
         return {"libraries": libraries}
