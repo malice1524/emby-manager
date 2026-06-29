@@ -210,6 +210,20 @@ async def test_config():
     result = await tg_notifier.send_test_message()
     return result
 
+@router.post("/config/test-proxy")
+async def test_proxy():
+    """测试代理是否可用：用当前代理配置访问一个公共网站"""
+    from ..config import get_http_client
+    try:
+        async with get_http_client() as client:
+            resp = await client.get("https://www.google.com", follow_redirects=True, timeout=10)
+            if resp.status_code == 200:
+                return {"success": True, "message": "代理连接成功"}
+            else:
+                return {"success": True, "message": f"代理已连通（状态码: {resp.status_code}）"}
+    except Exception as e:
+        return {"success": False, "error": f"代理连接失败: {str(e)[:60]}"}
+
 # ==================== 状态/日志接口 ====================
 
 @router.get("/monitor/status")

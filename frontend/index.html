@@ -1404,7 +1404,13 @@ const SettingsDialog = {
 
         <div>
           <div style="font-size:13px;font-weight:500;margin-bottom:4px">代理地址（可选）</div>
-          <el-input v-model="form.proxy_url" placeholder="如 http://192.168.1.100:7890"/>
+          <div style="display:flex;gap:8px">
+            <el-input v-model="form.proxy_url" placeholder="如 http://192.168.1.100:7890" style="flex:1"/>
+            <el-button size="default" :loading="proxyTesting" @click="testProxy" style="flex-shrink:0">🌐 测试</el-button>
+          </div>
+          <div v-if="proxyTestResult" :style="{fontSize:'12px',marginTop:'4px',color:proxyTestResult.success?'var(--green)':'var(--red)'}">
+            {{proxyTestResult.success ? '✅ '+proxyTestResult.message : '❌ '+proxyTestResult.error}}
+          </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px">留空表示直连，不需要代理则不填</div>
         </div>
 
@@ -1505,6 +1511,7 @@ const SettingsDialog = {
       form: {tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',proxy_url:'',update_template:'',end_template:'',check_interval_minutes:30},
       verifying:false, tmdbVerifyResult:null,
       testing:false, tgTestResult:null,
+      proxyTesting:false, proxyTestResult:null,
       saving:false, saveWarn:'',
       showUpdateVars:false, showEndVars:false,
       isMobile: window.innerWidth < 768
@@ -1558,6 +1565,24 @@ const SettingsDialog = {
         : ['end_title','series_name','end_date','total_episodes','type','rating','overview','poster_url']
       const found = [...template.matchAll(/\{(\w+)\}/g)].map(m=>m[1])
       return found.filter(v => !allowed.includes(v))
+    },
+    async testProxy(){
+      this.proxyTesting = true; this.proxyTestResult = null
+      try {
+        if(this.form.proxy_url) {
+          await fetchJSON('/config', {method:'PUT', body:JSON.stringify({
+            proxy_url:this.form.proxy_url||'__skip__',
+            tg_bot_token:'__skip__',
+            tg_chat_id:'__skip__',
+            tmdb_api_key:'__skip__',
+            update_template:'__skip__',
+            end_template:'__skip__',
+            check_interval_minutes:30
+          })})
+        }
+        this.proxyTestResult = await fetchJSON('/config/test-proxy', {method:'POST'})
+      } catch(e) { this.proxyTestResult = {success:false, error: '请求失败'} }
+      this.proxyTesting = false
     },
     async save(){
       this.saveWarn = ''
