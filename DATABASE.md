@@ -2,96 +2,140 @@
 
 ## 数据库类型
 
-Emby Manager **不维护独立数据库**。所有数据通过 Emby REST API 实时获取，以 JSON 格式传输，不在服务器端持久化存储。
+Emby Manager **不维护传统关系型数据库**。运行时通过 API 实时获取数据，本地仅以 **JSON 文件** 形式持久化配置与监控数据。
 
-## 数据来源
+## 本地持久化存储
 
-| 数据类型 | 来源 | 获取方式 |
-|---------|------|---------|
-| 用户信息 | Emby API (`/Users`, `/Users/{id}`) | HTTP GET |
-| 媒体统计 | Emby API (`/Items/Counts`) | HTTP GET |
-| 会话信息 | Emby API (`/Sessions`) | HTTP GET |
-| 媒体项目 | Emby API (`/Items`) | HTTP GET |
-| 系统信息 | Emby API (`/System/Info`) | HTTP GET |
-| 媒体库列表 | Emby API (`/Users/{id}/Views`) | HTTP GET |
-| 活动日志 | Emby API (`/System/ActivityLog/Entries`) | HTTP GET |
-| 用户头像 | Emby API (`/Users/{id}/Images/Primary`) | HTTP GET (代理) |
-| 媒体图片 | Emby API (`/Items/{id}/Images/Primary`) | HTTP GET (代理) |
-| 演员图片 | Emby API (`/Items/{id}/Images/Primary`) | HTTP GET (代理) |
+### 存储方式
+- **类型**: JSON 文件
+- **存储路径**: `/data/`（Docker volume 挂载）
+- **读取优先级**: JSON 文件 → 环境变量兜底
 
-## 数据缓存
+### 数据表
 
-| 缓存类型 | 策略 | 说明 |
-|---------|------|------|
-| 图片缓存 | Cache-Control: public, max-age=86400 | CDN/浏览器缓存 24 小时 |
-| 会话数据 | 15 秒轮询 | 前端每 15 秒刷新在线状态 |
-| 仪表盘数据 | 页面加载时获取 | 不持久缓存 |
+#### 表：`/data/config.json`
 
-## 数据流
+| 字段 | 类型 | 说明 | 示例 |
+|------|------|------|------|
+| tmdb_api_key | string | TMDB API Key | "a1b2c3..." |
+| tg_bot_token | string | Telegram Bot Token | "123456:ABC-DEF" |
+| tg_chat_id | string | TG 接收用户/群 ID | "123456789" |
+| proxy_url | string | HTTP 代理地址 | "http://192.168.1.100:7890" |
+| update_template | string | 更新提醒消息模板 | "📺 {update_title}..." |
+| end_template | string | 完结提醒消息模板 | "🎬 {end_title}..." |
+| check_interval_minutes | int | 检测间隔（分钟） | 30 |
 
-```
-前端 (Vue 3)
-    │
-    ├── GET /api/dashboard/overview
-    │   └── Emby API: Items/Counts, Sessions, Users/Public, VirtualFolders, System/Info
-    │
-    ├── GET /api/dashboard/recent
-    │   └── Emby API: Items (按 DateCreated 排序)
-    │
-    ├── GET /api/dashboard/stats
-    │   └── Emby API: System/ActivityLog/Entries, System/Info
-    │
-    ├── GET /api/dashboard/item/{id}
-    │   └── Emby API: Users/{uid}/Items/{id} (含 ProviderIds, People)
-    │
-    ├── DELETE /api/dashboard/item/{id}
-    │   └── Emby API: DELETE Items/{id} (需管理员用户令牌)
-    │
-    ├── GET /api/users
-    │   └── Emby API: Users/Public, Users/{id}
-    │
-    ├── POST /api/users
-    │   └── Emby API: POST Users/New + POST Users/{id}/Password
-    │
-    ├── DELETE /api/users/{id}
-    │   └── Emby API: DELETE Users/{id}
-    │
-    ├── PUT /api/users/{id}/password
-    │   └── Emby API: POST Users/{id}/Password
-    │
-    ├── PUT /api/users/{id}/policy
-    │   └── Emby API: GET Users/{id} + POST Users/{id}/Policy
-    │
-    ├── GET /api/libraries
-    │   └── Emby API: Users/{uid}/Views (获取排序) + Items/Counts
-    │
-    ├── GET /api/libraries/{id}/items
-    │   └── Emby API: Items (带 ParentId 过滤)
-    │
-    ├── GET /api/dashboard/images/{id}
-    │   └── Emby API: Items/{id}/Images/Primary (代理)
-    │
-    └── GET /api/health
-        └── 返回 {"status": "ok"}
+**用途**: 存储用户在 Web 界面配置的 TMDB / TG / 代理 / 模板设置
+**索引**: 无（JSON 文件顺序读取）
+**外键**: 无
+
+---
+
+#### 表：`/data/monitored_series.json`
+
+主结构：
+```json
+{
+  "series": [ /* 监控剧集列表 */ ]
+}
 ```
 
-## 数据关系
+每条剧集记录字段：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| tmdb_id | int | TMDB 剧集 ID（主键） |
+| title | string | 剧名 |
+| poster_url | string | 海报 URL |
+| added_at | string | 添加时间（ISO 格式） |
+| last_status | string | 上次检测状态（Returning Series / Ended / Canceled） |
+| last_episode_air_date | string | 最新一集播出日期 |
+| last_episode_number | int | 最新集号 |
+| notified_ended | bool | 是否已发送完结通知 |
+
+**用途**: 存储用户添加的监控剧集及检测状态
+**索引**: tmdb_id（唯一标识）
+**外键**: 无
+
+---
+
+#### 表：`/data/monitor_log.json`
+
+```json
+[
+  {
+    "time": "2026-06-30T01:00:00",
+    "status": "ok",
+    "message": "检查完成 · 5 部剧 · 1 更新 · 0 完结"
+  }
+]
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| time | string | 检查时间（ISO 格式） |
+| status | string | 状态（ok / warning） |
+| message | string | 检查结果描述 |
+
+**用途**: 记录每次定时检测的结果
+**最大记录数**: 100 条（自动裁剪旧数据）
+**索引**: 无（按时间倒序读取）
+
+## 外部 API 数据源
+
+### Emby API 数据
+
+| 数据类型 | Emby 端点 | 获取方式 |
+|---------|-----------|---------|
+| 用户信息 | `/Users`, `/Users/{id}` | HTTP GET |
+| 媒体统计 | `/Items/Counts` | HTTP GET |
+| 会话信息 | `/Sessions` | HTTP GET |
+| 媒体项目 | `/Items` | HTTP GET |
+| 系统信息 | `/System/Info` | HTTP GET |
+| 媒体库列表 | `/Users/{uid}/Views` | HTTP GET |
+| 活动日志 | `/System/ActivityLog/Entries` | HTTP GET |
+| 用户头像 | `/Users/{id}/Images/Primary` | HTTP GET (代理) |
+| 媒体图片 | `/Items/{id}/Images/Primary` | HTTP GET (代理) |
+
+### TMDB API 数据
+
+| 数据类型 | TMDB 端点 | 用途 |
+|---------|-----------|------|
+| 剧集搜索 | `GET /search/tv` | 搜索剧集 |
+| 剧集详情 | `GET /tv/{id}` | 获取状态/下集/最新集/总集数/简介/评分 |
+
+### Telegram API
+
+| 数据类型 | TG 端点 | 用途 |
+|---------|---------|------|
+| 发送消息 | `POST /bot{token}/sendMessage` | 发送文本通知 |
+| 发送图片 | `POST /bot{token}/sendPhoto` | 发送带海报的通知 |
+
+## 数据流说明
 
 ```
-Emby 服务器
-    ├── 媒体库 (Items/Counts, VirtualFolders)
-    │   ├── 电影 (Movie)
-    │   ├── 剧集 (Series)
-    │   │   ├── 季 (Season)
-    │   │   │   └── 集 (Episode)
-    │   └── 其他类型
-    ├── 用户 (Users)
-    │   ├── 基本信息
-    │   ├── 策略/权限 (Policy)
-    │   └── 头像 (Images/Primary)
-    ├── 会话 (Sessions)
-    │   ├── 播放状态
-    │   ├── 客户端信息
-    │   └── 当前播放项
-    └── 系统信息 (System/Info)
+用户操作 → 前端 → API → JSON 文件 / 外部 API
+                                             
+添加监控:  前端 → POST /api/monitor/add → JSON 保存 → 异步 TMDB 查详情 → TG 通知
+定时检测:  APScheduler → 读 JSON → TMDB API → 对比状态 → TG 通知 → 写 JSON
+配置保存:  前端 → PUT /api/config → 写入 /data/config.json
+配置读取:  前端 → GET /api/config → 读 JSON → 返回（环境变量兜底）
+```
+
+## 表关系图
+
+```
+┌─────────────────┐     ┌─────────────────────┐     ┌─────────────────┐
+│  /data/         │     │  /data/             │     │  /data/         │
+│  config.json    │     │  monitored_series.  │     │  monitor_log.   │
+│                 │     │  json               │     │  json           │
+│  (独立配置)      │     │                     │     │                 │
+│                 │     │  tmdb_id (PK)       │     │  (时间倒序日志)  │
+│                 │     │  last_status        │     │                 │
+│                 │     │  notified_ended     │     │  max 100 条     │
+└─────────────────┘     └─────────────────────┘     └─────────────────┘
+        │                        │
+        │                        │ (监控列表引用 TMDB ID)
+        ▼                        ▼
+  环境变量兜底           TMDB API (外部数据源)
 ```
