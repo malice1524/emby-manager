@@ -488,7 +488,7 @@ body {
 }
 .mt-row-glass:hover { border-color: var(--glass-border-hover); background: var(--glass-hover); }
 .mt-poster {
-  width: 48px; height: 72px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
+  width: 72px; height: 108px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
 }
 .mt-poster img { width:100%; height:100%; object-fit:cover; }
 .mt-poster-fallback {
@@ -516,7 +516,7 @@ body {
 }
 .monitor-item-mobile:last-child { border-bottom: none; }
 .mim-poster {
-  width: 48px; height: 72px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
+  width: 64px; height: 96px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
 }
 .mim-poster img { width:100%; height:100%; object-fit:cover; }
 .mim-info { flex: 1; min-width: 0; }
@@ -1752,7 +1752,7 @@ const Monitor = {
               <span class="filter-chip" :class="{active:filterStatus==='ended'}" @click="filterStatus='ended'" style="font-size:11px;padding:3px 10px">已完结</span>
             </div>
           </div>
-          <el-button size="small" @click="refreshList" :loading="refreshing" circle class="circle-btn">🔄</el-button>
+          <el-button size="small" @click="refreshList" :loading="refreshing" circle class="circle-btn" style="min-width:32px;min-height:32px">🔄</el-button>
         </div>
 
         <!-- 空状态 -->
@@ -1767,36 +1767,37 @@ const Monitor = {
             <div class="mt-row-glass">
               <div class="mt-poster">
                 <img v-if="s.poster_url" :src="s.poster_url" @error="$event.target.style.display='none'"/>
-                <div v-else class="mt-poster-fallback">🎬</div>
+                <div v-else class="mt-poster-fallback">
+                  <span style="font-size:28px;color:var(--text-dim)">{{s.title ? s.title[0] : '?'}}</span>
+                </div>
               </div>
-              <div class="mt-info" style="flex:2">
+              <div class="mt-info" style="flex:1">
                 <div class="mt-title">{{s.title}}<span v-if="s.year" style="font-weight:400;color:var(--text-dim);margin-left:6px;font-size:12px">({{s.year}})</span></div>
                 <div class="mt-meta" v-if="s.type">{{s.type}} · ⭐ {{s.vote_average}}</div>
-                <!-- 连载中：下集信息+当前进度 -->
-                <div v-if="s.current_status!=='Ended' && s.current_status!=='Canceled'" style="margin-top:4px;font-size:11px;line-height:1.6">
-                  <div v-if="s.next_episode?.air_date" style="color:var(--green)">
-                    📅 下集：S{{s.next_episode.season_number}}E{{s.next_episode.episode_number}} · {{s.next_episode.air_date}}（{{daysUntil(s.next_episode.air_date)}}）
-                  </div>
-                  <div v-if="s.last_episode?.episode_number" style="color:var(--text-dim)">
-                    📺 已更新至 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' · '+s.last_episode.episode_number+'/'+s.total_episodes+' 集' : ''}}
-                  </div>
-                </div>
-                <!-- 已完结：完结信息 -->
-                <div v-else-if="s.current_status==='Ended'" style="margin-top:4px;font-size:11px;color:var(--text-dim);line-height:1.6">
-                  📅 完结：{{s.last_air_date?.slice(0,10)}} · 共 {{s.total_episodes}} 集
+                <div v-if="s.last_episode?.episode_number" style="margin-top:2px;font-size:12px;color:var(--text-dim)">
+                  📺 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' / '+s.total_episodes+' 集' : ''}}
                 </div>
               </div>
-              <div class="mt-status">
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;min-width:160px">
                 <span v-if="s.current_status==='Ended'" class="status-badge ended">🔴 已完结</span>
                 <span v-else-if="s.current_status==='Canceled'" class="status-badge canceled">⚫ 已取消</span>
                 <span v-else class="status-badge continuing">🟢 连载中</span>
-              </div>
-              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;min-width:80px">
-                <div v-if="s.current_status==='Ended'" style="font-size:11px;color:var(--text-muted);text-align:right">
-                  <span v-if="s.notified_ended" style="color:var(--green)">✅ 已通知</span>
-                  <span v-else style="color:var(--orange)">⏳ 待通知</span>
+                <div style="font-size:12px;line-height:1.5">
+                  <div v-if="s.current_status!=='Ended' && s.current_status!=='Canceled' && s.next_episode?.air_date" style="color:var(--green);text-align:right">
+                    📅 {{s.next_episode.air_date}}<br><span style="color:var(--text-muted)">{{daysUntil(s.next_episode.air_date)}}</span>
+                  </div>
+                  <div v-if="s.current_status==='Ended'" style="color:var(--text-dim);text-align:right">
+                    📅 {{s.last_air_date?.slice(0,10)}}
+                  </div>
                 </div>
-                <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)">删除</el-button>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:2px;min-height:22px">
+                  <div v-if="s.current_status==='Ended'" style="font-size:12px">
+                    <span v-if="s.notified_ended" style="color:var(--green)">✅ 已通知</span>
+                    <span v-else style="color:var(--orange)">⏳ 待通知</span>
+                  </div>
+                  <div v-else style="min-width:48px"></div>
+                  <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)" style="padding:0">删除</el-button>
+                </div>
               </div>
             </div>
           </div>
@@ -1807,32 +1808,32 @@ const Monitor = {
           <div v-for="s in filteredList" :key="s.tmdb_id" class="monitor-item-mobile">
             <div class="mim-poster">
               <img v-if="s.poster_url" :src="s.poster_url" @error="$event.target.style.display='none'"/>
-              <div v-else class="mt-poster-fallback">🎬</div>
+              <div v-else class="mt-poster-fallback">
+                <span style="font-size:28px;color:var(--text-dim)">{{s.title ? s.title[0] : '?'}}</span>
+              </div>
             </div>
             <div class="mim-info">
               <div class="mim-title">{{s.title}}<span v-if="s.year" style="font-weight:400;color:var(--text-dim);margin-left:4px;font-size:11px">({{s.year}})</span></div>
+              <div class="mt-meta" v-if="s.type" style="font-size:11px;margin-top:2px">{{s.type}} · ⭐ {{s.vote_average}}</div>
               <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
                 <span v-if="s.current_status==='Ended'" class="status-badge ended">🔴 已完结</span>
                 <span v-else-if="s.current_status==='Canceled'" class="status-badge canceled">⚫ 已取消</span>
                 <span v-else class="status-badge continuing">🟢 连载中</span>
               </div>
-              <!-- 连载中：下集+进度 -->
-              <div v-if="s.current_status!=='Ended' && s.current_status!=='Canceled'" style="font-size:11px;color:var(--text-dim);margin-top:4px;line-height:1.5">
-                <div v-if="s.next_episode?.air_date" style="color:var(--green)">
-                  📅 下集 S{{s.next_episode.season_number}}E{{s.next_episode.episode_number}} · {{s.next_episode.air_date}}
-                </div>
-                <div v-if="s.last_episode?.episode_number">
-                  📺 至 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' ('+s.last_episode.episode_number+'/'+s.total_episodes+')' : ''}}
-                </div>
+              <div v-if="s.last_episode?.episode_number" style="font-size:11px;color:var(--text-dim);margin-top:2px">
+                📺 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' / '+s.total_episodes+' 集' : ''}}
               </div>
-              <!-- 已完结 -->
-              <div v-else-if="s.current_status==='Ended'" style="font-size:11px;color:var(--text-dim);margin-top:4px">
-                📅 完结：{{s.last_air_date?.slice(0,10)}} · 共 {{s.total_episodes}} 集
-              </div>
-              <div style="margin-top:4px;display:flex;gap:10px;align-items:center">
-                <span v-if="s.current_status==='Ended' && s.notified_ended" style="font-size:11px;color:var(--green)">✅ 已通知</span>
-                <span v-else-if="s.current_status==='Ended' && !s.notified_ended" style="font-size:11px;color:var(--orange)">⏳ 待通知</span>
-                <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)">删除</el-button>
+              <div style="margin-top:4px;display:flex;gap:8px;align-items:center;font-size:11px">
+                <div v-if="s.current_status!=='Ended' && s.current_status!=='Canceled' && s.next_episode?.air_date" style="color:var(--green)">
+                  📅 {{s.next_episode.air_date}} <span style="color:var(--text-muted)">{{daysUntil(s.next_episode.air_date)}}</span>
+                </div>
+                <div v-if="s.current_status==='Ended'" style="color:var(--text-dim)">
+                  📅 {{s.last_air_date?.slice(0,10)}}
+                </div>
+                <span v-if="s.current_status==='Ended' && s.notified_ended" style="color:var(--green);margin-left:auto;min-width:16px">✅</span>
+                <span v-else-if="s.current_status==='Ended' && !s.notified_ended" style="color:var(--orange);margin-left:auto;min-width:16px">⏳</span>
+                <span v-else style="margin-left:auto;min-width:16px"></span>
+                <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)" style="padding:0">删除</el-button>
               </div>
             </div>
           </div>
@@ -1939,7 +1940,8 @@ const Monitor = {
         await ElementPlus.ElMessageBox.confirm('确定要删除该剧集的监控吗？', '确认删除', {type:'warning'})
         await fetchJSON('/monitor/'+tmdbId, {method:'DELETE'})
         ElementPlus.ElMessage.success('已删除')
-        await this.loadList()
+        // 本地移除，不重新请求所有 TMDB 数据
+        this.monitoredList = this.monitoredList.filter(s => s.tmdb_id !== tmdbId)
       } catch(e) { if(e !== 'cancel') ElementPlus.ElMessage.error('删除失败') }
     },
     async loadList(){

@@ -34,9 +34,9 @@ async def tmdb_verify():
 @router.get("/monitor/list")
 async def monitor_list():
     series_list = series_monitor._load_series()
-    # 异步刷新每部剧的最新状态
-    refreshed = []
-    for s in series_list:
+    # 并行请求 TMDB 详情
+    import asyncio
+    async def _fetch_one(s):
         detail = await tmdb_client.get_tv_detail(s["tmdb_id"])
         if "error" not in detail:
             s["current_status"] = detail.get("status", s.get("last_status", ""))
@@ -58,7 +58,12 @@ async def monitor_list():
             s["last_air_date"] = detail.get("last_air_date", "")
         else:
             s["current_status"] = s.get("last_status", "")
-        refreshed.append(s)
+        return s
+
+    if series_list:
+        refreshed = await asyncio.gather(*[_fetch_one(s) for s in series_list])
+    else:
+        refreshed = []
     return {"series": refreshed}
 
 class AddSeriesRequest(BaseModel):
