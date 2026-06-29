@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Emby Manager</title>
 <link rel="icon" href="lib/favicon.png">
-<link rel="apple-touch-icon" href="lib/favicon.png">
+<link rel="apple-touch-icon" href="lib/favicon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="lib/favicon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="lib/favicon-512.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EmbyManager">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="lib/element-plus.css"/>
 <script src="lib/vue.js"></script>
 <script src="lib/vue-router.js"></script>
@@ -86,7 +91,6 @@ body {
 }
 .sidebar-logo .icon {
   width: 38px; height: 38px; border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent), #5a4bd1);
   display: flex; align-items: center; justify-content: center;
   font-size: 18px;
   box-shadow: 0 2px 12px var(--accent-glow);
@@ -804,15 +808,15 @@ body.el-popup-parent--hidden { overflow: hidden; }
   <!-- Mobile Top Bar -->
   <div class="topbar">
     <span class="menu-btn" onclick="toggleSidebar()">☰</span>
-    <h2>Emby</h2>
+    <h2>EmbyManager</h2>
   </div>
   <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
   <!-- Sidebar (outside layout to avoid z-index issues) -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="icon">🎬</div>
-      <h2>Emby</h2>
+      <div class="icon"><img src="lib/favicon-512.png" style="width:38px;height:38px;border-radius:12px"></div>
+      <h2>EmbyManager</h2>
     </div>
     <nav>
       <a href="#/" onclick="navClose()"><span class="nav-icon">📊</span> 仪表盘</a>
