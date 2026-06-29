@@ -14,7 +14,8 @@ async def verify_api_key():
     if not key:
         return {"valid": False, "error": "API Key 未配置"}
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        from .config import get_http_client
+        async with get_http_client() as client:
             resp = await client.get(f"{TMDB_API_BASE}/configuration", params={"api_key": key})
             if resp.status_code == 200:
                 return {"valid": True}
@@ -33,7 +34,8 @@ async def search_tv(query: str, page: int = 1):
     if not key:
         return {"results": [], "error": "API Key 未配置"}
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        from .config import get_http_client
+        async with get_http_client() as client:
             resp = await client.get(
                 f"{TMDB_API_BASE}/search/tv",
                 params={"api_key": key, "query": query, "language": "zh-CN", "page": page}
@@ -76,7 +78,8 @@ async def get_tv_detail(tmdb_id: int):
     if not key:
         return {"error": "API Key 未配置"}
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        from .config import get_http_client
+        async with get_http_client() as client:
             resp = await client.get(
                 f"{TMDB_API_BASE}/tv/{tmdb_id}",
                 params={"api_key": key, "language": "zh-CN"}

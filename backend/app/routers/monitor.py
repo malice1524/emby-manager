@@ -157,6 +157,7 @@ async def get_config():
         "tmdb_api_key": bool(cfg.get("tmdb_api_key")),
         "tg_bot_token": bool(cfg.get("tg_bot_token")),
         "tg_chat_id": bool(cfg.get("tg_chat_id")),
+        "proxy_url": cfg.get("proxy_url", ""),
         "update_template": cfg.get("update_template", ""),
         "end_template": cfg.get("end_template", ""),
         "check_interval_minutes": cfg.get("check_interval_minutes", 30)
@@ -166,6 +167,7 @@ class SaveConfigRequest(BaseModel):
     tmdb_api_key: str = ""
     tg_bot_token: str = ""
     tg_chat_id: str = ""
+    proxy_url: str = ""
     update_template: str = ""
     end_template: str = ""
     check_interval_minutes: int = 30
@@ -187,6 +189,8 @@ async def save_config(req: SaveConfigRequest):
         cfg["tg_bot_token"] = req.tg_bot_token
     if req.tg_chat_id and req.tg_chat_id != "__skip__":
         cfg["tg_chat_id"] = req.tg_chat_id
+    if req.proxy_url and req.proxy_url != "__skip__":
+        cfg["proxy_url"] = req.proxy_url
     if req.update_template and req.update_template != "__skip__":
         cfg["update_template"] = req.update_template
     if req.end_template and req.end_template != "__skip__":

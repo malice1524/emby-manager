@@ -517,7 +517,117 @@ body {
 .mim-info { flex: 1; min-width: 0; }
 .mim-title { font-size: 14px; font-weight: 600; }
 
-/* Mobile safair safe area */
+/* 修复运行状态和日志卡片白底问题 */
+.el-collapse {
+  --el-collapse-header-bg-color: transparent !important;
+  --el-collapse-content-bg-color: transparent !important;
+  border-top: none !important;
+  border-bottom: none !important;
+}
+.el-collapse-item__header {
+  background: var(--glass) !important;
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+  padding: 0 16px !important;
+  border-radius: 12px 12px 0 0 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  height: 44px !important;
+}
+.el-collapse-item__wrap {
+  background: var(--glass) !important;
+  border-radius: 0 0 12px 12px !important;
+  border: 1px solid var(--glass-border);
+  border-top: none;
+}
+.el-collapse-item__content {
+  color: var(--text) !important;
+  padding: 0 !important;
+}
+
+/* 设置弹窗暗色适配 */
+.settings-dialog .el-dialog {
+  --el-dialog-bg-color: var(--bg-alt) !important;
+  background: var(--bg-alt) !important;
+}
+.settings-dialog .el-input__wrapper,
+.settings-dialog .el-textarea__inner {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+}
+.settings-dialog .el-input__wrapper:hover,
+.settings-dialog .el-textarea__inner:hover {
+  border-color: var(--glass-border-hover) !important;
+}
+.settings-dialog .el-input__inner {
+  color: var(--text) !important;
+  background: transparent !important;
+}
+.settings-dialog .el-divider {
+  border-top-color: var(--glass-border) !important;
+}
+.settings-dialog .el-tag {
+  background: rgba(124,108,240,0.15);
+  border-color: transparent;
+  color: var(--accent2);
+}
+.settings-dialog .el-tag:hover {
+  background: rgba(124,108,240,0.25);
+}
+
+/* 按钮暗色适配 */
+.settings-dialog .el-button--default {
+  background: var(--glass);
+  border-color: var(--glass-border);
+  color: var(--text);
+}
+.settings-dialog .el-button--default:hover {
+  background: var(--glass-hover);
+  border-color: var(--glass-border-hover);
+}
+
+/* 设置弹窗移动端适配 - 不被顶部遮挡 */
+@media (max-width: 768px) {
+  .settings-dialog .el-dialog {
+    margin-top: max(20px, env(safe-area-inset-top, 20px)) !important;
+    max-height: calc(100dvh - max(40px, env(safe-area-inset-top, 20px) + env(safe-area-inset-bottom, 20px)));
+    display: flex;
+    flex-direction: column;
+    width: 94% !important;
+    left: 3% !important;
+    transform: none !important;
+  }
+  .settings-dialog .el-dialog__body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 桌面端设置弹窗防止水平滑动 */
+@media (min-width: 769px) {
+  .settings-dialog .el-dialog {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin: 5vh auto !important;
+    max-width: 600px;
+    width: 600px !important;
+  }
+  .settings-dialog .el-dialog__body {
+    overflow-x: hidden;
+  }
+  .settings-dialog .el-dialog__body::-webkit-scrollbar {
+    width: 4px;
+  }
+  .settings-dialog .el-dialog__body::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 2px;
+  }
+}
+
+/* Mobile safe area */
 @media (max-width: 768px) {
   .main {
     padding-top: max(16px, env(safe-area-inset-top, 0px));
@@ -1289,8 +1399,14 @@ const Libraries = {
 const SettingsDialog = {
   template: `
     <el-dialog v-model="visible" title="⚙️ 通知设置" :width="isMobile?'94%':'600px'" top="2vh"
-               :close-on-click-modal="false" destroy-on-close>
+               :close-on-click-modal="false" destroy-on-close class="settings-dialog">
       <div style="display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto;padding:4px">
+
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">代理地址（可选）</div>
+          <el-input v-model="form.proxy_url" placeholder="如 http://192.168.1.100:7890"/>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">留空表示直连，不需要代理则不填</div>
+        </div>
 
         <div>
           <div style="font-size:13px;font-weight:500;margin-bottom:4px">TMDB API Key</div>
@@ -1386,7 +1502,7 @@ const SettingsDialog = {
   emits: ['update:modelValue'],
   data(){
     return {
-      form: {tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',update_template:'',end_template:'',check_interval_minutes:30},
+      form: {tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',proxy_url:'',update_template:'',end_template:'',check_interval_minutes:30},
       verifying:false, tmdbVerifyResult:null,
       testing:false, tgTestResult:null,
       saving:false, saveWarn:'',
@@ -1404,6 +1520,7 @@ const SettingsDialog = {
         this.form.tmdb_api_key = ''  // 不回显 Token，用户需要重新输入
         this.form.tg_bot_token = ''
         this.form.tg_chat_id = ''
+        this.form.proxy_url = d.proxy_url || ''
         this.form.update_template = d.update_template || ''
         this.form.end_template = d.end_template || ''
         this.form.check_interval_minutes = d.check_interval_minutes || 30
@@ -1425,6 +1542,7 @@ const SettingsDialog = {
             tmdb_api_key:this.form.tmdb_api_key||'__skip__',
             tg_bot_token:this.form.tg_bot_token||'__skip__',
             tg_chat_id:this.form.tg_chat_id||'__skip__',
+            proxy_url:this.form.proxy_url||'__skip__',
             update_template:this.form.update_template||'__skip__',
             end_template:this.form.end_template||'__skip__',
             check_interval_minutes:this.form.check_interval_minutes
@@ -1473,6 +1591,7 @@ const SettingsDialog = {
           tmdb_api_key:this.form.tmdb_api_key||'__skip__',
           tg_bot_token:this.form.tg_bot_token||'__skip__',
           tg_chat_id:this.form.tg_chat_id||'__skip__',
+          proxy_url:this.form.proxy_url||'__skip__',
           update_template:this.form.update_template||'__skip__',
           end_template:this.form.end_template||'__skip__',
           check_interval_minutes:this.form.check_interval_minutes

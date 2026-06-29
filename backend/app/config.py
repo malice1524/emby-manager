@@ -26,7 +26,16 @@ def load_tg_config():
         "tmdb_api_key": config.get("tmdb_api_key") or os.getenv("TMDB_API_KEY", ""),
         "tg_bot_token": config.get("tg_bot_token") or os.getenv("TG_BOT_TOKEN", ""),
         "tg_chat_id": config.get("tg_chat_id") or os.getenv("TG_CHAT_ID", ""),
+        "proxy_url": config.get("proxy_url", ""),
         "update_template": config.get("update_template", ""),
         "end_template": config.get("end_template", ""),
         "check_interval_minutes": config.get("check_interval_minutes", 30),
     }
+
+def get_http_client():
+    """获取带代理的 httpx 客户端（如果有配置代理的话）"""
+    cfg = load_tg_config()
+    proxy = cfg.get("proxy_url", "")
+    if proxy:
+        return httpx.AsyncClient(timeout=15, proxies=proxy)
+    return httpx.AsyncClient(timeout=15)

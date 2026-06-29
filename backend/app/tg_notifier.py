@@ -49,7 +49,8 @@ async def _send_message(text: str, chat_id: str = None, bot_token: str = None, p
         return {"success": False, "error": "TG 配置不完整"}
 
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        from .config import get_http_client
+        async with get_http_client() as client:
             if poster_url:
                 resp = await client.post(
                     f"{TG_API_BASE}{token}/sendPhoto",
