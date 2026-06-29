@@ -545,10 +545,30 @@ body {
   padding: 0 !important;
 }
 
-/* 设置弹窗暗色适配 */
-.settings-dialog .el-dialog {
-  --el-dialog-bg-color: var(--bg-alt) !important;
+/* 设置抽屉暗色适配 */
+.settings-dialog .el-drawer {
+  --el-drawer-bg-color: var(--bg-alt) !important;
   background: var(--bg-alt) !important;
+}
+.settings-dialog .el-drawer__header {
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+  padding: 16px 20px !important;
+  margin-bottom: 0 !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+.settings-dialog .el-drawer__body {
+  padding: 20px !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+.settings-dialog .el-drawer__close-btn {
+  color: var(--text-dim) !important;
+  font-size: 18px !important;
+}
+.settings-dialog .el-drawer__close-btn:hover {
+  color: var(--text) !important;
 }
 .settings-dialog .el-input__wrapper,
 .settings-dialog .el-textarea__inner {
@@ -599,56 +619,6 @@ body {
 .el-button.is-circle:hover {
   background: var(--glass-hover) !important;
   border-color: var(--glass-border-hover) !important;
-}
-
-/* 设置弹窗移动端适配 - 不被项目顶部栏遮挡 */
-@media (max-width: 768px) {
-  .settings-dialog .el-dialog {
-    position: fixed !important;
-    top: max(56px, env(safe-area-inset-top, 56px)) !important;
-    left: 3% !important;
-    right: 3% !important;
-    width: 94% !important;
-    transform: none !important;
-    margin: 0 !important;
-    max-height: calc(100dvh - max(72px, env(safe-area-inset-top, 56px) + env(safe-area-inset-bottom, 16px))) !important;
-    display: flex;
-    flex-direction: column;
-    z-index: 2100 !important;
-  }
-  .settings-dialog .el-dialog__body {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .el-overlay-dialog + .el-overlay {
-    z-index: 2099 !important;
-  }
-}
-
-/* 桌面端设置弹窗防止水平滑动 — 覆盖全局el-dialog规则 */
-@media (min-width: 769px) {
-  .settings-dialog .el-dialog {
-    left: 50% !important;
-    right: auto !important;
-    transform: translateX(-50%) !important;
-    margin: 5vh auto !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    max-width: 600px;
-    width: 600px !important;
-    overflow: hidden !important;
-  }
-  .settings-dialog .el-dialog__body {
-    overflow-x: hidden;
-  }
-  .settings-dialog .el-dialog__body::-webkit-scrollbar {
-    width: 4px;
-  }
-  .settings-dialog .el-dialog__body::-webkit-scrollbar-thumb {
-    background: var(--glass-border);
-    border-radius: 2px;
-  }
 }
 
 /* Mobile safe area */
@@ -1422,9 +1392,11 @@ const Libraries = {
 // ---- Monitor (Series完结监控) ----
 const SettingsDialog = {
   template: `
-    <el-dialog v-model="visible" title="⚙️ 通知设置" :width="isMobile?'94%':'600px'" top="2vh"
-               :close-on-click-modal="false" destroy-on-close class="settings-dialog">
-      <div style="display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto;padding:4px">
+    <el-drawer v-model="visible" title="⚙️ 通知设置" :size="isMobile?'100%':'600px'" 
+               :with-header="true" :modal="true" destroy-on-close
+               :class="'settings-dialog'"
+               :z-index="3000">
+      <div style="display:flex;flex-direction:column;gap:14px;padding:0 4px;overflow-y:auto;height:100%">
 
         <div>
           <div style="font-size:13px;font-weight:500;margin-bottom:4px">代理地址（可选）</div>
@@ -1526,7 +1498,7 @@ const SettingsDialog = {
           <el-button type="primary" :loading="saving" @click="save">保存</el-button>
         </div>
       </template>
-    </el-dialog>
+    </el-drawer>
   `,
   props: { modelValue: Boolean },
   emits: ['update:modelValue'],
@@ -1574,8 +1546,8 @@ const SettingsDialog = {
             tg_bot_token:this.form.tg_bot_token||'__skip__',
             tg_chat_id:this.form.tg_chat_id||'__skip__',
             proxy_url:this.form.proxy_url||'__skip__',
-            update_template:this.form.update_template||'__skip__',
-            end_template:this.form.end_template||'__skip__',
+            update_template:this.form.update_template === '' ? '' : (this.form.update_template || '__skip__'),
+            end_template:this.form.end_template === '' ? '' : (this.form.end_template || '__skip__'),
             check_interval_minutes:this.form.check_interval_minutes
           })})
         }
@@ -1641,8 +1613,8 @@ const SettingsDialog = {
           tg_bot_token:this.form.tg_bot_token||'__skip__',
           tg_chat_id:this.form.tg_chat_id||'__skip__',
           proxy_url:this.form.proxy_url||'__skip__',
-          update_template:this.form.update_template||'__skip__',
-          end_template:this.form.end_template||'__skip__',
+          update_template:this.form.update_template === '' ? '' : (this.form.update_template || '__skip__'),
+          end_template:this.form.end_template === '' ? '' : (this.form.end_template || '__skip__'),
           check_interval_minutes:this.form.check_interval_minutes
         })})
         ElementPlus.ElMessage.success('保存成功')
