@@ -546,36 +546,40 @@ body {
 }
 
 /* 设置抽屉暗色适配 */
-.settings-drawer.el-drawer__wrapper {
-  background: var(--bg-alt) !important;
+.el-drawer.rtl.open {
+  background: #0d0d1a !important;
+  margin-top: 56px !important;
+  height: calc(100% - 56px) !important;
 }
-.settings-drawer .el-drawer {
-  --el-drawer-bg-color: var(--bg-alt) !important;
-  background: var(--bg-alt) !important;
+.el-drawer__container {
+  background: #0d0d1a !important;
 }
-.settings-drawer .el-drawer__container {
-  background: var(--bg-alt) !important;
-}
-.settings-drawer .el-drawer__header {
+.el-drawer__header,
+div[class*="el-drawer__header"] {
+  background: #0d0d1a !important;
   color: var(--text) !important;
   border-bottom: 1px solid var(--glass-border) !important;
-  padding: 16px 20px !important;
+  padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
+  padding-bottom: 16px !important;
   margin-bottom: 0 !important;
-  font-size: 16px !important;
-  font-weight: 600 !important;
 }
-.settings-drawer .el-drawer__body {
-  padding: 20px !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch;
+.el-drawer__footer,
+div[class*="el-drawer__footer"] {
+  background: #0d0d1a !important;
 }
-.settings-drawer .el-drawer__close-btn,
-.settings-drawer .el-drawer__close {
-  color: var(--text-dim) !important;
-  font-size: 18px !important;
+.el-drawer .el-input__wrapper {
+  background: rgba(255,255,255,0.08) !important;
+  box-shadow: none !important;
+  border: 1px solid var(--glass-border) !important;
 }
-.settings-drawer .el-drawer__close-btn:hover,
-.settings-drawer .el-drawer__close:hover {
+.el-drawer .el-input__inner {
+  color: var(--text) !important;
+  background: transparent !important;
+}
+.el-drawer .el-textarea__inner {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: none !important;
   color: var(--text) !important;
 }
 .settings-drawer .el-input__wrapper,
@@ -1498,10 +1502,8 @@ const SettingsDialog = {
       </div>
 
       <template #footer>
-        <div style="display:flex;gap:8px;justify-content:space-between;align-items:center">
-          <el-button @click="visible = false" size="default">取消</el-button>
-          <div style="display:flex;gap:8px;align-items:center;flex:1;justify-content:flex-end">
-            <div v-if="saveWarn" style="font-size:12px;color:var(--orange);text-align:left;line-height:1.4;margin-right:8px">
+        <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
+          <div v-if="saveWarn" style="font-size:12px;color:var(--orange);text-align:left;line-height:1.4;margin-right:8px">
               ⚠️ {{saveWarn}}
             </div>
             <el-button @click="resetDefaults">恢复默认</el-button>
