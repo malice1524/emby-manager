@@ -588,16 +588,32 @@ body {
   border-color: var(--glass-border-hover);
 }
 
-/* 设置弹窗移动端适配 - 不被顶部遮挡 */
+/* 完结监控页面的圆按钮暗色适配 */
+.monitor-header-btn,
+.el-button.circle-btn,
+.el-button.is-circle {
+  background: var(--glass) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--text) !important;
+}
+.el-button.is-circle:hover {
+  background: var(--glass-hover) !important;
+  border-color: var(--glass-border-hover) !important;
+}
+
+/* 设置弹窗移动端适配 - 不被项目顶部栏遮挡 */
 @media (max-width: 768px) {
   .settings-dialog .el-dialog {
-    margin-top: max(40px, env(safe-area-inset-top, 40px)) !important;
-    max-height: calc(100dvh - max(60px, env(safe-area-inset-top, 40px) + env(safe-area-inset-bottom, 20px)));
+    position: fixed !important;
+    top: max(56px, env(safe-area-inset-top, 56px)) !important;
+    left: 3% !important;
+    right: 3% !important;
+    width: 94% !important;
+    transform: none !important;
+    margin: 0 !important;
+    max-height: calc(100dvh - max(72px, env(safe-area-inset-top, 56px) + env(safe-area-inset-bottom, 16px))) !important;
     display: flex;
     flex-direction: column;
-    width: 94% !important;
-    left: 3% !important;
-    transform: none !important;
     z-index: 2100 !important;
   }
   .settings-dialog .el-dialog__body {
@@ -605,7 +621,7 @@ body {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
-  .settings-dialog + .el-overlay {
+  .el-overlay-dialog + .el-overlay {
     z-index: 2099 !important;
   }
 }
@@ -614,11 +630,14 @@ body {
 @media (min-width: 769px) {
   .settings-dialog .el-dialog {
     left: 50% !important;
+    right: auto !important;
     transform: translateX(-50%) !important;
     margin: 5vh auto !important;
     margin-left: auto !important;
+    margin-right: auto !important;
     max-width: 600px;
     width: 600px !important;
+    overflow: hidden !important;
   }
   .settings-dialog .el-dialog__body {
     overflow-x: hidden;
@@ -1529,9 +1548,9 @@ const SettingsDialog = {
     async loadConfig(){
       try {
         const d = await fetchJSON('/config')
-        this.form.tmdb_api_key = ''  // 不回显 Token，用户需要重新输入
-        this.form.tg_bot_token = ''
-        this.form.tg_chat_id = ''
+        this.form.tmdb_api_key = d.tmdb_api_key || ''
+        this.form.tg_bot_token = d.tg_bot_token || ''
+        this.form.tg_chat_id = d.tg_chat_id || ''
         this.form.proxy_url = d.proxy_url || ''
         this.form.update_template = d.update_template || ''
         this.form.end_template = d.end_template || ''
@@ -1701,11 +1720,19 @@ const Monitor = {
       <!-- 监控列表 -->
       <div class="glass-card" style="padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="font-size:15px;font-weight:600">
-            已监控剧集
-            <span style="font-size:12px;color:var(--text-dim);font-weight:400;margin-left:6px">{{monitoredList.length}} 部</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:15px;font-weight:600">
+              已监控剧集
+              <span style="font-size:12px;color:var(--text-dim);font-weight:400;margin-left:6px">{{monitoredList.length}} 部</span>
+            </div>
+            <!-- 筛选 -->
+            <div class="lib-filter" style="margin-bottom:0;display:inline-flex">
+              <span class="filter-chip" :class="{active:filterStatus==='all'}" @click="filterStatus='all'" style="font-size:11px;padding:3px 10px">全部</span>
+              <span class="filter-chip" :class="{active:filterStatus==='continuing'}" @click="filterStatus='continuing'" style="font-size:11px;padding:3px 10px">连载中</span>
+              <span class="filter-chip" :class="{active:filterStatus==='ended'}" @click="filterStatus='ended'" style="font-size:11px;padding:3px 10px">已完结</span>
+            </div>
           </div>
-          <el-button size="small" @click="refreshList" :loading="refreshing" circle>🔄</el-button>
+          <el-button size="small" @click="refreshList" :loading="refreshing" circle class="circle-btn">🔄</el-button>
         </div>
 
         <!-- 空状态 -->
@@ -1714,62 +1741,77 @@ const Monitor = {
         </div>
         <div v-if="loadingList" style="text-align:center;padding:40px;color:var(--text-muted)">加载中...</div>
 
-        <!-- 桌面端表格 -->
-        <div v-if="!isMobile && monitoredList.length">
-          <div class="monitor-table" v-for="s in monitoredList" :key="s.tmdb_id">
+        <!-- 桌面端增强列表 -->
+        <div v-if="!isMobile && filteredList.length">
+          <div class="monitor-table" v-for="s in filteredList" :key="s.tmdb_id">
             <div class="mt-row-glass">
               <div class="mt-poster">
                 <img v-if="s.poster_url" :src="s.poster_url" @error="$event.target.style.display='none'"/>
                 <div v-else class="mt-poster-fallback">🎬</div>
               </div>
-              <div class="mt-info">
-                <div class="mt-title">{{s.title}}</div>
+              <div class="mt-info" style="flex:2">
+                <div class="mt-title">{{s.title}}<span v-if="s.year" style="font-weight:400;color:var(--text-dim);margin-left:6px;font-size:12px">({{s.year}})</span></div>
                 <div class="mt-meta" v-if="s.type">{{s.type}} · ⭐ {{s.vote_average}}</div>
+                <!-- 连载中：下集信息+当前进度 -->
+                <div v-if="s.current_status!=='Ended' && s.current_status!=='Canceled'" style="margin-top:4px;font-size:11px;line-height:1.6">
+                  <div v-if="s.next_episode?.air_date" style="color:var(--green)">
+                    📅 下集：S{{s.next_episode.season_number}}E{{s.next_episode.episode_number}} · {{s.next_episode.air_date}}（{{daysUntil(s.next_episode.air_date)}}）
+                  </div>
+                  <div v-if="s.last_episode?.episode_number" style="color:var(--text-dim)">
+                    📺 已更新至 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' · '+s.last_episode.episode_number+'/'+s.total_episodes+' 集' : ''}}
+                  </div>
+                </div>
+                <!-- 已完结：完结信息 -->
+                <div v-else-if="s.current_status==='Ended'" style="margin-top:4px;font-size:11px;color:var(--text-dim);line-height:1.6">
+                  📅 完结：{{s.last_air_date?.slice(0,10)}} · 共 {{s.total_episodes}} 集
+                </div>
               </div>
               <div class="mt-status">
                 <span v-if="s.current_status==='Ended'" class="status-badge ended">🔴 已完结</span>
                 <span v-else-if="s.current_status==='Canceled'" class="status-badge canceled">⚫ 已取消</span>
                 <span v-else class="status-badge continuing">🟢 连载中</span>
               </div>
-              <div class="mt-date">
-                <div v-if="s.current_status==='Ended'" style="font-size:11px;color:var(--text-dim)">
-                  完结：{{s.last_air_date?.slice(0,10)}}
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;min-width:80px">
+                <div v-if="s.current_status==='Ended'" style="font-size:11px;color:var(--text-muted);text-align:right">
+                  <span v-if="s.notified_ended" style="color:var(--green)">✅ 已通知</span>
+                  <span v-else style="color:var(--orange)">⏳ 待通知</span>
                 </div>
-                <div v-else-if="s.next_episode?.air_date" style="font-size:11px;color:var(--green)">
-                  下集：{{s.next_episode.air_date}}
-                </div>
-                <div v-else style="font-size:11px;color:var(--text-muted)">暂无排期</div>
+                <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)">删除</el-button>
               </div>
-              <div class="mt-notified">
-                <span v-if="s.notified_ended" style="font-size:11px;color:var(--green)">✅ 已通知</span>
-                <span v-else style="font-size:11px;color:var(--text-muted)">未通知</span>
-              </div>
-              <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)">删除</el-button>
             </div>
           </div>
         </div>
 
-        <!-- 移动端列表 -->
-        <div v-if="isMobile && monitoredList.length">
-          <div v-for="s in monitoredList" :key="s.tmdb_id" class="monitor-item-mobile">
+        <!-- 移动端增强列表 -->
+        <div v-if="isMobile && filteredList.length">
+          <div v-for="s in filteredList" :key="s.tmdb_id" class="monitor-item-mobile">
             <div class="mim-poster">
               <img v-if="s.poster_url" :src="s.poster_url" @error="$event.target.style.display='none'"/>
               <div v-else class="mt-poster-fallback">🎬</div>
             </div>
             <div class="mim-info">
-              <div class="mim-title">{{s.title}}</div>
+              <div class="mim-title">{{s.title}}<span v-if="s.year" style="font-weight:400;color:var(--text-dim);margin-left:4px;font-size:11px">({{s.year}})</span></div>
               <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
                 <span v-if="s.current_status==='Ended'" class="status-badge ended">🔴 已完结</span>
+                <span v-else-if="s.current_status==='Canceled'" class="status-badge canceled">⚫ 已取消</span>
                 <span v-else class="status-badge continuing">🟢 连载中</span>
               </div>
-              <div style="font-size:11px;color:var(--text-dim);margin-top:4px">
-                <div v-if="s.current_status==='Ended'">完结：{{s.last_air_date?.slice(0,10)}}</div>
-                <div v-else-if="s.next_episode?.air_date">下集：{{s.next_episode.air_date}}</div>
-                <div v-else>暂无排期</div>
+              <!-- 连载中：下集+进度 -->
+              <div v-if="s.current_status!=='Ended' && s.current_status!=='Canceled'" style="font-size:11px;color:var(--text-dim);margin-top:4px;line-height:1.5">
+                <div v-if="s.next_episode?.air_date" style="color:var(--green)">
+                  📅 下集 S{{s.next_episode.season_number}}E{{s.next_episode.episode_number}} · {{s.next_episode.air_date}}
+                </div>
+                <div v-if="s.last_episode?.episode_number">
+                  📺 至 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' ('+s.last_episode.episode_number+'/'+s.total_episodes+')' : ''}}
+                </div>
               </div>
-              <div style="margin-top:4px;display:flex;gap:8px;align-items:center">
-                <span v-if="s.notified_ended" style="font-size:11px;color:var(--green)">通知：✅</span>
-                <span v-else style="font-size:11px;color:var(--text-muted)">通知：未</span>
+              <!-- 已完结 -->
+              <div v-else-if="s.current_status==='Ended'" style="font-size:11px;color:var(--text-dim);margin-top:4px">
+                📅 完结：{{s.last_air_date?.slice(0,10)}} · 共 {{s.total_episodes}} 集
+              </div>
+              <div style="margin-top:4px;display:flex;gap:10px;align-items:center">
+                <span v-if="s.current_status==='Ended' && s.notified_ended" style="font-size:11px;color:var(--green)">✅ 已通知</span>
+                <span v-else-if="s.current_status==='Ended' && !s.notified_ended" style="font-size:11px;color:var(--orange)">⏳ 待通知</span>
                 <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)">删除</el-button>
               </div>
             </div>
@@ -1820,9 +1862,18 @@ const Monitor = {
       searchQuery:'', searchResults:[], searching:false, searchError:'',
       monitoredList:[], loadingList:false, refreshing:false,
       showSettings:false,
+      filterStatus:'all',
       monitorStatus:null, logs:[],
       activeCollapse:[],
       isMobile: window.innerWidth < 768
+    }
+  },
+  computed: {
+    filteredList(){
+      if(this.filterStatus === 'all') return this.monitoredList
+      if(this.filterStatus === 'continuing') return this.monitoredList.filter(s => s.current_status!=='Ended' && s.current_status!=='Canceled')
+      if(this.filterStatus === 'ended') return this.monitoredList.filter(s => s.current_status==='Ended')
+      return this.monitoredList
     }
   },
   async mounted(){
@@ -1859,6 +1910,7 @@ const Monitor = {
         ElementPlus.ElMessage.success(d.notification_sent ? '已添加并发送通知' : '已添加')
         this.searchResults = []
         this.searchQuery = ''
+        this.monitoredList = []
         await this.loadList()
       } catch(e) { ElementPlus.ElMessage.error(e.message) }
     },
@@ -1897,6 +1949,16 @@ const Monitor = {
       if(!t) return '-'
       const d = new Date(t)
       return d.toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
+    },
+    daysUntil(dateStr){
+      if(!dateStr) return ''
+      const now = new Date()
+      const target = new Date(dateStr)
+      const diff = Math.ceil((target - now) / (1000*60*60*24))
+      if(diff < 0) return '已播出'
+      if(diff === 0) return '今天'
+      if(diff === 1) return '明天'
+      return diff+'天后'
     }
   }
 }

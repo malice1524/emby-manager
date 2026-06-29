@@ -154,9 +154,9 @@ async def monitor_delete(tmdb_id: int):
 async def get_config():
     cfg = load_tg_config()
     return {
-        "tmdb_api_key": bool(cfg.get("tmdb_api_key")),
-        "tg_bot_token": bool(cfg.get("tg_bot_token")),
-        "tg_chat_id": bool(cfg.get("tg_chat_id")),
+        "tmdb_api_key": cfg.get("tmdb_api_key", ""),
+        "tg_bot_token": cfg.get("tg_bot_token", ""),
+        "tg_chat_id": cfg.get("tg_chat_id", ""),
         "proxy_url": cfg.get("proxy_url", ""),
         "update_template": cfg.get("update_template", ""),
         "end_template": cfg.get("end_template", ""),
@@ -191,9 +191,10 @@ async def save_config(req: SaveConfigRequest):
         cfg["tg_chat_id"] = req.tg_chat_id
     if req.proxy_url and req.proxy_url != "__skip__":
         cfg["proxy_url"] = req.proxy_url
-    if req.update_template and req.update_template != "__skip__":
+    # 模板允许清空（空字符串也保存）
+    if req.update_template != "__skip__":
         cfg["update_template"] = req.update_template
-    if req.end_template and req.end_template != "__skip__":
+    if req.end_template != "__skip__":
         cfg["end_template"] = req.end_template
     cfg["check_interval_minutes"] = max(1, req.check_interval_minutes)
 
