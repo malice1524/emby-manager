@@ -433,6 +433,105 @@ body {
   background: rgba(255,255,255,0.02);
 }
 
+/* ---- Monitor Page ---- */
+.search-grid-desktop {
+  display: grid; grid-template-columns: repeat(2,1fr); gap: 10px;
+}
+.search-card {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px; border-radius: 12px;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  cursor: pointer; transition: all var(--transition);
+}
+.search-card:hover { border-color: var(--glass-border-hover); background: var(--glass-hover); }
+.search-poster {
+  width: 60px; height: 90px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
+}
+.search-poster-placeholder {
+  width: 60px; height: 90px; border-radius: 6px; flex-shrink: 0;
+  background: var(--glass); display: flex; align-items: center; justify-content: center;
+  font-size: 24px; color: var(--text-muted);
+}
+.search-info { flex: 1; min-width: 0; }
+.search-title { font-size: 14px; font-weight: 600; }
+.search-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.search-rating { font-size: 11px; color: var(--orange); margin-top: 2px; }
+.search-overview { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+.search-add-btn { flex-shrink: 0; align-self: center; }
+
+.search-item-mobile {
+  display: flex; gap: 10px; align-items: center;
+  padding: 10px; border-radius: 10px; border-bottom: 1px solid var(--glass-border);
+  cursor: pointer; transition: background var(--transition);
+}
+.search-item-mobile:last-child { border-bottom: none; }
+.search-item-mobile:hover { background: var(--glass); }
+.sim-poster {
+  width: 44px; height: 66px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
+}
+.sim-poster img { width:100%; height:100%; object-fit: cover; }
+.sim-info { flex: 1; min-width: 0; }
+.sim-title { font-size: 14px; font-weight: 500; }
+.sim-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+.monitor-table { margin-bottom: 4px; }
+.mt-row-glass {
+  display: flex; gap: 12px; align-items: center;
+  padding: 12px; border-radius: 10px;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  transition: all var(--transition);
+}
+.mt-row-glass:hover { border-color: var(--glass-border-hover); background: var(--glass-hover); }
+.mt-poster {
+  width: 48px; height: 72px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
+}
+.mt-poster img { width:100%; height:100%; object-fit:cover; }
+.mt-poster-fallback {
+  width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+  background: var(--glass); font-size:20px; color:var(--text-muted);
+}
+.mt-info { flex: 1; min-width: 0; }
+.mt-title { font-size: 14px; font-weight: 600; }
+.mt-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.mt-status { flex-shrink: 0; min-width: 80px; }
+.mt-date { flex-shrink: 0; min-width: 90px; text-align: center; }
+.mt-notified { flex-shrink: 0; min-width: 60px; text-align: center; }
+
+.status-badge {
+  font-size: 11px; padding: 2px 10px; border-radius: 20px; font-weight: 500;
+  white-space: nowrap;
+}
+.status-badge.ended { background: rgba(255,71,87,0.15); color: var(--red); }
+.status-badge.continuing { background: rgba(0,210,211,0.15); color: var(--green); }
+.status-badge.canceled { background: rgba(255,255,255,0.08); color: var(--text-muted); }
+
+.monitor-item-mobile {
+  display: flex; gap: 10px; padding: 10px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.monitor-item-mobile:last-child { border-bottom: none; }
+.mim-poster {
+  width: 48px; height: 72px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
+}
+.mim-poster img { width:100%; height:100%; object-fit:cover; }
+.mim-info { flex: 1; min-width: 0; }
+.mim-title { font-size: 14px; font-weight: 600; }
+
+/* Mobile safair safe area */
+@media (max-width: 768px) {
+  .main {
+    padding-top: max(16px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(14px, env(safe-area-inset-left, 0px));
+    padding-right: max(14px, env(safe-area-inset-right, 0px));
+  }
+}
+
+/* El Override for dialogs on mobile */
+@media (max-width: 768px) {
+  .el-dialog { margin-top: env(safe-area-inset-top, 10px) !important; }
+}
+
 /* ---- Element Plus Overrides ---- */
 .el-button--primary {
   --el-button-bg-color: var(--accent);
@@ -570,6 +669,7 @@ body.el-popup-parent--hidden { overflow: hidden; }
     </div>
     <nav>
       <a href="#/" onclick="navClose()"><span class="nav-icon">📊</span> 仪表盘</a>
+      <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
     </nav>
@@ -1185,9 +1285,477 @@ const Libraries = {
   }
 }
 
+// ---- Monitor (Series完结监控) ----
+const SettingsDialog = {
+  template: `
+    <el-dialog v-model="visible" title="⚙️ 通知设置" :width="isMobile?'94%':'600px'" top="2vh"
+               :close-on-click-modal="false" destroy-on-close>
+      <div style="display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto;padding:4px">
+
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">TMDB API Key</div>
+          <div style="display:flex;gap:8px">
+            <el-input v-model="form.tmdb_api_key" placeholder="输入 TMDB API Key" style="flex:1"/>
+            <el-button size="default" :loading="verifying" @click="verifyTmdb" style="flex-shrink:0">✅ 验证</el-button>
+          </div>
+          <div v-if="tmdbVerifyResult" :style="{fontSize:'12px',marginTop:'4px',color:tmdbVerifyResult.valid?'var(--green)':'var(--red)'}">
+            {{tmdbVerifyResult.valid ? '✅ 验证成功' : '❌ '+tmdbVerifyResult.error}}
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Bot Token</div>
+          <el-input v-model="form.tg_bot_token" placeholder="输入 Bot Token" type="password" show-password/>
+        </div>
+
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Chat ID</div>
+          <div style="display:flex;gap:8px">
+            <el-input v-model="form.tg_chat_id" placeholder="输入 Chat ID" style="flex:1"/>
+            <el-button size="default" :loading="testing" @click="testTg" style="flex-shrink:0">📨 测试</el-button>
+          </div>
+          <div v-if="tgTestResult" :style="{fontSize:'12px',marginTop:'4px',color:tgTestResult.success?'var(--green)':'var(--red)'}">
+            {{tgTestResult.success ? '✅ 发送成功' : '❌ '+tgTestResult.error}}
+          </div>
+        </div>
+
+        <el-divider style="margin:4px 0"/>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div style="font-size:13px;font-weight:500">更新提醒模板</div>
+            <el-tag size="small" style="cursor:pointer" @click="showUpdateVars=!showUpdateVars">
+              📋 可用变量 {{showUpdateVars?'▲':'▼'}}
+            </el-tag>
+          </div>
+          <el-input v-model="form.update_template" input-style="font-family:monospace;font-size:12px;line-height:1.6" 
+                    type="textarea" :rows="6" placeholder="留空使用默认模板"/>
+          <div v-if="showUpdateVars" style="font-size:11px;color:var(--text-dim);background:var(--glass);border-radius:8px;padding:8px;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 12px">
+            <span><code>{update_title}</code> → 标题行</span>
+            <span><code>{series_name}</code> → 剧名</span>
+            <span><code>{episode_info}</code> → 季集信息</span>
+            <span><code>{air_date}</code> → 播出日期</span>
+            <span><code>{progress}</code> → 当前进度</span>
+            <span><code>{type}</code> → 类型</span>
+            <span><code>{rating}</code> → 评分</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div style="font-size:13px;font-weight:500">完结提醒模板</div>
+            <el-tag size="small" style="cursor:pointer" @click="showEndVars=!showEndVars">
+              📋 可用变量 {{showEndVars?'▲':'▼'}}
+            </el-tag>
+          </div>
+          <el-input v-model="form.end_template" input-style="font-family:monospace;font-size:12px;line-height:1.6"
+                    type="textarea" :rows="6" placeholder="留空使用默认模板"/>
+          <div v-if="showEndVars" style="font-size:11px;color:var(--text-dim);background:var(--glass);border-radius:8px;padding:8px;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 12px">
+            <span><code>{end_title}</code> → 标题行</span>
+            <span><code>{series_name}</code> → 剧名</span>
+            <span><code>{end_date}</code> → 完结日期</span>
+            <span><code>{total_episodes}</code> → 总集数</span>
+            <span><code>{type}</code> → 类型</span>
+            <span><code>{rating}</code> → 评分</span>
+            <span><code>{overview}</code> → 简介(自动截断4行)</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">检测间隔</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <el-input-number v-model="form.check_interval_minutes" :min="5" :max="1440" size="default" style="width:140px"/>
+            <span style="font-size:12px;color:var(--text-dim)">分钟（建议 ≥ 10 分钟）</span>
+          </div>
+        </div>
+
+      </div>
+
+      <template #footer>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <div v-if="saveWarn" style="flex:1;font-size:12px;color:var(--orange);text-align:left;line-height:1.4">
+            ⚠️ 以下模板变量不存在，将原样显示：{{saveWarn}}
+          </div>
+          <el-button @click="resetDefaults">恢复默认</el-button>
+          <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        </div>
+      </template>
+    </el-dialog>
+  `,
+  props: { modelValue: Boolean },
+  emits: ['update:modelValue'],
+  data(){
+    return {
+      form: {tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',update_template:'',end_template:'',check_interval_minutes:30},
+      verifying:false, tmdbVerifyResult:null,
+      testing:false, tgTestResult:null,
+      saving:false, saveWarn:'',
+      showUpdateVars:false, showEndVars:false,
+      isMobile: window.innerWidth < 768
+    }
+  },
+  computed: {
+    visible: { get(){return this.modelValue}, set(v){this.$emit('update:modelValue',v)} }
+  },
+  methods: {
+    async loadConfig(){
+      try {
+        const d = await fetchJSON('/config')
+        this.form.tmdb_api_key = ''  // 不回显 Token，用户需要重新输入
+        this.form.tg_bot_token = ''
+        this.form.tg_chat_id = ''
+        this.form.update_template = d.update_template || ''
+        this.form.end_template = d.end_template || ''
+        this.form.check_interval_minutes = d.check_interval_minutes || 30
+      } catch(e) { ElementPlus.ElMessage.error('加载配置失败') }
+    },
+    async verifyTmdb(){
+      this.verifying = true; this.tmdbVerifyResult = null
+      try {
+        this.tmdbVerifyResult = await fetchJSON('/tmdb/verify', {method:'GET'})
+      } catch(e) { this.tmdbVerifyResult = {valid:false, error: '请求失败'} }
+      this.verifying = false
+    },
+    async testTg(){
+      this.testing = true; this.tgTestResult = null
+      try {
+        // 先保存当前配置，再测试
+        if(this.form.tg_bot_token || this.form.tg_chat_id) {
+          await fetchJSON('/config', {method:'PUT', body:JSON.stringify({
+            tmdb_api_key:this.form.tmdb_api_key||'__skip__',
+            tg_bot_token:this.form.tg_bot_token||'__skip__',
+            tg_chat_id:this.form.tg_chat_id||'__skip__',
+            update_template:this.form.update_template||'__skip__',
+            end_template:this.form.end_template||'__skip__',
+            check_interval_minutes:this.form.check_interval_minutes
+          })})
+        }
+        this.tgTestResult = await fetchJSON('/config/test', {method:'POST'})
+      } catch(e) { this.tgTestResult = {success:false, error: '请求失败'} }
+      this.testing = false
+    },
+    validateTemplate(template, type){
+      const allowed = type === 'update' 
+        ? ['update_title','series_name','episode_info','air_date','progress','type','rating','poster_url']
+        : ['end_title','series_name','end_date','total_episodes','type','rating','overview','poster_url']
+      const found = [...template.matchAll(/\{(\w+)\}/g)].map(m=>m[1])
+      return found.filter(v => !allowed.includes(v))
+    },
+    async save(){
+      this.saveWarn = ''
+      // 校验模板
+      if(this.form.update_template) {
+        const unknown = this.validateTemplate(this.form.update_template, 'update')
+        if(unknown.length) this.saveWarn = unknown.map(v=>'{'+v+'}').join(' ')
+      }
+      if(this.form.end_template) {
+        const unknown = this.validateTemplate(this.form.end_template, 'end')
+        if(unknown.length) {
+          const extra = unknown.map(v=>'{'+v+'}').join(' ')
+          this.saveWarn = this.saveWarn ? this.saveWarn+' '+extra : extra
+        }
+      }
+
+      // 如果有未知变量，显示警告但不阻止
+      if(this.saveWarn) {
+        try {
+          await ElementPlus.ElMessageBox.confirm(
+            '以下模板变量不存在，将原样显示在消息中：\n' + this.saveWarn + '\n\n是否继续保存？',
+            '⚠️ 模板变量提示',
+            {confirmButtonText:'继续保存', cancelButtonText:'取消', type:'warning'}
+          )
+        } catch(e) { return } // 用户取消
+      }
+
+      this.saving = true
+      try {
+        await fetchJSON('/config', {method:'PUT', body:JSON.stringify({
+          tmdb_api_key:this.form.tmdb_api_key||'__skip__',
+          tg_bot_token:this.form.tg_bot_token||'__skip__',
+          tg_chat_id:this.form.tg_chat_id||'__skip__',
+          update_template:this.form.update_template||'__skip__',
+          end_template:this.form.end_template||'__skip__',
+          check_interval_minutes:this.form.check_interval_minutes
+        })})
+        ElementPlus.ElMessage.success('保存成功')
+        this.visible = false
+      } catch(e) { ElementPlus.ElMessage.error('保存失败') }
+      this.saving = false
+    },
+    resetDefaults(){
+      this.form.update_template = ''
+      this.form.end_template = ''
+      ElementPlus.ElMessage.info('已恢复默认模板，请保存生效')
+    }
+  },
+  watch: {
+    visible(v){ if(v) this.loadConfig() }
+  }
+}
+
+const Monitor = {
+  template: `
+    <div>
+      <!-- 页面标题 + 设置按钮 -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:20px;font-weight:600">🔔 完结监控</h2>
+        <el-button size="small" circle @click="showSettings=true" title="设置" style="font-size:18px">⚙️</el-button>
+      </div>
+
+      <!-- 搜索区域 -->
+      <div class="glass-card" style="margin-bottom:16px;padding:16px">
+        <div style="display:flex;gap:8px">
+          <el-input v-model="searchQuery" placeholder="输入剧名搜索..." @keyup.enter="doSearch" :disabled="searching"/>
+          <el-button type="primary" @click="doSearch" :loading="searching">搜索</el-button>
+        </div>
+
+        <!-- 搜索结果 - 桌面端卡片 / 移动端列表 -->
+        <div v-if="searchResults.length" style="margin-top:12px">
+          <div style="font-size:13px;color:var(--text-dim);margin-bottom:8px">
+            搜索结果（{{searchResults.length}} 条）
+          </div>
+          <!-- 桌面端网格 -->
+          <div class="search-grid-desktop" v-if="!isMobile">
+            <div v-for="item in searchResults" :key="item.tmdb_id" 
+                 class="search-card" @click="addSeries(item)">
+              <img v-if="item.poster_url" :src="item.poster_url" class="search-poster" 
+                   @error="$event.target.style.display='none'"/>
+              <div v-else class="search-poster-placeholder">🎬</div>
+              <div class="search-info">
+                <div class="search-title">{{item.title}}</div>
+                <div class="search-meta">{{item.year}} · {{item.media_type==='tv'?'剧集':'电影'}}</div>
+                <div class="search-rating" v-if="item.vote_average">⭐ {{item.vote_average}}</div>
+                <div class="search-overview" v-if="item.overview">{{item.overview.slice(0,60)}}...</div>
+              </div>
+              <el-button size="small" type="primary" class="search-add-btn">+ 添加</el-button>
+            </div>
+          </div>
+          <!-- 移动端列表 -->
+          <div v-else>
+            <div v-for="item in searchResults" :key="item.tmdb_id" 
+                 class="search-item-mobile" @click="addSeries(item)">
+              <div class="sim-poster" v-if="item.poster_url">
+                <img :src="item.poster_url" @error="$event.target.style.display='none'"/>
+              </div>
+              <div class="sim-info">
+                <div class="sim-title">{{item.title}}</div>
+                <div class="sim-meta">{{item.year}} · ⭐ {{item.vote_average}}</div>
+              </div>
+              <el-button size="small" type="primary" style="flex-shrink:0">+</el-button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="searchError" style="margin-top:8px;font-size:12px;color:var(--red)">{{searchError}}</div>
+      </div>
+
+      <!-- 监控列表 -->
+      <div class="glass-card" style="padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-size:15px;font-weight:600">
+            已监控剧集
+            <span style="font-size:12px;color:var(--text-dim);font-weight:400;margin-left:6px">{{monitoredList.length}} 部</span>
+          </div>
+          <el-button size="small" @click="refreshList" :loading="refreshing" circle>🔄</el-button>
+        </div>
+
+        <!-- 空状态 -->
+        <div v-if="!monitoredList.length && !loadingList" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">
+          暂无监控剧集，在上方搜索添加
+        </div>
+        <div v-if="loadingList" style="text-align:center;padding:40px;color:var(--text-muted)">加载中...</div>
+
+        <!-- 桌面端表格 -->
+        <div v-if="!isMobile && monitoredList.length">
+          <div class="monitor-table" v-for="s in monitoredList" :key="s.tmdb_id">
+            <div class="mt-row-glass">
+              <div class="mt-poster">
+                <img v-if="s.poster_url" :src="s.poster_url" @error="$event.target.style.display='none'"/>
+                <div v-else class="mt-poster-fallback">🎬</div>
+              </div>
+              <div class="mt-info">
+                <div class="mt-title">{{s.title}}</div>
+                <div class="mt-meta" v-if="s.type">{{s.type}} · ⭐ {{s.vote_average}}</div>
+              </div>
+              <div class="mt-status">
+                <span v-if="s.current_status==='Ended'" class="status-badge ended">🔴 已完结</span>
+                <span v-else-if="s.current_status==='Canceled'" class="status-badge canceled">⚫ 已取消</span>
+                <span v-else class="status-badge continuing">🟢 连载中</span>
+              </div>
+              <div class="mt-date">
+                <div v-if="s.current_status==='Ended'" style="font-size:11px;color:var(--text-dim)">
+                  完结：{{s.last_air_date?.slice(0,10)}}
+                </div>
+                <div v-else-if="s.next_episode?.air_date" style="font-size:11px;color:var(--green)">
+                  下集：{{s.next_episode.air_date}}
+                </div>
+                <div v-else style="font-size:11px;color:var(--text-muted)">暂无排期</div>
+              </div>
+              <div class="mt-notified">
+                <span v-if="s.notified_ended" style="font-size:11px;color:var(--green)">✅ 已通知</span>
+                <span v-else style="font-size:11px;color:var(--text-muted)">未通知</span>
+              </div>
+              <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)">删除</el-button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 移动端列表 -->
+        <div v-if="isMobile && monitoredList.length">
+          <div v-for="s in monitoredList" :key="s.tmdb_id" class="monitor-item-mobile">
+            <div class="mim-poster">
+              <img v-if="s.poster_url" :src="s.poster_url" @error="$event.target.style.display='none'"/>
+              <div v-else class="mt-poster-fallback">🎬</div>
+            </div>
+            <div class="mim-info">
+              <div class="mim-title">{{s.title}}</div>
+              <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
+                <span v-if="s.current_status==='Ended'" class="status-badge ended">🔴 已完结</span>
+                <span v-else class="status-badge continuing">🟢 连载中</span>
+              </div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:4px">
+                <div v-if="s.current_status==='Ended'">完结：{{s.last_air_date?.slice(0,10)}}</div>
+                <div v-else-if="s.next_episode?.air_date">下集：{{s.next_episode.air_date}}</div>
+                <div v-else>暂无排期</div>
+              </div>
+              <div style="margin-top:4px;display:flex;gap:8px;align-items:center">
+                <span v-if="s.notified_ended" style="font-size:11px;color:var(--green)">通知：✅</span>
+                <span v-else style="font-size:11px;color:var(--text-muted)">通知：未</span>
+                <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)">删除</el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 运行状态 + 日志（可折叠） -->
+      <div style="margin-top:16px">
+        <el-collapse v-model="activeCollapse">
+          <el-collapse-item title="📊 运行状态" name="status">
+            <div class="glass-card" style="padding:16px">
+              <div v-if="monitorStatus">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+                  <div><span style="color:var(--text-dim)">状态：</span>{{monitorStatus.is_running ? '🟢 运行中' : '🔴 已停止'}}</div>
+                  <div><span style="color:var(--text-dim)">监控剧集：</span>{{monitorStatus.monitored_count}} 部</div>
+                  <div><span style="color:var(--text-dim)">上次检查：</span>{{fmtTime2(monitorStatus.last_check_time)}}</div>
+                  <div><span style="color:var(--text-dim)">最近通知：</span>{{fmtTime2(monitorStatus.last_notification_time)}}</div>
+                </div>
+              </div>
+              <div v-else style="color:var(--text-muted);font-size:13px">加载中...</div>
+            </div>
+          </el-collapse-item>
+          <el-collapse-item title="📄 检查日志" name="logs">
+            <div class="glass-card" style="padding:16px">
+              <div v-if="logs.length">
+                <div v-for="(log,i) in logs" :key="i" style="padding:6px 0;border-bottom:1px solid var(--glass-border);font-size:12px;display:flex;gap:8px">
+                  <span style="color:var(--text-muted);flex-shrink:0">{{fmtTime2(log.time)}}</span>
+                  <span :style="{color: log.status==='ok' ? 'var(--green)' : 'var(--orange)'}">
+                    {{log.status==='ok' ? '✅' : '⚠️'}}
+                  </span>
+                  <span style="color:var(--text-dim)">{{log.message}}</span>
+                </div>
+              </div>
+              <div v-else style="color:var(--text-muted);font-size:13px">暂无日志</div>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
+      </div>
+
+      <!-- 设置弹窗 -->
+      <settings-dialog v-model="showSettings"/>
+    </div>
+  `,
+  components: { SettingsDialog },
+  data(){
+    return {
+      searchQuery:'', searchResults:[], searching:false, searchError:'',
+      monitoredList:[], loadingList:false, refreshing:false,
+      showSettings:false,
+      monitorStatus:null, logs:[],
+      activeCollapse:[],
+      isMobile: window.innerWidth < 768
+    }
+  },
+  async mounted(){
+    window.addEventListener('resize', ()=>{ this.isMobile = window.innerWidth < 768 })
+    await this.loadList()
+    await this.loadStatus()
+    await this.loadLogs()
+    // 定时刷新状态
+    this._statusTimer = setInterval(() => {
+      this.loadStatus()
+      this.loadLogs()
+    }, 30000)
+  },
+  beforeUnmount(){ if(this._statusTimer) clearInterval(this._statusTimer) },
+  methods: {
+    async doSearch(){
+      if(!this.searchQuery.trim()) return
+      this.searching = true; this.searchError = ''
+      try {
+        const d = await fetchJSON('/tmdb/search?q='+encodeURIComponent(this.searchQuery.trim()))
+        this.searchResults = d.results || []
+        if(!this.searchResults.length) this.searchError = '未找到相关剧集'
+      } catch(e) { this.searchError = e.message }
+      this.searching = false
+    },
+    async addSeries(item){
+      try {
+        const d = await fetchJSON('/monitor/add', {method:'POST', body:JSON.stringify({
+          tmdb_id: item.tmdb_id,
+          title: item.title,
+          year: item.year,
+          poster_url: item.poster_url
+        })})
+        ElementPlus.ElMessage.success(d.notification_sent ? '已添加并发送通知' : '已添加')
+        this.searchResults = []
+        this.searchQuery = ''
+        await this.loadList()
+      } catch(e) { ElementPlus.ElMessage.error(e.message) }
+    },
+    async deleteSeries(tmdbId){
+      try {
+        await ElementPlus.ElMessageBox.confirm('确定要删除该剧集的监控吗？', '确认删除', {type:'warning'})
+        await fetchJSON('/monitor/'+tmdbId, {method:'DELETE'})
+        ElementPlus.ElMessage.success('已删除')
+        await this.loadList()
+      } catch(e) { if(e !== 'cancel') ElementPlus.ElMessage.error('删除失败') }
+    },
+    async loadList(){
+      this.loadingList = true
+      try {
+        const d = await fetchJSON('/monitor/list')
+        this.monitoredList = d.series || []
+      } catch(e) { /* silent */ }
+      this.loadingList = false
+    },
+    async refreshList(){
+      this.refreshing = true
+      await this.loadList()
+      this.refreshing = false
+    },
+    async loadStatus(){
+      try {
+        this.monitorStatus = await fetchJSON('/monitor/status')
+      } catch(e) { /* silent */ }
+    },
+    async loadLogs(){
+      try {
+        this.logs = await fetchJSON('/monitor/logs?limit=50')
+      } catch(e) { /* silent */ }
+    },
+    fmtTime2(t){
+      if(!t) return '-'
+      const d = new Date(t)
+      return d.toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
+    }
+  }
+}
+
 // ---- Router ----
 const routes = [
   {path:'/',component:Dashboard},
+  {path:'/monitor',component:Monitor},
   {path:'/users',component:Users},
   {path:'/libraries',component:Libraries},
 ]

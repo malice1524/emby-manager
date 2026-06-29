@@ -2,10 +2,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from .routers import users, libraries, dashboard
+from contextlib import asynccontextmanager
+from .routers import users, libraries, dashboard, monitor
+from .series_monitor import start_monitor
 import os
 
-app = FastAPI(title="Emby Manager", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_monitor()
+    yield
+
+app = FastAPI(title="Emby Manager", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,6 +24,7 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(libraries.router)
 app.include_router(dashboard.router)
+app.include_router(monitor.router)
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
 FRONTEND_PATH = os.path.join(STATIC_DIR, "index.html")
