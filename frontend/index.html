@@ -548,8 +548,12 @@ body {
 /* 设置抽屉暗色适配 */
 .el-drawer.rtl.open {
   background: #0d0d1a !important;
-  margin-top: 56px !important;
-  height: calc(100% - 56px) !important;
+}
+@media (max-width: 768px) {
+  .el-drawer.rtl.open {
+    margin-top: 44px !important;
+    height: calc(100% - 44px) !important;
+  }
 }
 .el-drawer__container {
   background: #0d0d1a !important;
@@ -581,6 +585,32 @@ div[class*="el-drawer__footer"] {
   border: 1px solid var(--glass-border) !important;
   box-shadow: none !important;
   color: var(--text) !important;
+}
+.el-drawer .el-input-number__decrease,
+.el-drawer .el-input-number__increase {
+  background: rgba(255,255,255,0.08) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+.el-drawer .el-input-number__decrease:hover,
+.el-drawer .el-input-number__increase:hover {
+  background: rgba(255,255,255,0.12) !important;
+}
+.el-drawer .el-button--default {
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text) !important;
+}
+.el-drawer .el-button--default:hover {
+  background: rgba(255,255,255,0.12) !important;
+}
+.el-drawer__footer .el-button {
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text) !important;
+}
+.el-drawer__footer .el-button:hover {
+  background: rgba(255,255,255,0.12) !important;
 }
 .settings-drawer .el-input__wrapper,
 .settings-drawer .el-textarea__inner {

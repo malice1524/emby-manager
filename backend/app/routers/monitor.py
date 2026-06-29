@@ -76,68 +76,79 @@ async def monitor_add(req: AddSeriesRequest):
         if s["tmdb_id"] == req.tmdb_id:
             raise HTTPException(status_code=400, detail="该剧集已在监控列表中")
 
-    # 获取 TMDB 详情
-    detail = await tmdb_client.get_tv_detail(req.tmdb_id)
-    if "error" in detail:
-        raise HTTPException(status_code=400, detail=detail["error"])
-
-    current_status = detail.get("status", "Unknown")
-    last_ep = detail.get("last_episode_to_air")
-
+    # 先直接保存到 JSON，不用等 TMDB 查详情
+    import datetime
     new_entry = {
         "tmdb_id": req.tmdb_id,
         "title": req.title,
         "poster_url": req.poster_url,
-        "added_at": "",
-        "last_status": current_status,
-        "last_episode_air_date": last_ep.get("air_date", "") if last_ep else "",
-        "last_episode_number": last_ep.get("episode_number", 0) if last_ep else 0,
+        "added_at": datetime.datetime.now().isoformat(),
+        "last_status": "Unknown",
+        "last_episode_air_date": "",
+        "last_episode_number": 0,
         "notified_ended": False
     }
     series_list.append(new_entry)
     series_monitor._save_series(series_list)
 
-    # 获取模板
-    cfg = load_tg_config()
-    update_template = cfg.get("update_template", "")
-    end_template = cfg.get("end_template", "")
+    # 异步获取 TMDB 详情并发通知（不阻塞响应）
+    import asyncio
 
-    # 首次添加：根据状态发通知
-    notification_sent = False
-    if current_status == "Ended":
-        # 已完结 → 发完结通知
-        result = await tg_notifier.send_end_notification(
-            series_name=req.title,
-            end_date=detail.get("last_air_date", "未知"),
-            total_episodes=detail.get("number_of_episodes", 0),
-            series_type=detail.get("type", "未知"),
-            rating=detail.get("vote_average", 0),
-            overview=detail.get("overview", ""),
-            poster_url=req.poster_url,
-            custom_template=end_template if end_template else None
-        )
-        if result.get("success"):
-            new_entry["notified_ended"] = True
-            series_monitor._save_series(series_list)
-            notification_sent = True
-    elif current_status == "Returning Series" and last_ep:
-        # 连载中 → 发更新提醒
-        episode_info = f"S{last_ep['season_number']:02d}E{last_ep['episode_number']:02d}" if last_ep.get("season_number") else f"E{last_ep['episode_number']:02d}"
-        progress = f"{last_ep['episode_number']}/{detail.get('number_of_episodes', 0)}" if detail.get("number_of_episodes") else str(last_ep['episode_number'])
+    async def _fetch_and_notify():
+        detail = await tmdb_client.get_tv_detail(req.tmdb_id)
+        if "error" in detail:
+            return
 
-        result = await tg_notifier.send_update_notification(
-            series_name=req.title,
-            episode_info=episode_info,
-            air_date=last_ep.get("air_date", ""),
-            progress=progress,
-            series_type=detail.get("type", "未知"),
-            rating=detail.get("vote_average", 0),
-            poster_url=req.poster_url,
-            custom_template=update_template if update_template else None
-        )
-        notification_sent = result.get("success", False)
+        current_status = detail.get("status", "Unknown")
+        last_ep = detail.get("last_episode_to_air")
 
-    return {"success": True, "notification_sent": notification_sent}
+        # 更新 JSON 中的状态
+        s_list = series_monitor._load_series()
+        for s in s_list:
+            if s["tmdb_id"] == req.tmdb_id:
+                s["last_status"] = current_status
+                s["last_episode_air_date"] = last_ep.get("air_date", "") if last_ep else ""
+                s["last_episode_number"] = last_ep.get("episode_number", 0) if last_ep else 0
+                break
+        series_monitor._save_series(s_list)
+
+        # 发通知
+        cfg = load_tg_config()
+        if current_status == "Ended":
+            result = await tg_notifier.send_end_notification(
+                series_name=req.title,
+                end_date=detail.get("last_air_date", "未知"),
+                total_episodes=detail.get("number_of_episodes", 0),
+                series_type=detail.get("type", "未知"),
+                rating=detail.get("vote_average", 0),
+                overview=detail.get("overview", ""),
+                poster_url=req.poster_url,
+                custom_template=cfg.get("end_template", "")
+            )
+            if result.get("success"):
+                s_list = series_monitor._load_series()
+                for s in s_list:
+                    if s["tmdb_id"] == req.tmdb_id:
+                        s["notified_ended"] = True
+                        break
+                series_monitor._save_series(s_list)
+        elif current_status == "Returning Series" and last_ep:
+            episode_info = f"S{last_ep['season_number']:02d}E{last_ep['episode_number']:02d}" if last_ep.get("season_number") else f"E{last_ep['episode_number']:02d}"
+            progress = f"{last_ep['episode_number']}/{detail.get('number_of_episodes', 0)}" if detail.get("number_of_episodes") else str(last_ep['episode_number'])
+            await tg_notifier.send_update_notification(
+                series_name=req.title,
+                episode_info=episode_info,
+                air_date=last_ep.get("air_date", ""),
+                progress=progress,
+                series_type=detail.get("type", "未知"),
+                rating=detail.get("vote_average", 0),
+                poster_url=req.poster_url,
+                custom_template=cfg.get("update_template", "")
+            )
+
+    asyncio.create_task(_fetch_and_notify())
+
+    return {"success": True, "notification_sent": False}
 
 @router.delete("/monitor/{tmdb_id}")
 async def monitor_delete(tmdb_id: int):
