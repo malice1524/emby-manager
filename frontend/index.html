@@ -591,27 +591,32 @@ body {
 /* 设置弹窗移动端适配 - 不被顶部遮挡 */
 @media (max-width: 768px) {
   .settings-dialog .el-dialog {
-    margin-top: max(20px, env(safe-area-inset-top, 20px)) !important;
-    max-height: calc(100dvh - max(40px, env(safe-area-inset-top, 20px) + env(safe-area-inset-bottom, 20px)));
+    margin-top: max(40px, env(safe-area-inset-top, 40px)) !important;
+    max-height: calc(100dvh - max(60px, env(safe-area-inset-top, 40px) + env(safe-area-inset-bottom, 20px)));
     display: flex;
     flex-direction: column;
     width: 94% !important;
     left: 3% !important;
     transform: none !important;
+    z-index: 2100 !important;
   }
   .settings-dialog .el-dialog__body {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
+  .settings-dialog + .el-overlay {
+    z-index: 2099 !important;
+  }
 }
 
-/* 桌面端设置弹窗防止水平滑动 */
+/* 桌面端设置弹窗防止水平滑动 — 覆盖全局el-dialog规则 */
 @media (min-width: 769px) {
   .settings-dialog .el-dialog {
     left: 50% !important;
     transform: translateX(-50%) !important;
     margin: 5vh auto !important;
+    margin-left: auto !important;
     max-width: 600px;
     width: 600px !important;
   }
