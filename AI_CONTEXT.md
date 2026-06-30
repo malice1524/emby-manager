@@ -125,6 +125,8 @@ def get_http_client():
 - CSS: 自定义变量系统，暗色毛玻璃主题，8pt 网格
 
 ### 推送前必须询问用户确认
+### 版本号规则
+每次推送代码时，版本号加 0.01（如 1.10 → 1.11）。到 0.09 后进位到 0.10（如 1.09 → 1.10）。版本号写在 VERSION 和 static/VERSION，两个文件同步。
 
 ## 后续开发注意事项
 1. 新路由在 `backend/app/main.py` 注册 `app.include_router()`
