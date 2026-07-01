@@ -486,6 +486,9 @@ body {
   background: var(--glass); border: 1px solid var(--glass-border);
   transition: all var(--transition);
 }
+.monitor-table:last-child .mt-row-glass {
+  margin-bottom: 0;
+}
 .mt-row-glass:hover { border-color: var(--glass-border-hover); background: var(--glass-hover); }
 .mt-poster {
   width: 72px; height: 108px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
@@ -1440,9 +1443,10 @@ const Libraries = {
 const SettingsDialog = {
   template: `
     <el-drawer v-model="visible" title="⚙️ 通知设置" :size="isMobile?'100%':'600px'" 
-               :with-header="true" :modal="true" destroy-on-close
+               :with-header="true" :modal="true"
                class="settings-drawer"
-               :z-index="3000">
+               :z-index="3000"
+               style="background:#0d0d1a">
       <div style="display:flex;flex-direction:column;gap:14px;padding:0 4px;overflow-y:auto;height:100%;background:#0d0d1a">
 
         <div>
@@ -1738,7 +1742,7 @@ const Monitor = {
       </div>
 
       <!-- 监控列表 -->
-      <div class="glass-card" style="padding:16px">
+      <div class="glass-card" style="padding:16px;max-height:460px;overflow-y:auto;overflow-x:hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div style="display:flex;align-items:center;gap:8px">
             <div style="font-size:15px;font-weight:600">
@@ -1974,9 +1978,12 @@ const Monitor = {
     },
     daysUntil(dateStr){
       if(!dateStr) return ''
+      // 按日期字符串直接计算，避免时区干扰
       const now = new Date()
-      const target = new Date(dateStr)
-      const diff = Math.ceil((target - now) / (1000*60*60*24))
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const parts = dateStr.split('-')
+      const target = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]))
+      const diff = Math.round((target - today) / (1000*60*60*24))
       if(diff < 0) return '已播出'
       if(diff === 0) return '今天'
       if(diff === 1) return '明天'
