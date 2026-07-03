@@ -1087,7 +1087,7 @@ const NfoGenerator = {
       <div class="hero" style="padding:28px 24px;margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">
           <div class="hero-avatar" style="background:linear-gradient(135deg,var(--pink),var(--orange))">🎭</div>
-          <div><h2 style="font-size:18px;font-weight:600">NFO 生成</h2><div style="font-size:12px;color:var(--text-dim)">为 Emby 生成独立演员 NFO 文件</div></div>
+          <div><h2 style="font-size:18px;font-weight:600">NFO 生成</h2><div style="font-size:12px;color:var(--text-dim)">生成完整视频 NFO，放入视频目录即可显示演员</div></div>
         </div>
       </div>
 
@@ -1097,7 +1097,7 @@ const NfoGenerator = {
           <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)">① 文件名称</div>
           <el-input v-model="form.filename" placeholder="例: Robert Downey Jr." clearable
                     :style="'--el-input-bg-color:rgba(255,255,255,0.04);--el-input-border-color:var(--glass-border);--el-input-text-color:var(--text);--el-input-placeholder-color:var(--text-muted);--el-input-focus-border-color:var(--accent)'" />
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">生成的 .nfo 和封面图将使用此名称</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">用于 NFO 和封面图的文件名</div>
         </div>
 
         <!-- 步骤 2: TMDB ID -->

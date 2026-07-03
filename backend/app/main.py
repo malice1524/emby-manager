@@ -28,6 +28,9 @@ app.include_router(monitor.router)
 app.include_router(nfo.router)
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
+if not os.path.exists(STATIC_DIR):
+    # 本地开发：backend/app/main.py → 项目根/static/
+    STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "static")
 FRONTEND_PATH = os.path.join(STATIC_DIR, "index.html")
 
 app.mount("/lib", StaticFiles(directory=os.path.join(STATIC_DIR, "lib")), name="lib")
