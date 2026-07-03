@@ -9,9 +9,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 后端代码
 COPY backend/app/ ./app/
 
-# 前端静态文件（兼容 local dev 和 Docker 两种路径）
-COPY frontend/index.html ./static/
-COPY frontend/lib/ ./static/lib/
+# 前端静态文件
+COPY static/index.html ./static/
+COPY static/lib/ ./static/lib/
+COPY static/favicon.png ./static/ 2>/dev/null || true
 
 EXPOSE 8000
 

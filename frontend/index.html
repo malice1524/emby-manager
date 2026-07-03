@@ -5,12 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Emby Manager</title>
 <link rel="icon" href="lib/favicon.png">
-<link rel="apple-touch-icon" href="lib/favicon-512.png">
-<link rel="icon" type="image/png" sizes="192x192" href="lib/favicon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="lib/favicon-512.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="EmbyManager">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="lib/element-plus.css"/>
 <script src="lib/vue.js"></script>
 <script src="lib/vue-router.js"></script>
@@ -23,43 +17,36 @@
 
 :root {
   --bg: #0a0a14;
-  --bg-alt: #0d0d1a;
   --surface: rgba(255,255,255,0.03);
-  --glass: rgba(255,255,255,0.05);
-  --glass-hover: rgba(255,255,255,0.09);
-  --glass-border: rgba(255,255,255,0.07);
-  --glass-border-hover: rgba(255,255,255,0.14);
-  --text: #eaeaf2;
-  --text-dim: rgba(255,255,255,0.48);
-  --text-muted: rgba(255,255,255,0.30);
-  --accent: #7c6cf0;
-  --accent-glow: rgba(124,108,240,0.35);
-  --accent2: #b8aeff;
-  --green: #00d2d3;
-  --green-glow: rgba(0,210,211,0.35);
-  --pink: #ff7eb3;
-  --pink-glow: rgba(255,126,179,0.35);
-  --orange: #feca57;
-  --orange-glow: rgba(254,202,87,0.35);
-  --red: #ff6b6b;
+  --glass: rgba(255,255,255,0.06);
+  --glass-hover: rgba(255,255,255,0.10);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-border-hover: rgba(255,255,255,0.15);
+  --text: #e8e8f0;
+  --text-dim: rgba(255,255,255,0.5);
+  --text-muted: rgba(255,255,255,0.35);
+  --accent: #6c5ce7;
+  --accent-glow: rgba(108,92,231,0.4);
+  --accent2: #a29bfe;
+  --green: #00cec9;
+  --green-glow: rgba(0,206,201,0.4);
+  --pink: #fd79a8;
+  --pink-glow: rgba(253,121,168,0.4);
+  --orange: #fdcb6e;
+  --orange-glow: rgba(253,203,110,0.4);
+  --red: #ff7675;
   --radius: 16px;
   --radius-sm: 10px;
-  --radius-xs: 8px;
-  --transition: 0.3s cubic-bezier(0.22,1,0.36,1);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.25);
-  --shadow-lg: 0 8px 40px rgba(0,0,0,0.35);
+  --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100dvh;
   min-height: 100dvh;
   overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Background ambient */
@@ -77,50 +64,42 @@ body {
 /* ---- Sidebar ---- */
 .sidebar {
   width: 240px; min-height: 100dvh;
-  background: rgba(10,10,20,0.88);
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  background: rgba(10,10,20,0.85);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
   border-right: 1px solid var(--glass-border);
-  padding: 24px 0;
+  padding: 28px 0;
   position: fixed; top: 0; left: 0; bottom: 0; z-index: 90;
   transition: transform var(--transition);
 }
 .sidebar-logo {
-  padding: 0 20px; margin-bottom: 28px;
-  display: flex; align-items: center; gap: 12px;
+  padding: 0 24px; margin-bottom: 36px;
+  display: flex; align-items: center; gap: 10px;
 }
 .sidebar-logo .icon {
-  width: 38px; height: 38px; border-radius: 12px;
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
   display: flex; align-items: center; justify-content: center;
   font-size: 18px;
-  box-shadow: 0 2px 12px var(--accent-glow);
 }
 .sidebar-logo h2 {
-  font-size: 18px; font-weight: 700; color: var(--text);
-  letter-spacing: -0.5px;
+  font-size: 17px; font-weight: 600; color: var(--text);
+  letter-spacing: -0.3px;
 }
-.sidebar nav { padding: 0 8px; }
 .sidebar nav a {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 14px; margin-bottom: 2px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 24px; margin: 2px 12px;
   color: var(--text-dim); text-decoration: none;
-  font-size: 14px; font-weight: 480;
+  font-size: 14px; font-weight: 450;
   border-radius: 10px; transition: all var(--transition);
-  position: relative;
 }
 .sidebar nav a:hover { color: var(--text); background: var(--glass); }
 .sidebar nav a.router-link-active {
-  color: #fff;
-  background: linear-gradient(135deg, rgba(124,108,240,0.18), rgba(124,108,240,0.08));
-  box-shadow: inset 0 0 0 1px rgba(124,108,240,0.2);
+  color: #fff; background: rgba(108,92,231,0.15);
+  box-shadow: inset 0 0 0 1px rgba(108,92,231,0.25);
 }
-.sidebar nav a .nav-icon { font-size: 17px; opacity: 0.65; width: 22px; text-align: center; transition: opacity var(--transition); }
-.sidebar nav a.router-link-active .nav-icon { opacity: 1; }
-.sidebar nav a.router-link-active::before {
-  content: ''; position: absolute; left: -8px; top: 50%; transform: translateY(-50%);
-  width: 3px; height: 20px; border-radius: 0 4px 4px 0;
-  background: linear-gradient(180deg, var(--accent), var(--accent2));
-}
+.sidebar nav a .nav-icon { font-size: 18px; opacity: 0.7; width: 20px; text-align: center }
+.sidebar nav a.router-link-active .nav-icon { opacity: 1 }
 
 .sidebar-version {
   position: absolute; bottom: 16px; left: 0; right: 0; text-align: center;
@@ -160,7 +139,7 @@ body {
 /* ---- Glass Card ---- */
 .glass-card {
   background: var(--glass);
-  backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
@@ -231,23 +210,22 @@ body {
 /* ---- Poster Grid (Recently Added) ---- */
 .poster-grid {
   display: grid;
+  grid-template-columns: repeat(5, 1fr);
   gap: 12px; margin-bottom: 28px;
-  grid-template-columns: repeat(3, 1fr);
 }
-@media (min-width: 481px) { .poster-grid { grid-template-columns: repeat(4, 1fr); gap: 10px; } }
-@media (min-width: 769px) { .poster-grid { grid-template-columns: repeat(5, 1fr); gap: 12px; } }
+@media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
 
 .poster-card {
-  position: relative; border-radius: 12px; overflow: hidden;
+  position: relative; border-radius: 10px; overflow: hidden;
   aspect-ratio: 2/3; cursor: pointer;
   background: var(--glass); border: 1px solid var(--glass-border);
-  transition: all 0.35s cubic-bezier(0.22,1,0.36,1);
+  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
   transform-origin: center center;
 }
 .poster-card:hover {
-  transform: scale(1.05); z-index: 10;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.12);
+  transform: scale(1.06); z-index: 10;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px var(--glass-border-hover);
+  border-color: rgba(255,255,255,0.2);
 }
 .poster-card img {
   width: 100%; height: 100%; object-fit: cover;
@@ -294,7 +272,7 @@ body {
 .activity-item {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 12px; border-radius: 8px;
-  transition: background var(--transition);
+  transition: background 0.15s ease;
   font-size: 13px;
 }
 .activity-item:hover { background: var(--glass); }
@@ -331,7 +309,7 @@ body {
 .np-user { font-size:13px; font-weight:600; color:var(--text); }
 .np-title { font-size:11px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:2px 0 6px; }
 .np-progress { display:flex; align-items:center; gap:6px; }
-.np-bar-bg { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+.np-bar-bg { flex:1; height:3px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden; }
 .np-bar-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width 0.5s ease; }
 .np-pct { font-size:10px; color:var(--text-muted); min-width:32px; text-align:right; }
 
@@ -362,18 +340,15 @@ body {
   display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
 }
 .filter-chip {
-  padding: 6px 16px; border-radius: 20px; font-size: 12px; cursor: pointer;
+  padding: 5px 14px; border-radius: 20px; font-size: 12px; cursor: pointer;
   background: var(--glass); border: 1px solid var(--glass-border);
-  color: var(--text-dim); transition: all var(--transition);
+  color: var(--text-dim); transition: all 0.2s ease;
   user-select: none; -webkit-user-select: none; white-space: nowrap;
-  font-weight: 480;
 }
-.filter-chip:hover { border-color: rgba(255,255,255,0.12); color: var(--text); background: rgba(255,255,255,0.05); }
+.filter-chip:hover { border-color: var(--glass-border-hover); color: var(--text); }
 .filter-chip.active {
-  background: linear-gradient(135deg, rgba(124,108,240,0.2), rgba(124,108,240,0.1));
-  border-color: rgba(124,108,240,0.35);
+  background: rgba(108,92,231,0.2); border-color: var(--accent);
   color: #fff;
-  box-shadow: 0 0 20px rgba(124,108,240,0.12);
 }
 
 /* Two column for sections */
@@ -438,254 +413,6 @@ body {
   background: rgba(255,255,255,0.02);
 }
 
-/* ---- Monitor Page ---- */
-.search-grid-desktop {
-  display: grid; grid-template-columns: repeat(2,1fr); gap: 10px;
-}
-.search-card {
-  display: flex; gap: 12px; align-items: flex-start;
-  padding: 12px; border-radius: 12px;
-  background: var(--glass); border: 1px solid var(--glass-border);
-  cursor: pointer; transition: all var(--transition);
-}
-.search-card:hover { border-color: var(--glass-border-hover); background: var(--glass-hover); }
-.search-poster {
-  width: 60px; height: 90px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
-}
-.search-poster-placeholder {
-  width: 60px; height: 90px; border-radius: 6px; flex-shrink: 0;
-  background: var(--glass); display: flex; align-items: center; justify-content: center;
-  font-size: 24px; color: var(--text-muted);
-}
-.search-info { flex: 1; min-width: 0; }
-.search-title { font-size: 14px; font-weight: 600; }
-.search-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-.search-rating { font-size: 11px; color: var(--orange); margin-top: 2px; }
-.search-overview { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
-.search-add-btn { flex-shrink: 0; align-self: center; }
-
-.search-item-mobile {
-  display: flex; gap: 10px; align-items: center;
-  padding: 10px; border-radius: 10px; border-bottom: 1px solid var(--glass-border);
-  cursor: pointer; transition: background var(--transition);
-}
-.search-item-mobile:last-child { border-bottom: none; }
-.search-item-mobile:hover { background: var(--glass); }
-.sim-poster {
-  width: 44px; height: 66px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
-}
-.sim-poster img { width:100%; height:100%; object-fit: cover; }
-.sim-info { flex: 1; min-width: 0; }
-.sim-title { font-size: 14px; font-weight: 500; }
-.sim-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-
-.monitor-table { margin-bottom: 4px; }
-.mt-row-glass {
-  display: flex; gap: 12px; align-items: center;
-  padding: 12px; border-radius: 10px;
-  background: var(--glass); border: 1px solid var(--glass-border);
-  transition: all var(--transition);
-}
-.monitor-table:last-child .mt-row-glass {
-  margin-bottom: 0;
-}
-.mt-row-glass:hover { border-color: var(--glass-border-hover); background: var(--glass-hover); }
-.mt-poster {
-  width: 72px; height: 108px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
-}
-.mt-poster img { width:100%; height:100%; object-fit:cover; }
-.mt-poster-fallback {
-  width:100%; height:100%; display:flex; align-items:center; justify-content:center;
-  background: var(--glass); font-size:20px; color:var(--text-muted);
-}
-.mt-info { flex: 1; min-width: 0; }
-.mt-title { font-size: 14px; font-weight: 600; }
-.mt-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-.mt-status { flex-shrink: 0; min-width: 80px; }
-.mt-date { flex-shrink: 0; min-width: 90px; text-align: center; }
-.mt-notified { flex-shrink: 0; min-width: 60px; text-align: center; }
-
-.status-badge {
-  font-size: 11px; padding: 2px 10px; border-radius: 20px; font-weight: 500;
-  white-space: nowrap;
-}
-.status-badge.ended { background: rgba(255,71,87,0.15); color: var(--red); }
-.status-badge.continuing { background: rgba(0,210,211,0.15); color: var(--green); }
-.status-badge.canceled { background: rgba(255,255,255,0.08); color: var(--text-muted); }
-
-.monitor-item-mobile {
-  display: flex; gap: 10px; padding: 10px;
-  border-bottom: 1px solid var(--glass-border);
-}
-.monitor-item-mobile:last-child { border-bottom: none; }
-.mim-poster {
-  width: 64px; height: 96px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
-}
-.mim-poster img { width:100%; height:100%; object-fit:cover; }
-.mim-info { flex: 1; min-width: 0; }
-.mim-title { font-size: 14px; font-weight: 600; }
-
-/* 修复运行状态和日志卡片白底问题 */
-.el-collapse {
-  --el-collapse-header-bg-color: transparent !important;
-  --el-collapse-content-bg-color: transparent !important;
-  border-top: none !important;
-  border-bottom: none !important;
-}
-.el-collapse-item__header {
-  background: var(--glass) !important;
-  color: var(--text) !important;
-  border-bottom: 1px solid var(--glass-border) !important;
-  padding: 0 16px !important;
-  border-radius: 12px 12px 0 0 !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  height: 44px !important;
-}
-.el-collapse-item__wrap {
-  background: var(--glass) !important;
-  border-radius: 0 0 12px 12px !important;
-  border: 1px solid var(--glass-border);
-  border-top: none;
-}
-.el-collapse-item__content {
-  color: var(--text) !important;
-  padding: 0 !important;
-}
-
-/* 设置抽屉暗色适配 */
-.el-drawer.rtl.open {
-  background: #0d0d1a !important;
-}
-@media (max-width: 768px) {
-  .el-drawer.rtl.open {
-    margin-top: 44px !important;
-    height: calc(100% - 44px) !important;
-  }
-}
-.el-drawer__container {
-  background: #0d0d1a !important;
-}
-.el-drawer__header,
-div[class*="el-drawer__header"] {
-  background: #0d0d1a !important;
-  color: var(--text) !important;
-  border-bottom: 1px solid var(--glass-border) !important;
-  padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
-  padding-bottom: 16px !important;
-  margin-bottom: 0 !important;
-}
-.el-drawer__footer,
-div[class*="el-drawer__footer"] {
-  background: #0d0d1a !important;
-}
-.el-drawer .el-input__wrapper {
-  background: rgba(255,255,255,0.08) !important;
-  box-shadow: none !important;
-  border: 1px solid var(--glass-border) !important;
-}
-.el-drawer .el-input__inner {
-  color: var(--text) !important;
-  background: transparent !important;
-}
-.el-drawer .el-textarea__inner {
-  background: rgba(255,255,255,0.05) !important;
-  border: 1px solid var(--glass-border) !important;
-  box-shadow: none !important;
-  color: var(--text) !important;
-}
-.el-drawer .el-input-number__decrease,
-.el-drawer .el-input-number__increase {
-  background: rgba(255,255,255,0.08) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--glass-border) !important;
-}
-.el-drawer .el-input-number__decrease:hover,
-.el-drawer .el-input-number__increase:hover {
-  background: rgba(255,255,255,0.12) !important;
-}
-.el-drawer .el-button--default {
-  background: rgba(255,255,255,0.08) !important;
-  border: 1px solid var(--glass-border) !important;
-  color: var(--text) !important;
-}
-.el-drawer .el-button--default:hover {
-  background: rgba(255,255,255,0.12) !important;
-}
-.el-drawer__footer .el-button {
-  background: rgba(255,255,255,0.08) !important;
-  border: 1px solid var(--glass-border) !important;
-  color: var(--text) !important;
-}
-.el-drawer__footer .el-button:hover {
-  background: rgba(255,255,255,0.12) !important;
-}
-.settings-drawer .el-input__wrapper,
-.settings-drawer .el-textarea__inner {
-  background: rgba(255,255,255,0.05) !important;
-  border: 1px solid var(--glass-border) !important;
-  box-shadow: none !important;
-  color: var(--text) !important;
-}
-.settings-drawer .el-input__wrapper:hover,
-.settings-drawer .el-textarea__inner:hover {
-  border-color: var(--glass-border-hover) !important;
-}
-.settings-drawer .el-input__inner {
-  color: var(--text) !important;
-  background: transparent !important;
-}
-.settings-drawer .el-divider {
-  border-top-color: var(--glass-border) !important;
-}
-.settings-drawer .el-tag {
-  background: rgba(124,108,240,0.15);
-  border-color: transparent;
-  color: var(--accent2);
-}
-.settings-drawer .el-tag:hover {
-  background: rgba(124,108,240,0.25);
-}
-
-/* 按钮暗色适配 */
-.settings-drawer .el-button--default {
-  background: var(--glass);
-  border-color: var(--glass-border);
-  color: var(--text);
-}
-.settings-drawer .el-button--default:hover {
-  background: var(--glass-hover);
-  border-color: var(--glass-border-hover);
-}
-
-/* 完结监控页面的圆按钮暗色适配 */
-.monitor-header-btn,
-.el-button.circle-btn,
-.el-button.is-circle {
-  background: var(--glass) !important;
-  border-color: var(--glass-border) !important;
-  color: var(--text) !important;
-}
-.el-button.is-circle:hover {
-  background: var(--glass-hover) !important;
-  border-color: var(--glass-border-hover) !important;
-}
-
-/* Mobile safe area */
-@media (max-width: 768px) {
-  .main {
-    padding-top: max(16px, env(safe-area-inset-top, 0px));
-    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
-    padding-left: max(14px, env(safe-area-inset-left, 0px));
-    padding-right: max(14px, env(safe-area-inset-right, 0px));
-  }
-}
-
-/* El Override for dialogs on mobile */
-@media (max-width: 768px) {
-  .el-dialog { margin-top: env(safe-area-inset-top, 10px) !important; }
-}
-
 /* ---- Element Plus Overrides ---- */
 .el-button--primary {
   --el-button-bg-color: var(--accent);
@@ -694,17 +421,17 @@ div[class*="el-drawer__footer"] {
   --el-button-hover-border-color: #7c6ff7;
 }
 .el-dialog {
-  --el-dialog-bg-color: rgba(15,15,28,0.97);
+  --el-dialog-bg-color: rgba(20,20,35,0.97);
   backdrop-filter: blur(30px) saturate(180%);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.12);
   border-radius: var(--radius);
-  box-shadow: 0 8px 48px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
 }
 .el-overlay { background: rgba(0,0,0,0.6) !important; }
 @media (min-width: 769px) {
-  .el-overlay { margin-left: 240px; }
-  .el-dialog { left: 50% !important; transform: translateX(-50%) !important; margin-left: 0 !important; max-width: calc(100vw - 280px) !important; margin-left: 120px !important; }
+  .el-overlay { margin-left: 240px; width: calc(100% - 240px); }
+  .el-dialog { transform: translateX(calc(-50% + 120px)) !important; }
 }
 .el-dialog__header { border-bottom: 1px solid var(--glass-border); }
 .el-dialog__title { color: var(--text); font-weight: 600; }
@@ -717,29 +444,6 @@ div[class*="el-drawer__footer"] {
 .el-tag { border: none !important; font-weight: 500; }
 .el-pagination button { background: var(--glass) !important; border-color: var(--glass-border) !important; color: var(--text-dim) !important; }
 .el-pagination button:disabled { opacity: 0.4; }
-
-/* Library dialog scroll body */
-.lib-scroll-body {
-  max-height: calc(100dvh - 200px);
-  min-height: 200px;
-  overflow-y: auto; overflow-x: hidden;
-  scrollbar-width: thin; scrollbar-color: var(--glass-border) transparent;
-  padding-right: 4px; padding-bottom: 12px;
-}
-@media (max-width: 768px) {
-  .lib-scroll-body { max-height: calc(100dvh - 200px); padding-bottom: 20px; }
-}
-.lib-scroll-body::-webkit-scrollbar { width: 4px; }
-.lib-scroll-body::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 2px; }
-
-/* Prevent body scroll when dialog open */
-body.el-popup-parent--hidden { overflow: hidden; }
-.el-dialog__body { overflow: hidden !important; }
-.el-dialog { max-height: 90dvh; display: flex; flex-direction: column; }
-.el-dialog .el-dialog__body { flex: 1; overflow: hidden !important; padding: 0 20px !important; }
-@media (max-width: 768px) {
-  .el-dialog .el-dialog__body { padding-bottom: calc(20px + env(safe-area-inset-bottom, 10px)) !important; }
-}
 
 /* Empty state */
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
@@ -811,23 +515,23 @@ body.el-popup-parent--hidden { overflow: hidden; }
   <!-- Mobile Top Bar -->
   <div class="topbar">
     <span class="menu-btn" onclick="toggleSidebar()">☰</span>
-    <h2>EmbyManager</h2>
+    <h2>Emby</h2>
   </div>
   <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
   <!-- Sidebar (outside layout to avoid z-index issues) -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="icon"><img src="lib/favicon-512.png" style="width:38px;height:38px;border-radius:12px"></div>
-      <h2>EmbyManager</h2>
+      <div class="icon">🎬</div>
+      <h2>Emby</h2>
     </div>
     <nav>
       <a href="#/" onclick="navClose()"><span class="nav-icon">📊</span> 仪表盘</a>
-      <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
+      <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 生成</a>
     </nav>
-    <div class="sidebar-version">v1.10</div>
+    <div class="sidebar-version">v1.06</div>
   </aside>
 
   <!-- Main -->
@@ -844,7 +548,9 @@ function toggleSidebar() {
   var o = document.querySelector('.sidebar-overlay');
   s.classList.toggle('open'); o.classList.toggle('show');
 }
-function navClose() { setTimeout(toggleSidebar, 120); }
+function navClose() { 
+  if (window.innerWidth < 768) { setTimeout(toggleSidebar, 120); }
+}
 
 const API = '/api'
 
@@ -1089,9 +795,9 @@ const Dashboard = {
         var allLibs = libs.libraries || []
         var excludeNames = {'欧美自拍':1,'亚洲自拍':1,'日本有码':1}
         this._excludeIds = allLibs.filter(function(l){return excludeNames[l.name]}).map(function(l){return l.id}).join(',')
-        // Set default to 欧美电影
+        // Set default to 动画电影
         var defaultLibId = ''
-        for(var i=0;i<allLibs.length;i++){if(allLibs[i].name==='欧美电影'){defaultLibId=allLibs[i].id;break}}
+        for(var i=0;i<allLibs.length;i++){if(allLibs[i].name==='动画电影'){defaultLibId=allLibs[i].id;break}}
         // Fetch recent with default library
         try {
           var url = '/dashboard/recent?limit=18'
@@ -1100,7 +806,7 @@ const Dashboard = {
           const r2 = await fetchJSON(url)
           this.recent = r2.items || []
           this.activeLibrary = defaultLibId
-          this.libraryName = defaultLibId ? '欧美电影' : ''
+          this.libraryName = defaultLibId ? '动画电影' : ''
         } catch(e) {}
       } catch(e) { console.error(e) }
       this.loaded = true
@@ -1135,6 +841,16 @@ const Dashboard = {
         this.showDetail = false
         setTimeout(() => this.refreshAll(), 100)
       } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showDetailDel = false }
+    },
+    async deleteLibItem(){
+      if(!this.libDetailItem || !this.libDetailItem.id) return
+      try {
+        const res = await fetchJSON('/dashboard/item/'+this.libDetailItem.id, {method:'DELETE'})
+        ElementPlus.ElMessage.success('已删除')
+        this.showLibDel = false
+        this.showDetail = false
+        setTimeout(() => this.loadItems(), 100)
+      } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showLibDel = false }
     },
     async openItem(item){
       this.showDetail = true; this.expanded = false
@@ -1219,60 +935,41 @@ const Libraries = {
   template: `
     <div>
       <div class="section-title">📂 媒体库</div>
-      <el-input v-model="libSearch" placeholder="搜索所有媒体..." size="large" clearable style="margin-bottom:14px" @input="onGlobalSearch" @clear="clearGlobalSearch" />
-      <div class="lib-grid" v-if="!searchResults">
+      <div class="lib-grid">
         <div class="lib-card fade-in" :class="{tv: lib.type==='tvshows'}" v-for="(lib,i) in libraries" :key="lib.id" :style="'animation-delay:'+(i*0.03)+'s'" @click.stop="openLib(lib)">
           <span class="type-badge">{{ lib.type==='tvshows' ? '电视剧' : '电影' }}</span>
           <h3>{{lib.name}}</h3>
-          <p>
-            <template v-if="lib.type==='tvshows'">{{lib.counts.series}} 部剧集</template>
-            <template v-else-if="lib.type==='movies'">{{lib.counts.movies}} 部电影</template>
-            <template v-else>{{lib.counts.total}} 个媒体</template>
-          </p>
+          <p>{{lib.locations.length}} 个路径</p>
+          <p class="path">{{lib.locations[0]||''}}</p>
         </div>
       </div>
-      <div class="poster-grid" v-if="searchResults">
-        <div class="poster-card fade-in" v-for="(item,i) in searchResults" :key="item.id"
-             :style="'animation-delay:'+(i*0.03)+'s'" @click="openLibItem(item)">
-          <img :src="item.image_url" loading="lazy" alt="" @error="$event.target.style.display='none'">
-          <div class="poster-type" :class="item.type==='Series'?'series':'movie'">
-            {{item.type==='Series'?'剧集':'电影'}}
-          </div>
-          <div class="poster-overlay">
-            <div class="tt">{{item.name}}</div>
-            <div class="yr" v-if="item.year">{{item.year}}</div>
-          </div>
-        </div>
-        <div v-if="!searchResults.length" class="empty-state" style="padding:40px">未找到相关内容</div>
-      </div>
 
-      <!-- Library Items Dialog - Infinite Scroll Gallery -->
-      <el-dialog v-model="showItems" :title="curLib?.name" :width="isMobile?'96%':'85%'" :top="isMobile?'56px':'12px'"
-                 :lock-scroll="true" :draggable="false" @opened="onDialogOpened" @closed="onDialogClosed">
-        <el-input v-model="search" placeholder="搜索媒体..." size="large" style="margin:6px 0 14px" @input="onSearch" clearable/>
+      <!-- Library Items Dialog - Poster Gallery -->
+      <el-dialog v-model="showItems" :title="curLib?.name" :width="isMobile?'96%':'85%'" top="12px" :fullscreen="isMobile"
+                 :style="isMobile ? 'margin-top:50px' : ''">
+        <el-input v-model="search" placeholder="搜索媒体..." size="large" style="margin-bottom:14px" @input="onSearch" clearable/>
 
-        <div class="lib-scroll-body" ref="scrollBody" @scroll="onScroll">
-          <div v-if="itemsLoading && !page" style="text-align:center;padding:60px 0;color:var(--text-muted)">加载中...</div>
+        <div v-if="itemsLoading" style="text-align:center;padding:60px 0;color:var(--text-muted)">加载中...</div>
 
-          <div class="poster-grid" v-else>
-            <div class="poster-card fade-in" v-for="(item,i) in items" :key="item.id"
-                 :style="'animation-delay:'+(i*0.02)+'s'" @click="openLibItem(item)">
-              <img v-if="item.has_image" :src="'/api/dashboard/images/'+item.id+'?w=300'" loading="lazy" alt=""
-                   @error="$event.target.style.display='none'">
-              <div v-else class="poster-placeholder">🎬</div>
-              <div class="poster-type" :class="item.type==='Series'?'series':'movie'">
-                {{item.type==='Series'?'剧集':item.type==='Movie'?'电影':'?'}}
-              </div>
-              <div class="poster-overlay">
-                <div class="tt">{{item.name}}</div>
-                <div class="yr" v-if="item.year">{{item.year}}</div>
-              </div>
+        <div class="poster-grid" v-else-if="items.length">
+          <div class="poster-card fade-in" v-for="(item,i) in items" :key="item.id"
+               :style="'animation-delay:'+(i*0.03)+'s'" @click="openLibItem(item)">
+            <img v-if="item.has_image" :src="'/api/dashboard/images/'+item.id+'?w=300'" loading="lazy" alt=""
+                 @error="$event.target.style.display='none'">
+            <div v-else class="poster-placeholder">🎬</div>
+            <div class="poster-type" :class="item.type==='Series'?'series':'movie'">
+              {{item.type==='Series'?'剧集':item.type==='Movie'?'电影':'?'}}
+            </div>
+            <div class="poster-overlay">
+              <div class="tt">{{item.name}}</div>
+              <div class="yr" v-if="item.year">{{item.year}}</div>
             </div>
           </div>
+        </div>
+        <div v-else class="empty-state">未找到内容</div>
 
-          <div v-if="loadingMore" style="text-align:center;padding:30px 0;color:var(--text-muted)">加载更多...</div>
-          <div v-else-if="items.length && items.length >= total" style="text-align:center;padding:20px 0;color:var(--text-muted);font-size:12px">— 已全部加载 —</div>
-          <div v-if="!itemsLoading && !items.length" class="empty-state" style="padding:60px">未找到内容</div>
+        <div style="margin-top:14px;text-align:center" v-if="total>30">
+          <el-pagination small background layout="prev,next" :total="total" :page-size="30" v-model:current-page="page" @current-change="loadItems"/>
         </div>
       </el-dialog>
 
@@ -1343,11 +1040,11 @@ const Libraries = {
   `,
   data(){
     return {
-      libraries:[], libSearch:'', showItems:false, curLib:null, searchResults: null,
+      libraries:[], showItems:false, curLib:null,
       items:[], itemsLoading:false, total:0, page:1, search:'',
       isMobile: window.innerWidth < 640,
       showDetail:false, libDetailItem:null, libExpanded:false,
-      _searchTimer:null, loadingMore:false
+      _searchTimer:null
     }
   },
   async mounted(){
@@ -1356,79 +1053,24 @@ const Libraries = {
   },
   methods: {
     openUrl(url){ window.open(url, '_blank') },
-    onGlobalSearch(){
-      if(this._gsTimer) clearTimeout(this._gsTimer)
-      var query = this.libSearch
-      if(!query || query.trim() === '') { this.searchResults = null; return }
-      this._gsTimer = setTimeout(() => {
-        var me = this
-        fetchJSON('/dashboard/recent?limit=50&search='+encodeURIComponent(query)).then(function(d){
-          me.searchResults = d.items || []
-        }).catch(function(){ me.searchResults = [] })
-      }, 300)
-    },
-    clearGlobalSearch(){ this.searchResults = null },
-    onDialogOpened(){
-      this.$nextTick(() => {
-        var body = this.$refs?.scrollBody
-        if(body) body.scrollTop = 0
-      })
-    },
-    onDialogClosed(){
-      this.items = []; this.page = 1; this.total = 0
-    },
-    onScroll(){
-      var body = this.$refs?.scrollBody
-      if(!body || this.loadingMore || this.itemsLoading) return
-      if(body.scrollTop + body.clientHeight >= body.scrollHeight - 300) {
-        if(this.items.length < this.total) {
-          this.page++
-          this.loadingMore = true
-          this.loadItems(true)
-        }
-      }
-    },
     async openLib(lib){
-      this.curLib=lib; this.page=1; this.search=''; this.items=[];
-      this.showItems=true;
-      this.itemsLoading=true;
-      await this.loadItems(false)
+      this.curLib=lib; this.page=1; this.search=''; this.showItems=true;
+      await this.loadItems()
     },
     onSearch(){
       if(this._searchTimer) clearTimeout(this._searchTimer);
-      this._searchTimer = setTimeout(() => {
-        this.page=1; this.items=[]; this.itemsLoading=true;
-        this.loadItems(false)
-      }, 400)
+      this._searchTimer = setTimeout(() => { this.page=1; this.loadItems() }, 400)
     },
-    async loadItems(append){
-      if(!this.curLib)return;
-      if(!append) this.itemsLoading=true;
+    async loadItems(){
+      if(!this.curLib)return; this.itemsLoading=true;
       const params = new URLSearchParams({page:this.page-1, limit:30});
       if(this.search) params.set('search', this.search);
       if(this.curLib.type) params.set('types', this.curLib.type);
       const data = await fetchJSON('/libraries/'+this.curLib.id+'/items?'+params);
-      if(append) {
-        this.items = this.items.concat(data.items||[])
-      } else {
-        this.items=data.items||[];
-      }
-      this.total=data.total||0;
+      this.items=data.items||[]; this.total=data.total||0;
       this.itemsLoading=false;
-      this.loadingMore=false;
-    },
-    async deleteLibItem(){
-      if(!this.libDetailItem || !this.libDetailItem.id) return
-      try {
-        await fetchJSON('/dashboard/item/'+this.libDetailItem.id, {method:'DELETE'})
-        ElementPlus.ElMessage.success('已删除')
-        this.showLibDel = false
-        this.showDetail = false
-        this.$nextTick(() => this.loadItems(false))
-      } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showLibDel = false }
     },
     async openLibItem(item){
-      this.showLibDel = false
       this.showDetail=true; this.libExpanded=false;
       this.libDetailItem=item;
       try {
@@ -1439,555 +1081,157 @@ const Libraries = {
   }
 }
 
-// ---- Monitor (Series完结监控) ----
-const SettingsDialog = {
-  template: `
-    <el-drawer v-model="visible" title="⚙️ 通知设置" :size="isMobile?'100%':'600px'" 
-               :with-header="true" :modal="true"
-               class="settings-drawer"
-               :z-index="3000"
-               style="background:#0d0d1a">
-      <div style="display:flex;flex-direction:column;gap:14px;padding:0 4px;overflow-y:auto;height:100%;background:#0d0d1a">
-
-        <div>
-          <div style="font-size:13px;font-weight:500;margin-bottom:4px">代理地址（可选）</div>
-          <div style="display:flex;gap:8px">
-            <el-input v-model="form.proxy_url" placeholder="如 http://192.168.1.100:7890" style="flex:1"/>
-            <el-button size="default" :loading="proxyTesting" @click="testProxy" style="flex-shrink:0">🌐 测试</el-button>
-          </div>
-          <div v-if="proxyTestResult" :style="{fontSize:'12px',marginTop:'4px',color:proxyTestResult.success?'var(--green)':'var(--red)'}">
-            {{proxyTestResult.success ? '✅ '+proxyTestResult.message : '❌ '+proxyTestResult.error}}
-          </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">留空表示直连，不需要代理则不填</div>
-        </div>
-
-        <div>
-          <div style="font-size:13px;font-weight:500;margin-bottom:4px">TMDB API Key</div>
-          <div style="display:flex;gap:8px">
-            <el-input v-model="form.tmdb_api_key" placeholder="输入 TMDB API Key" style="flex:1"/>
-            <el-button size="default" :loading="verifying" @click="verifyTmdb" style="flex-shrink:0">✅ 验证</el-button>
-          </div>
-          <div v-if="tmdbVerifyResult" :style="{fontSize:'12px',marginTop:'4px',color:tmdbVerifyResult.valid?'var(--green)':'var(--red)'}">
-            {{tmdbVerifyResult.valid ? '✅ 验证成功' : '❌ '+tmdbVerifyResult.error}}
-          </div>
-        </div>
-
-        <div>
-          <div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Bot Token</div>
-          <el-input v-model="form.tg_bot_token" placeholder="输入 Bot Token" type="password" show-password/>
-        </div>
-
-        <div>
-          <div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Chat ID</div>
-          <div style="display:flex;gap:8px">
-            <el-input v-model="form.tg_chat_id" placeholder="输入 Chat ID" style="flex:1"/>
-            <el-button size="default" :loading="testing" @click="testTg" style="flex-shrink:0">📨 测试</el-button>
-          </div>
-          <div v-if="tgTestResult" :style="{fontSize:'12px',marginTop:'4px',color:tgTestResult.success?'var(--green)':'var(--red)'}">
-            {{tgTestResult.success ? '✅ 发送成功' : '❌ '+tgTestResult.error}}
-          </div>
-        </div>
-
-        <el-divider style="margin:4px 0"/>
-
-        <div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <div style="font-size:13px;font-weight:500">更新提醒模板</div>
-            <el-tag size="small" style="cursor:pointer" @click="showUpdateVars=!showUpdateVars">
-              📋 可用变量 {{showUpdateVars?'▲':'▼'}}
-            </el-tag>
-          </div>
-          <el-input v-model="form.update_template" input-style="font-family:monospace;font-size:12px;line-height:1.6" 
-                    type="textarea" :rows="6" placeholder="留空使用默认模板"/>
-          <div v-if="showUpdateVars" style="font-size:11px;color:var(--text-dim);background:var(--glass);border-radius:8px;padding:8px;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 12px">
-            <span><code>{update_title}</code> → 标题行</span>
-            <span><code>{series_name}</code> → 剧名</span>
-            <span><code>{episode_info}</code> → 季集信息</span>
-            <span><code>{air_date}</code> → 播出日期</span>
-            <span><code>{progress}</code> → 当前进度</span>
-            <span><code>{type}</code> → 类型</span>
-            <span><code>{rating}</code> → 评分</span>
-          </div>
-        </div>
-
-        <div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <div style="font-size:13px;font-weight:500">完结提醒模板</div>
-            <el-tag size="small" style="cursor:pointer" @click="showEndVars=!showEndVars">
-              📋 可用变量 {{showEndVars?'▲':'▼'}}
-            </el-tag>
-          </div>
-          <el-input v-model="form.end_template" input-style="font-family:monospace;font-size:12px;line-height:1.6"
-                    type="textarea" :rows="6" placeholder="留空使用默认模板"/>
-          <div v-if="showEndVars" style="font-size:11px;color:var(--text-dim);background:var(--glass);border-radius:8px;padding:8px;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 12px">
-            <span><code>{end_title}</code> → 标题行</span>
-            <span><code>{series_name}</code> → 剧名</span>
-            <span><code>{end_date}</code> → 完结日期</span>
-            <span><code>{total_episodes}</code> → 总集数</span>
-            <span><code>{type}</code> → 类型</span>
-            <span><code>{rating}</code> → 评分</span>
-            <span><code>{overview}</code> → 简介(自动截断4行)</span>
-          </div>
-        </div>
-
-        <div>
-          <div style="font-size:13px;font-weight:500;margin-bottom:4px">检测间隔</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <el-input-number v-model="form.check_interval_minutes" :min="5" :max="1440" size="default" style="width:140px"/>
-            <span style="font-size:12px;color:var(--text-dim)">分钟（建议 ≥ 10 分钟）</span>
-          </div>
-        </div>
-
-      </div>
-
-      <template #footer>
-        <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
-          <div v-if="saveWarn" style="font-size:12px;color:var(--orange);text-align:left;line-height:1.4;margin-right:8px">
-              ⚠️ {{saveWarn}}
-            </div>
-            <el-button @click="resetDefaults">恢复默认</el-button>
-            <el-button type="primary" :loading="saving" @click="save">保存</el-button>
-          </div>
-        </div>
-      </template>
-    </el-drawer>
-  `,
-  props: { modelValue: Boolean },
-  emits: ['update:modelValue'],
-  data(){
-    return {
-      form: {tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',proxy_url:'',update_template:'',end_template:'',check_interval_minutes:30},
-      verifying:false, tmdbVerifyResult:null,
-      testing:false, tgTestResult:null,
-      proxyTesting:false, proxyTestResult:null,
-      saving:false, saveWarn:'',
-      showUpdateVars:false, showEndVars:false,
-      isMobile: window.innerWidth < 768
-    }
-  },
-  computed: {
-    visible: { get(){return this.modelValue}, set(v){this.$emit('update:modelValue',v)} }
-  },
-  methods: {
-    async loadConfig(){
-      try {
-        const d = await fetchJSON('/config')
-        this.form.tmdb_api_key = d.tmdb_api_key || ''
-        this.form.tg_bot_token = d.tg_bot_token || ''
-        this.form.tg_chat_id = d.tg_chat_id || ''
-        this.form.proxy_url = d.proxy_url || ''
-        this.form.update_template = d.update_template || ''
-        this.form.end_template = d.end_template || ''
-        this.form.check_interval_minutes = d.check_interval_minutes || 30
-      } catch(e) { ElementPlus.ElMessage.error('加载配置失败') }
-    },
-    async verifyTmdb(){
-      this.verifying = true; this.tmdbVerifyResult = null
-      try {
-        this.tmdbVerifyResult = await fetchJSON('/tmdb/verify', {method:'GET'})
-      } catch(e) { this.tmdbVerifyResult = {valid:false, error: '请求失败'} }
-      this.verifying = false
-    },
-    async testTg(){
-      this.testing = true; this.tgTestResult = null
-      try {
-        // 先保存当前配置，再测试
-        if(this.form.tg_bot_token || this.form.tg_chat_id) {
-          await fetchJSON('/config', {method:'PUT', body:JSON.stringify({
-            tmdb_api_key:this.form.tmdb_api_key||'__skip__',
-            tg_bot_token:this.form.tg_bot_token||'__skip__',
-            tg_chat_id:this.form.tg_chat_id||'__skip__',
-            proxy_url:this.form.proxy_url||'__skip__',
-            update_template:this.form.update_template === '' ? '' : (this.form.update_template || '__skip__'),
-            end_template:this.form.end_template === '' ? '' : (this.form.end_template || '__skip__'),
-            check_interval_minutes:this.form.check_interval_minutes
-          })})
-        }
-        this.tgTestResult = await fetchJSON('/config/test', {method:'POST'})
-      } catch(e) { this.tgTestResult = {success:false, error: '请求失败'} }
-      this.testing = false
-    },
-    validateTemplate(template, type){
-      const allowed = type === 'update' 
-        ? ['update_title','series_name','episode_info','air_date','progress','type','rating','poster_url']
-        : ['end_title','series_name','end_date','total_episodes','type','rating','overview','poster_url']
-      const found = [...template.matchAll(/\{(\w+)\}/g)].map(m=>m[1])
-      return found.filter(v => !allowed.includes(v))
-    },
-    async testProxy(){
-      this.proxyTesting = true; this.proxyTestResult = null
-      try {
-        if(this.form.proxy_url) {
-          await fetchJSON('/config', {method:'PUT', body:JSON.stringify({
-            proxy_url:this.form.proxy_url||'__skip__',
-            tg_bot_token:'__skip__',
-            tg_chat_id:'__skip__',
-            tmdb_api_key:'__skip__',
-            update_template:'__skip__',
-            end_template:'__skip__',
-            check_interval_minutes:30
-          })})
-        }
-        this.proxyTestResult = await fetchJSON('/config/test-proxy', {method:'POST'})
-      } catch(e) { this.proxyTestResult = {success:false, error: '请求失败'} }
-      this.proxyTesting = false
-    },
-    async save(){
-      this.saveWarn = ''
-      // 校验模板
-      if(this.form.update_template) {
-        const unknown = this.validateTemplate(this.form.update_template, 'update')
-        if(unknown.length) this.saveWarn = unknown.map(v=>'{'+v+'}').join(' ')
-      }
-      if(this.form.end_template) {
-        const unknown = this.validateTemplate(this.form.end_template, 'end')
-        if(unknown.length) {
-          const extra = unknown.map(v=>'{'+v+'}').join(' ')
-          this.saveWarn = this.saveWarn ? this.saveWarn+' '+extra : extra
-        }
-      }
-
-      // 如果有未知变量，显示警告但不阻止
-      if(this.saveWarn) {
-        try {
-          await ElementPlus.ElMessageBox.confirm(
-            '以下模板变量不存在，将原样显示在消息中：\n' + this.saveWarn + '\n\n是否继续保存？',
-            '⚠️ 模板变量提示',
-            {confirmButtonText:'继续保存', cancelButtonText:'取消', type:'warning'}
-          )
-        } catch(e) { return } // 用户取消
-      }
-
-      this.saving = true
-      try {
-        await fetchJSON('/config', {method:'PUT', body:JSON.stringify({
-          tmdb_api_key:this.form.tmdb_api_key||'__skip__',
-          tg_bot_token:this.form.tg_bot_token||'__skip__',
-          tg_chat_id:this.form.tg_chat_id||'__skip__',
-          proxy_url:this.form.proxy_url||'__skip__',
-          update_template:this.form.update_template === '' ? '' : (this.form.update_template || '__skip__'),
-          end_template:this.form.end_template === '' ? '' : (this.form.end_template || '__skip__'),
-          check_interval_minutes:this.form.check_interval_minutes
-        })})
-        ElementPlus.ElMessage.success('保存成功')
-        this.visible = false
-      } catch(e) { ElementPlus.ElMessage.error('保存失败') }
-      this.saving = false
-    },
-    resetDefaults(){
-      this.form.update_template = ''
-      this.form.end_template = ''
-      ElementPlus.ElMessage.info('已恢复默认模板，请保存生效')
-    }
-  },
-  watch: {
-    visible(v){ if(v) this.loadConfig() }
-  }
-}
-
-const Monitor = {
+const NfoGenerator = {
   template: `
     <div>
-      <!-- 页面标题 + 设置按钮 -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:20px;font-weight:600">🔔 完结监控</h2>
-        <el-button size="small" circle @click="showSettings=true" title="设置" style="font-size:18px">⚙️</el-button>
-      </div>
-
-      <!-- 搜索区域 -->
-      <div class="glass-card" style="margin-bottom:16px;padding:16px">
-        <div style="display:flex;gap:8px">
-          <el-input v-model="searchQuery" placeholder="输入剧名搜索..." @keyup.enter="doSearch" :disabled="searching"/>
-          <el-button type="primary" @click="doSearch" :loading="searching">搜索</el-button>
-        </div>
-
-        <!-- 搜索结果 - 桌面端卡片 / 移动端列表 -->
-        <div v-if="searchResults.length" style="margin-top:12px">
-          <div style="font-size:13px;color:var(--text-dim);margin-bottom:8px">
-            搜索结果（{{searchResults.length}} 条）
-          </div>
-          <!-- 桌面端网格 -->
-          <div class="search-grid-desktop" v-if="!isMobile">
-            <div v-for="item in searchResults" :key="item.tmdb_id" 
-                 class="search-card" @click="addSeries(item)">
-              <img v-if="item.poster_url" :src="item.poster_url" class="search-poster" 
-                   @error="$event.target.style.display='none'"/>
-              <div v-else class="search-poster-placeholder">🎬</div>
-              <div class="search-info">
-                <div class="search-title">{{item.title}}</div>
-                <div class="search-meta">{{item.year}} · {{item.media_type==='tv'?'剧集':'电影'}}</div>
-                <div class="search-rating" v-if="item.vote_average">⭐ {{item.vote_average}}</div>
-                <div class="search-overview" v-if="item.overview">{{item.overview.slice(0,60)}}...</div>
-              </div>
-              <el-button size="small" type="primary" class="search-add-btn">+ 添加</el-button>
-            </div>
-          </div>
-          <!-- 移动端列表 -->
-          <div v-else>
-            <div v-for="item in searchResults" :key="item.tmdb_id" 
-                 class="search-item-mobile" @click="addSeries(item)">
-              <div class="sim-poster" v-if="item.poster_url">
-                <img :src="item.poster_url" @error="$event.target.style.display='none'"/>
-              </div>
-              <div class="sim-info">
-                <div class="sim-title">{{item.title}}</div>
-                <div class="sim-meta">{{item.year}} · ⭐ {{item.vote_average}}</div>
-              </div>
-              <el-button size="small" type="primary" style="flex-shrink:0">+</el-button>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="searchError" style="margin-top:8px;font-size:12px;color:var(--red)">{{searchError}}</div>
-      </div>
-
-      <!-- 监控列表 -->
-      <div class="glass-card" style="padding:16px;max-height:460px;overflow-y:auto;overflow-x:hidden">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="font-size:15px;font-weight:600">
-              已监控剧集
-              <span style="font-size:12px;color:var(--text-dim);font-weight:400;margin-left:6px">{{monitoredList.length}} 部</span>
-            </div>
-            <!-- 筛选 -->
-            <div class="lib-filter" style="margin-bottom:0;display:inline-flex">
-              <span class="filter-chip" :class="{active:filterStatus==='all'}" @click="filterStatus='all'" style="font-size:11px;padding:3px 10px">全部</span>
-              <span class="filter-chip" :class="{active:filterStatus==='continuing'}" @click="filterStatus='continuing'" style="font-size:11px;padding:3px 10px">连载中</span>
-              <span class="filter-chip" :class="{active:filterStatus==='ended'}" @click="filterStatus='ended'" style="font-size:11px;padding:3px 10px">已完结</span>
-            </div>
-          </div>
-          <el-button size="small" @click="refreshList" :loading="refreshing" circle class="circle-btn" style="min-width:32px;min-height:32px">🔄</el-button>
-        </div>
-
-        <!-- 空状态 -->
-        <div v-if="!monitoredList.length && !loadingList" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">
-          暂无监控剧集，在上方搜索添加
-        </div>
-        <div v-if="loadingList" style="text-align:center;padding:40px;color:var(--text-muted)">加载中...</div>
-
-        <!-- 桌面端增强列表 -->
-        <div v-if="!isMobile && filteredList.length">
-          <div class="monitor-table" v-for="s in filteredList" :key="s.tmdb_id">
-            <div class="mt-row-glass">
-              <div class="mt-poster">
-                <img v-if="s.poster_url" :src="s.poster_url" @error="$event.target.style.display='none'"/>
-                <div v-else class="mt-poster-fallback">
-                  <span style="font-size:28px;color:var(--text-dim)">{{s.title ? s.title[0] : '?'}}</span>
-                </div>
-              </div>
-              <div class="mt-info" style="flex:1">
-                <div class="mt-title">{{s.title}}<span v-if="s.year" style="font-weight:400;color:var(--text-dim);margin-left:6px;font-size:12px">({{s.year}})</span></div>
-                <div class="mt-meta" v-if="s.type">{{s.type}} · ⭐ {{s.vote_average}}</div>
-                <div v-if="s.last_episode?.episode_number" style="margin-top:2px;font-size:12px;color:var(--text-dim)">
-                  📺 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' / '+s.total_episodes+' 集' : ''}}
-                </div>
-              </div>
-              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;min-width:160px">
-                <span v-if="s.current_status==='Ended'" class="status-badge ended">🔴 已完结</span>
-                <span v-else-if="s.current_status==='Canceled'" class="status-badge canceled">⚫ 已取消</span>
-                <span v-else class="status-badge continuing">🟢 连载中</span>
-                <div style="font-size:12px;line-height:1.5">
-                  <div v-if="s.current_status!=='Ended' && s.current_status!=='Canceled' && s.next_episode?.air_date" style="color:var(--green);text-align:right">
-                    📅 {{s.next_episode.air_date}}<br><span style="color:var(--text-muted)">{{daysUntil(s.next_episode.air_date)}}</span>
-                  </div>
-                  <div v-if="s.current_status==='Ended'" style="color:var(--text-dim);text-align:right">
-                    📅 {{s.last_air_date?.slice(0,10)}}
-                  </div>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:2px;min-height:22px">
-                  <div v-if="s.current_status==='Ended'" style="font-size:12px">
-                    <span v-if="s.notified_ended" style="color:var(--green)">✅ 已通知</span>
-                    <span v-else style="color:var(--orange)">⏳ 待通知</span>
-                  </div>
-                  <div v-else style="min-width:48px"></div>
-                  <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)" style="padding:0">删除</el-button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 移动端增强列表 -->
-        <div v-if="isMobile && filteredList.length">
-          <div v-for="s in filteredList" :key="s.tmdb_id" class="monitor-item-mobile">
-            <div class="mim-poster">
-              <img v-if="s.poster_url" :src="s.poster_url" @error="$event.target.style.display='none'"/>
-              <div v-else class="mt-poster-fallback">
-                <span style="font-size:28px;color:var(--text-dim)">{{s.title ? s.title[0] : '?'}}</span>
-              </div>
-            </div>
-            <div class="mim-info">
-              <div class="mim-title">{{s.title}}<span v-if="s.year" style="font-weight:400;color:var(--text-dim);margin-left:4px;font-size:11px">({{s.year}})</span></div>
-              <div class="mt-meta" v-if="s.type" style="font-size:11px;margin-top:2px">{{s.type}} · ⭐ {{s.vote_average}}</div>
-              <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
-                <span v-if="s.current_status==='Ended'" class="status-badge ended">🔴 已完结</span>
-                <span v-else-if="s.current_status==='Canceled'" class="status-badge canceled">⚫ 已取消</span>
-                <span v-else class="status-badge continuing">🟢 连载中</span>
-              </div>
-              <div v-if="s.last_episode?.episode_number" style="font-size:11px;color:var(--text-dim);margin-top:2px">
-                📺 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' / '+s.total_episodes+' 集' : ''}}
-              </div>
-              <div style="margin-top:4px;display:flex;gap:8px;align-items:center;font-size:11px">
-                <div v-if="s.current_status!=='Ended' && s.current_status!=='Canceled' && s.next_episode?.air_date" style="color:var(--green)">
-                  📅 {{s.next_episode.air_date}} <span style="color:var(--text-muted)">{{daysUntil(s.next_episode.air_date)}}</span>
-                </div>
-                <div v-if="s.current_status==='Ended'" style="color:var(--text-dim)">
-                  📅 {{s.last_air_date?.slice(0,10)}}
-                </div>
-                <span v-if="s.current_status==='Ended' && s.notified_ended" style="color:var(--green);margin-left:auto;min-width:16px">✅</span>
-                <span v-else-if="s.current_status==='Ended' && !s.notified_ended" style="color:var(--orange);margin-left:auto;min-width:16px">⏳</span>
-                <span v-else style="margin-left:auto;min-width:16px"></span>
-                <el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)" style="padding:0">删除</el-button>
-              </div>
-            </div>
-          </div>
+      <div class="hero" style="padding:28px 24px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">
+          <div class="hero-avatar" style="background:linear-gradient(135deg,var(--pink),var(--orange))">🎭</div>
+          <div><h2 style="font-size:18px;font-weight:600">NFO 生成</h2><div style="font-size:12px;color:var(--text-dim)">为 Emby 生成独立演员 NFO 文件</div></div>
         </div>
       </div>
 
-      <!-- 运行状态 + 日志（可折叠） -->
-      <div style="margin-top:16px">
-        <el-collapse v-model="activeCollapse">
-          <el-collapse-item title="📊 运行状态" name="status">
-            <div class="glass-card" style="padding:16px">
-              <div v-if="monitorStatus">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-                  <div><span style="color:var(--text-dim)">状态：</span>{{monitorStatus.is_running ? '🟢 运行中' : '🔴 已停止'}}</div>
-                  <div><span style="color:var(--text-dim)">监控剧集：</span>{{monitorStatus.monitored_count}} 部</div>
-                  <div><span style="color:var(--text-dim)">上次检查：</span>{{fmtTime2(monitorStatus.last_check_time)}}</div>
-                  <div><span style="color:var(--text-dim)">最近通知：</span>{{fmtTime2(monitorStatus.last_notification_time)}}</div>
-                </div>
-              </div>
-              <div v-else style="color:var(--text-muted);font-size:13px">加载中...</div>
-            </div>
-          </el-collapse-item>
-          <el-collapse-item title="📄 检查日志" name="logs">
-            <div class="glass-card" style="padding:16px">
-              <div v-if="logs.length">
-                <div v-for="(log,i) in logs" :key="i" style="padding:6px 0;border-bottom:1px solid var(--glass-border);font-size:12px;display:flex;gap:8px">
-                  <span style="color:var(--text-muted);flex-shrink:0">{{fmtTime2(log.time)}}</span>
-                  <span :style="{color: log.status==='ok' ? 'var(--green)' : 'var(--orange)'}">
-                    {{log.status==='ok' ? '✅' : '⚠️'}}
-                  </span>
-                  <span style="color:var(--text-dim)">{{log.message}}</span>
-                </div>
-              </div>
-              <div v-else style="color:var(--text-muted);font-size:13px">暂无日志</div>
-            </div>
-          </el-collapse-item>
-        </el-collapse>
-      </div>
+      <div class="glass-card" style="max-width:560px">
+        <!-- 步骤 1: 文件名称 -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)">① 文件名称</div>
+          <el-input v-model="form.filename" placeholder="例: Robert Downey Jr." clearable
+                    :style="'--el-input-bg-color:rgba(255,255,255,0.04);--el-input-border-color:var(--glass-border);--el-input-text-color:var(--text);--el-input-placeholder-color:var(--text-muted);--el-input-focus-border-color:var(--accent)'" />
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">生成的 .nfo 和封面图将使用此名称</div>
+        </div>
 
-      <!-- 设置弹窗 -->
-      <settings-dialog v-model="showSettings"/>
+        <!-- 步骤 2: TMDB ID -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)">② TMDB ID</div>
+          <div style="display:flex;gap:8px">
+            <el-input v-model="form.tmdbId" placeholder="输入演员 TMDB ID" clearable
+                      :style="'--el-input-bg-color:rgba(255,255,255,0.04);--el-input-border-color:var(--glass-border);--el-input-text-color:var(--text);--el-input-placeholder-color:var(--text-muted);--el-input-focus-border-color:var(--accent)'" />
+            <el-button @click="lookupPerson" :loading="lookingUp" type="primary"
+                       :style="'background:var(--accent);border-color:var(--accent);font-weight:500'">
+              🔍 查询
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 演员信息卡片 -->
+        <div v-if="person" style="margin-bottom:20px;padding:16px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);display:flex;align-items:center;gap:16px">
+          <div v-if="person.profile_url" :style="'width:64px;height:64px;border-radius:50%;background-image:url('+person.profile_url+');background-size:cover;background-position:center;flex-shrink:0;border:2px solid var(--glass-border)'"></div>
+          <div v-else :style="'width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#4834d4);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0'">👤</div>
+          <div>
+            <div style="font-size:16px;font-weight:600;color:var(--text)">{{person.name}}</div>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:2px">🆔 TMDB: {{form.tmdbId}}</div>
+            <div v-if="person.known_for_department" style="font-size:11px;color:var(--text-muted);margin-top:1px">{{person.known_for_department}}</div>
+          </div>
+        </div>
+        <div v-if="lookupError" style="margin-bottom:16px;padding:10px 14px;border-radius:8px;background:rgba(255,118,117,0.1);border:1px solid rgba(255,118,117,0.2);color:var(--red);font-size:13px">
+          ❌ {{lookupError}}
+        </div>
+
+        <!-- 步骤 3: 上传封面 -->
+        <div style="margin-bottom:24px">
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)">③ 封面图（可选）</div>
+          <el-upload
+            ref="uploadRef"
+            :auto-upload="false"
+            :show-file-list="false"
+            @change="handleFileChange"
+            accept="image/jpeg,image/png,image/webp"
+            :style="'display:block'">
+            <div v-if="!thumbPreview" class="glass-card" style="padding:32px 20px;text-align:center;cursor:pointer;border:2px dashed var(--glass-border);max-width:320px">
+              <div style="font-size:36px;margin-bottom:8px">📷</div>
+              <div style="font-size:13px;color:var(--text-dim)">点击上传封面图</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">支持 jpg / png / webp</div>
+              <div style="font-size:11px;color:var(--text-muted)">不上传则使用 TMDB 头像</div>
+            </div>
+            <div v-else style="position:relative;display:inline-block;max-width:200px">
+              <img :src="thumbPreview" style="width:100%;border-radius:10px;border:1px solid var(--glass-border);display:block">
+              <div @click="clearThumb" style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.7);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;border:2px solid var(--bg)">✕</div>
+            </div>
+          </el-upload>
+        </div>
+
+        <!-- 生成按钮 -->
+        <el-button @click="generateNfo" :loading="generating" :disabled="!person || !form.filename.trim()" type="primary" size="large"
+                   :style="'width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;font-size:15px;font-weight:600;height:46px;border-radius:12px'">
+          🚀 生成 NFO
+        </el-button>
+
+        <!-- 成功提示 -->
+        <div v-if="generated" style="margin-top:16px;padding:12px 16px;border-radius:10px;background:rgba(0,206,201,0.1);border:1px solid rgba(0,206,201,0.25);color:var(--green);font-size:13px;display:flex;align-items:center;gap:8px">
+          ✅ NFO 已生成，下载已开始
+        </div>
+      </div>
     </div>
   `,
-  components: { SettingsDialog },
   data(){
     return {
-      searchQuery:'', searchResults:[], searching:false, searchError:'',
-      monitoredList:[], loadingList:false, refreshing:false,
-      showSettings:false,
-      filterStatus:'all',
-      monitorStatus:null, logs:[],
-      activeCollapse:[],
-      isMobile: window.innerWidth < 768
+      form: { filename: '', tmdbId: '' },
+      person: null,
+      lookingUp: false,
+      lookupError: '',
+      thumbFile: null,
+      thumbPreview: '',
+      generating: false,
+      generated: false
     }
   },
-  computed: {
-    filteredList(){
-      if(this.filterStatus === 'all') return this.monitoredList
-      if(this.filterStatus === 'continuing') return this.monitoredList.filter(s => s.current_status!=='Ended' && s.current_status!=='Canceled')
-      if(this.filterStatus === 'ended') return this.monitoredList.filter(s => s.current_status==='Ended')
-      return this.monitoredList
-    }
-  },
-  async mounted(){
-    window.addEventListener('resize', ()=>{ this.isMobile = window.innerWidth < 768 })
-    await this.loadList()
-    await this.loadStatus()
-    await this.loadLogs()
-    // 定时刷新状态
-    this._statusTimer = setInterval(() => {
-      this.loadStatus()
-      this.loadLogs()
-    }, 30000)
-  },
-  beforeUnmount(){ if(this._statusTimer) clearInterval(this._statusTimer) },
   methods: {
-    async doSearch(){
-      if(!this.searchQuery.trim()) return
-      this.searching = true; this.searchError = ''
+    async lookupPerson(){
+      const id = parseInt(this.form.tmdbId);
+      if(!id || id < 1){ this.lookupError='请输入有效的 TMDB ID'; return }
+      this.lookingUp=true; this.lookupError=''; this.person=null;
       try {
-        const d = await fetchJSON('/tmdb/search?q='+encodeURIComponent(this.searchQuery.trim()))
-        this.searchResults = d.results || []
-        if(!this.searchResults.length) this.searchError = '未找到相关剧集'
-      } catch(e) { this.searchError = e.message }
-      this.searching = false
+        const res = await fetch(`/api/nfo/person/${id}`);
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'查询失败') }
+        this.person = await res.json();
+      } catch(e){
+        this.lookupError = e.message;
+      } finally {
+        this.lookingUp=false;
+      }
     },
-    async addSeries(item){
+    handleFileChange(uploadFile){
+      this.thumbFile = uploadFile.raw;
+      const reader = new FileReader();
+      reader.onload = e => { this.thumbPreview = e.target.result };
+      reader.readAsDataURL(uploadFile.raw);
+    },
+    clearThumb(){
+      this.thumbFile = null;
+      this.thumbPreview = '';
+    },
+    async generateNfo(){
+      if(!this.form.filename.trim() || !this.person) return;
+      this.generating=true; this.generated=false;
       try {
-        const d = await fetchJSON('/monitor/add', {method:'POST', body:JSON.stringify({
-          tmdb_id: item.tmdb_id,
-          title: item.title,
-          year: item.year,
-          poster_url: item.poster_url
-        })})
-        ElementPlus.ElMessage.success(d.notification_sent ? '已添加并发送通知' : '已添加')
-        this.searchResults = []
-        this.searchQuery = ''
-        this.monitoredList = []
-        await this.loadList()
-      } catch(e) { ElementPlus.ElMessage.error(e.message) }
-    },
-    async deleteSeries(tmdbId){
-      try {
-        await ElementPlus.ElMessageBox.confirm('确定要删除该剧集的监控吗？', '确认删除', {type:'warning'})
-        await fetchJSON('/monitor/'+tmdbId, {method:'DELETE'})
-        ElementPlus.ElMessage.success('已删除')
-        // 本地移除，不重新请求所有 TMDB 数据
-        this.monitoredList = this.monitoredList.filter(s => s.tmdb_id !== tmdbId)
-      } catch(e) { if(e !== 'cancel') ElementPlus.ElMessage.error('删除失败') }
-    },
-    async loadList(){
-      this.loadingList = true
-      try {
-        const d = await fetchJSON('/monitor/list')
-        this.monitoredList = d.series || []
-      } catch(e) { /* silent */ }
-      this.loadingList = false
-    },
-    async refreshList(){
-      this.refreshing = true
-      await this.loadList()
-      this.refreshing = false
-    },
-    async loadStatus(){
-      try {
-        this.monitorStatus = await fetchJSON('/monitor/status')
-      } catch(e) { /* silent */ }
-    },
-    async loadLogs(){
-      try {
-        this.logs = await fetchJSON('/monitor/logs?limit=50')
-      } catch(e) { /* silent */ }
-    },
-    fmtTime2(t){
-      if(!t) return '-'
-      const d = new Date(t)
-      return d.toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
-    },
-    daysUntil(dateStr){
-      if(!dateStr) return ''
-      // 按日期字符串直接计算，避免时区干扰
-      const now = new Date()
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      const parts = dateStr.split('-')
-      const target = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]))
-      const diff = Math.round((target - today) / (1000*60*60*24))
-      if(diff < 0) return '已播出'
-      if(diff === 0) return '今天'
-      if(diff === 1) return '明天'
-      return diff+'天后'
+        // 过滤文件名中不允许的字符
+        const safeFilename = this.form.filename.trim().replace(/[/\\:*?"<>|]/g, '_');
+        const formData = new FormData();
+        formData.append('filename', safeFilename);
+        formData.append('tmdb_id', this.person.tmdb_id);
+        if(this.thumbFile) formData.append('thumb', this.thumbFile);
+
+        const res = await fetch('/api/nfo/generate', { method:'POST', body: formData });
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'生成失败') }
+
+        // 下载 zip
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safeFilename}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        this.generated = true;
+        setTimeout(() => { this.generated = false }, 4000);
+      } catch(e){
+        ElementPlus.ElMessage.error(e.message || '生成失败');
+      } finally {
+        this.generating = false;
+      }
     }
   }
 }
@@ -1995,9 +1239,9 @@ const Monitor = {
 // ---- Router ----
 const routes = [
   {path:'/',component:Dashboard},
-  {path:'/monitor',component:Monitor},
   {path:'/users',component:Users},
   {path:'/libraries',component:Libraries},
+  {path:'/nfo',component:NfoGenerator},
 ]
 const router = VueRouter.createRouter({
   history:VueRouter.createWebHashHistory(),
