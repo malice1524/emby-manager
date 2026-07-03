@@ -10,9 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app/ ./app/
 
 # 前端静态文件
-COPY static/index.html ./static/
-COPY static/lib/ ./static/lib/
-COPY static/favicon.png ./static/ 2>/dev/null || true
+COPY static/ ./static/
 
 EXPOSE 8000
 
