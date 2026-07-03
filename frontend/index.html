@@ -1241,6 +1241,253 @@ const NfoGenerator = {
   }
 }
 
+const SettingsDialog = {
+  template: `
+    <el-drawer v-model="visible" title="⚙️ 通知设置" :size="isMobile?'100%':'600px'" 
+               :with-header="true" :modal="true"
+               class="settings-drawer"
+               :z-index="3000"
+               style="background:#0d0d1a">
+      <div style="display:flex;flex-direction:column;gap:14px;padding:0 4px;overflow-y:auto;height:100%;background:#0d0d1a">
+
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">代理地址（可选）</div>
+          <div style="display:flex;gap:8px">
+            <el-input v-model="form.proxy_url" placeholder="如 http://192.168.1.100:7890" style="flex:1"/>
+            <el-button size="default" :loading="proxyTesting" @click="testProxy" style="flex-shrink:0">🌐 测试</el-button>
+          </div>
+          <div v-if="proxyTestResult" :style="{fontSize:'12px',marginTop:'4px',color:proxyTestResult.success?'var(--green)':'var(--red)'}">
+            {{proxyTestResult.success ? '✅ '+proxyTestResult.message : '❌ '+proxyTestResult.error}}
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">留空表示直连，不需要代理则不填</div>
+        </div>
+
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">TMDB API Key</div>
+          <div style="display:flex;gap:8px">
+            <el-input v-model="form.tmdb_api_key" placeholder="输入 TMDB API Key" style="flex:1"/>
+            <el-button size="default" :loading="verifying" @click="verifyTmdb" style="flex-shrink:0">✅ 验证</el-button>
+          </div>
+          <div v-if="tmdbVerifyResult" :style="{fontSize:'12px',marginTop:'4px',color:tmdbVerifyResult.valid?'var(--green)':'var(--red)'}">
+            {{tmdbVerifyResult.valid ? '✅ 验证成功' : '❌ '+tmdbVerifyResult.error}}
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Bot Token</div>
+          <el-input v-model="form.tg_bot_token" placeholder="输入 Bot Token" type="password" show-password/>
+        </div>
+
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Chat ID</div>
+          <div style="display:flex;gap:8px">
+            <el-input v-model="form.tg_chat_id" placeholder="输入 Chat ID" style="flex:1"/>
+            <el-button size="default" :loading="testing" @click="testTg" style="flex-shrink:0">📨 测试</el-button>
+          </div>
+          <div v-if="tgTestResult" :style="{fontSize:'12px',marginTop:'4px',color:tgTestResult.success?'var(--green)':'var(--red)'}">
+            {{tgTestResult.success ? '✅ 发送成功' : '❌ '+tgTestResult.error}}
+          </div>
+        </div>
+
+        <el-divider style="margin:4px 0"/>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div style="font-size:13px;font-weight:500">更新提醒模板</div>
+            <el-tag size="small" style="cursor:pointer" @click="showUpdateVars=!showUpdateVars">
+              📋 可用变量 {{showUpdateVars?'▲':'▼'}}
+            </el-tag>
+          </div>
+          <el-input v-model="form.update_template" input-style="font-family:monospace;font-size:12px;line-height:1.6" 
+                    type="textarea" :rows="6" placeholder="留空使用默认模板"/>
+          <div v-if="showUpdateVars" style="font-size:11px;color:var(--text-dim);background:var(--glass);border-radius:8px;padding:8px;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 12px">
+            <span><code>{update_title}</code> → 标题行</span>
+            <span><code>{series_name}</code> → 剧名</span>
+            <span><code>{episode_info}</code> → 季集信息</span>
+            <span><code>{air_date}</code> → 播出日期</span>
+            <span><code>{progress}</code> → 当前进度</span>
+            <span><code>{type}</code> → 类型</span>
+            <span><code>{rating}</code> → 评分</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div style="font-size:13px;font-weight:500">完结提醒模板</div>
+            <el-tag size="small" style="cursor:pointer" @click="showEndVars=!showEndVars">
+              📋 可用变量 {{showEndVars?'▲':'▼'}}
+            </el-tag>
+          </div>
+          <el-input v-model="form.end_template" input-style="font-family:monospace;font-size:12px;line-height:1.6"
+                    type="textarea" :rows="6" placeholder="留空使用默认模板"/>
+          <div v-if="showEndVars" style="font-size:11px;color:var(--text-dim);background:var(--glass);border-radius:8px;padding:8px;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 12px">
+            <span><code>{end_title}</code> → 标题行</span>
+            <span><code>{series_name}</code> → 剧名</span>
+            <span><code>{end_date}</code> → 完结日期</span>
+            <span><code>{total_episodes}</code> → 总集数</span>
+            <span><code>{type}</code> → 类型</span>
+            <span><code>{rating}</code> → 评分</span>
+            <span><code>{overview}</code> → 简介(自动截断4行)</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">检测间隔</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <el-input-number v-model="form.check_interval_minutes" :min="5" :max="1440" size="default" style="width:140px"/>
+            <span style="font-size:12px;color:var(--text-dim)">分钟（建议 ≥ 10 分钟）</span>
+          </div>
+        </div>
+
+      </div>
+
+      <template #footer>
+        <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
+          <div v-if="saveWarn" style="font-size:12px;color:var(--orange);text-align:left;line-height:1.4;margin-right:8px">
+              ⚠️ {{saveWarn}}
+            </div>
+            <el-button @click="resetDefaults">恢复默认</el-button>
+            <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+          </div>
+        </div>
+      </template>
+    </el-drawer>
+  `,
+  props: { modelValue: Boolean },
+  emits: ['update:modelValue'],
+  data(){
+    return {
+      form: {tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',proxy_url:'',update_template:'',end_template:'',check_interval_minutes:30},
+      verifying:false, tmdbVerifyResult:null,
+      testing:false, tgTestResult:null,
+      proxyTesting:false, proxyTestResult:null,
+      saving:false, saveWarn:'',
+      showUpdateVars:false, showEndVars:false,
+      isMobile: window.innerWidth < 768
+    }
+  },
+  computed: {
+    visible: { get(){return this.modelValue}, set(v){this.$emit('update:modelValue',v)} }
+  },
+  methods: {
+    async loadConfig(){
+      try {
+        const d = await fetchJSON('/config')
+        this.form.tmdb_api_key = d.tmdb_api_key || ''
+        this.form.tg_bot_token = d.tg_bot_token || ''
+        this.form.tg_chat_id = d.tg_chat_id || ''
+        this.form.proxy_url = d.proxy_url || ''
+        this.form.update_template = d.update_template || ''
+        this.form.end_template = d.end_template || ''
+        this.form.check_interval_minutes = d.check_interval_minutes || 30
+      } catch(e) { ElementPlus.ElMessage.error('加载配置失败') }
+    },
+    async verifyTmdb(){
+      this.verifying = true; this.tmdbVerifyResult = null
+      try {
+        this.tmdbVerifyResult = await fetchJSON('/tmdb/verify', {method:'GET'})
+      } catch(e) { this.tmdbVerifyResult = {valid:false, error: '请求失败'} }
+      this.verifying = false
+    },
+    async testTg(){
+      this.testing = true; this.tgTestResult = null
+      try {
+        // 先保存当前配置，再测试
+        if(this.form.tg_bot_token || this.form.tg_chat_id) {
+          await fetchJSON('/config', {method:'PUT', body:JSON.stringify({
+            tmdb_api_key:this.form.tmdb_api_key||'__skip__',
+            tg_bot_token:this.form.tg_bot_token||'__skip__',
+            tg_chat_id:this.form.tg_chat_id||'__skip__',
+            proxy_url:this.form.proxy_url||'__skip__',
+            update_template:this.form.update_template === '' ? '' : (this.form.update_template || '__skip__'),
+            end_template:this.form.end_template === '' ? '' : (this.form.end_template || '__skip__'),
+            check_interval_minutes:this.form.check_interval_minutes
+          })})
+        }
+        this.tgTestResult = await fetchJSON('/config/test', {method:'POST'})
+      } catch(e) { this.tgTestResult = {success:false, error: '请求失败'} }
+      this.testing = false
+    },
+    validateTemplate(template, type){
+      const allowed = type === 'update' 
+        ? ['update_title','series_name','episode_info','air_date','progress','type','rating','poster_url']
+        : ['end_title','series_name','end_date','total_episodes','type','rating','overview','poster_url']
+      const found = [...template.matchAll(/\{(\w+)\}/g)].map(m=>m[1])
+      return found.filter(v => !allowed.includes(v))
+    },
+    async testProxy(){
+      this.proxyTesting = true; this.proxyTestResult = null
+      try {
+        if(this.form.proxy_url) {
+          await fetchJSON('/config', {method:'PUT', body:JSON.stringify({
+            proxy_url:this.form.proxy_url||'__skip__',
+            tg_bot_token:'__skip__',
+            tg_chat_id:'__skip__',
+            tmdb_api_key:'__skip__',
+            update_template:'__skip__',
+            end_template:'__skip__',
+            check_interval_minutes:30
+          })})
+        }
+        this.proxyTestResult = await fetchJSON('/config/test-proxy', {method:'POST'})
+      } catch(e) { this.proxyTestResult = {success:false, error: '请求失败'} }
+      this.proxyTesting = false
+    },
+    async save(){
+      this.saveWarn = ''
+      // 校验模板
+      if(this.form.update_template) {
+        const unknown = this.validateTemplate(this.form.update_template, 'update')
+        if(unknown.length) this.saveWarn = unknown.map(v=>'{'+v+'}').join(' ')
+      }
+      if(this.form.end_template) {
+        const unknown = this.validateTemplate(this.form.end_template, 'end')
+        if(unknown.length) {
+          const extra = unknown.map(v=>'{'+v+'}').join(' ')
+          this.saveWarn = this.saveWarn ? this.saveWarn+' '+extra : extra
+        }
+      }
+
+      // 如果有未知变量，显示警告但不阻止
+      if(this.saveWarn) {
+        try {
+          await ElementPlus.ElMessageBox.confirm(
+            '以下模板变量不存在，将原样显示在消息中：\n' + this.saveWarn + '\n\n是否继续保存？',
+            '⚠️ 模板变量提示',
+            {confirmButtonText:'继续保存', cancelButtonText:'取消', type:'warning'}
+          )
+        } catch(e) { return } // 用户取消
+      }
+
+      this.saving = true
+      try {
+        await fetchJSON('/config', {method:'PUT', body:JSON.stringify({
+          tmdb_api_key:this.form.tmdb_api_key||'__skip__',
+          tg_bot_token:this.form.tg_bot_token||'__skip__',
+          tg_chat_id:this.form.tg_chat_id||'__skip__',
+          proxy_url:this.form.proxy_url||'__skip__',
+          update_template:this.form.update_template === '' ? '' : (this.form.update_template || '__skip__'),
+          end_template:this.form.end_template === '' ? '' : (this.form.end_template || '__skip__'),
+          check_interval_minutes:this.form.check_interval_minutes
+        })})
+        ElementPlus.ElMessage.success('保存成功')
+        this.visible = false
+      } catch(e) { ElementPlus.ElMessage.error('保存失败') }
+      this.saving = false
+    },
+    resetDefaults(){
+      this.form.update_template = ''
+      this.form.end_template = ''
+      ElementPlus.ElMessage.info('已恢复默认模板，请保存生效')
+    }
+  },
+  watch: {
+    visible(v){ if(v) this.loadConfig() }
+  }
+}
+
+
+
 const Monitor = {
   template: `
     <div>
@@ -1437,6 +1684,118 @@ const Monitor = {
       <settings-dialog v-model="showSettings"/>
     </div>
   `,
+  components: { SettingsDialog },
+  data(){
+    return {
+      searchQuery:'', searchResults:[], searching:false, searchError:'',
+      monitoredList:[], loadingList:false, refreshing:false,
+      showSettings:false,
+      filterStatus:'all',
+      monitorStatus:null, logs:[],
+      activeCollapse:[],
+      isMobile: window.innerWidth < 768
+    }
+  },
+  computed: {
+    filteredList(){
+      if(this.filterStatus === 'all') return this.monitoredList
+      if(this.filterStatus === 'continuing') return this.monitoredList.filter(s => s.current_status!=='Ended' && s.current_status!=='Canceled')
+      if(this.filterStatus === 'ended') return this.monitoredList.filter(s => s.current_status==='Ended')
+      return this.monitoredList
+    }
+  },
+  async mounted(){
+    window.addEventListener('resize', ()=>{ this.isMobile = window.innerWidth < 768 })
+    await this.loadList()
+    await this.loadStatus()
+    await this.loadLogs()
+    // 定时刷新状态
+    this._statusTimer = setInterval(() => {
+      this.loadStatus()
+      this.loadLogs()
+    }, 30000)
+  },
+  beforeUnmount(){ if(this._statusTimer) clearInterval(this._statusTimer) },
+  methods: {
+    async doSearch(){
+      if(!this.searchQuery.trim()) return
+      this.searching = true; this.searchError = ''
+      try {
+        const d = await fetchJSON('/tmdb/search?q='+encodeURIComponent(this.searchQuery.trim()))
+        this.searchResults = d.results || []
+        if(!this.searchResults.length) this.searchError = '未找到相关剧集'
+      } catch(e) { this.searchError = e.message }
+      this.searching = false
+    },
+    async addSeries(item){
+      try {
+        const d = await fetchJSON('/monitor/add', {method:'POST', body:JSON.stringify({
+          tmdb_id: item.tmdb_id,
+          title: item.title,
+          year: item.year,
+          poster_url: item.poster_url
+        })})
+        ElementPlus.ElMessage.success(d.notification_sent ? '已添加并发送通知' : '已添加')
+        this.searchResults = []
+        this.searchQuery = ''
+        this.monitoredList = []
+        await this.loadList()
+      } catch(e) { ElementPlus.ElMessage.error(e.message) }
+    },
+    async deleteSeries(tmdbId){
+      try {
+        await ElementPlus.ElMessageBox.confirm('确定要删除该剧集的监控吗？', '确认删除', {type:'warning'})
+        await fetchJSON('/monitor/'+tmdbId, {method:'DELETE'})
+        ElementPlus.ElMessage.success('已删除')
+        // 本地移除，不重新请求所有 TMDB 数据
+        this.monitoredList = this.monitoredList.filter(s => s.tmdb_id !== tmdbId)
+      } catch(e) { if(e !== 'cancel') ElementPlus.ElMessage.error('删除失败') }
+    },
+    async loadList(){
+      this.loadingList = true
+      try {
+        const d = await fetchJSON('/monitor/list')
+        this.monitoredList = d.series || []
+      } catch(e) { /* silent */ }
+      this.loadingList = false
+    },
+    async refreshList(){
+      this.refreshing = true
+      await this.loadList()
+      this.refreshing = false
+    },
+    async loadStatus(){
+      try {
+        this.monitorStatus = await fetchJSON('/monitor/status')
+      } catch(e) { /* silent */ }
+    },
+    async loadLogs(){
+      try {
+        this.logs = await fetchJSON('/monitor/logs?limit=50')
+      } catch(e) { /* silent */ }
+    },
+    fmtTime2(t){
+      if(!t) return '-'
+      const d = new Date(t)
+      return d.toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
+    },
+    daysUntil(dateStr){
+      if(!dateStr) return ''
+      // 按日期字符串直接计算，避免时区干扰
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const parts = dateStr.split('-')
+      const target = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]))
+      const diff = Math.round((target - today) / (1000*60*60*24))
+      if(diff < 0) return '已播出'
+      if(diff === 0) return '今天'
+      if(diff === 1) return '明天'
+      return diff+'天后'
+    }
+  }
+}
+
+
   components: { SettingsDialog },
   data(){
     return {
