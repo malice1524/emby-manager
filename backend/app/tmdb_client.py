@@ -28,6 +28,38 @@ async def verify_api_key():
     except Exception as e:
         return {"valid": False, "error": str(e)}
 
+async def get_person_detail(tmdb_id: int):
+    """获取演员详情（姓名、头像等）"""
+    key = _get_api_key()
+    if not key:
+        return {"error": "API Key 未配置"}
+    try:
+        from .config import get_http_client
+        async with get_http_client() as client:
+            resp = await client.get(
+                f"{TMDB_API_BASE}/person/{tmdb_id}",
+                params={"api_key": key, "language": "zh-CN"}
+            )
+            if resp.status_code != 200:
+                return {"error": f"获取演员失败: {resp.status_code}"}
+            data = resp.json()
+            profile = f"{POSTER_BASE}{data.get('profile_path')}" if data.get("profile_path") else ""
+            return {
+                "tmdb_id": data["id"],
+                "name": data.get("name", ""),
+                "also_known_as": data.get("also_known_as", []),
+                "biography": data.get("biography", ""),
+                "profile_url": profile,
+                "known_for_department": data.get("known_for_department", ""),
+                "birthday": data.get("birthday", ""),
+                "deathday": data.get("deathday", ""),
+                "place_of_birth": data.get("place_of_birth", "")
+            }
+    except httpx.TimeoutException:
+        return {"error": "连接 TMDB 超时"}
+    except Exception as e:
+        return {"error": str(e)}
+
 async def search_tv(query: str, page: int = 1):
     """搜索剧集"""
     key = _get_api_key()

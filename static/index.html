@@ -529,6 +529,7 @@ body {
       <a href="#/" onclick="navClose()"><span class="nav-icon">📊</span> 仪表盘</a>
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
+      <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 生成</a>
     </nav>
     <div class="sidebar-version">v1.06</div>
   </aside>
@@ -547,7 +548,9 @@ function toggleSidebar() {
   var o = document.querySelector('.sidebar-overlay');
   s.classList.toggle('open'); o.classList.toggle('show');
 }
-function navClose() { setTimeout(toggleSidebar, 120); }
+function navClose() { 
+  if (window.innerWidth < 768) { setTimeout(toggleSidebar, 120); }
+}
 
 const API = '/api'
 
@@ -1078,11 +1081,167 @@ const Libraries = {
   }
 }
 
+const NfoGenerator = {
+  template: `
+    <div>
+      <div class="hero" style="padding:28px 24px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">
+          <div class="hero-avatar" style="background:linear-gradient(135deg,var(--pink),var(--orange))">🎭</div>
+          <div><h2 style="font-size:18px;font-weight:600">NFO 生成</h2><div style="font-size:12px;color:var(--text-dim)">为 Emby 生成独立演员 NFO 文件</div></div>
+        </div>
+      </div>
+
+      <div class="glass-card" style="max-width:560px">
+        <!-- 步骤 1: 文件名称 -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)">① 文件名称</div>
+          <el-input v-model="form.filename" placeholder="例: Robert Downey Jr." clearable
+                    :style="'--el-input-bg-color:rgba(255,255,255,0.04);--el-input-border-color:var(--glass-border);--el-input-text-color:var(--text);--el-input-placeholder-color:var(--text-muted);--el-input-focus-border-color:var(--accent)'" />
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">生成的 .nfo 和封面图将使用此名称</div>
+        </div>
+
+        <!-- 步骤 2: TMDB ID -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)">② TMDB ID</div>
+          <div style="display:flex;gap:8px">
+            <el-input v-model="form.tmdbId" placeholder="输入演员 TMDB ID" clearable
+                      :style="'--el-input-bg-color:rgba(255,255,255,0.04);--el-input-border-color:var(--glass-border);--el-input-text-color:var(--text);--el-input-placeholder-color:var(--text-muted);--el-input-focus-border-color:var(--accent)'" />
+            <el-button @click="lookupPerson" :loading="lookingUp" type="primary"
+                       :style="'background:var(--accent);border-color:var(--accent);font-weight:500'">
+              🔍 查询
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 演员信息卡片 -->
+        <div v-if="person" style="margin-bottom:20px;padding:16px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);display:flex;align-items:center;gap:16px">
+          <div v-if="person.profile_url" :style="'width:64px;height:64px;border-radius:50%;background-image:url('+person.profile_url+');background-size:cover;background-position:center;flex-shrink:0;border:2px solid var(--glass-border)'"></div>
+          <div v-else :style="'width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#4834d4);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0'">👤</div>
+          <div>
+            <div style="font-size:16px;font-weight:600;color:var(--text)">{{person.name}}</div>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:2px">🆔 TMDB: {{form.tmdbId}}</div>
+            <div v-if="person.known_for_department" style="font-size:11px;color:var(--text-muted);margin-top:1px">{{person.known_for_department}}</div>
+          </div>
+        </div>
+        <div v-if="lookupError" style="margin-bottom:16px;padding:10px 14px;border-radius:8px;background:rgba(255,118,117,0.1);border:1px solid rgba(255,118,117,0.2);color:var(--red);font-size:13px">
+          ❌ {{lookupError}}
+        </div>
+
+        <!-- 步骤 3: 上传封面 -->
+        <div style="margin-bottom:24px">
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)">③ 封面图（可选）</div>
+          <el-upload
+            ref="uploadRef"
+            :auto-upload="false"
+            :show-file-list="false"
+            @change="handleFileChange"
+            accept="image/jpeg,image/png,image/webp"
+            :style="'display:block'">
+            <div v-if="!thumbPreview" class="glass-card" style="padding:32px 20px;text-align:center;cursor:pointer;border:2px dashed var(--glass-border);max-width:320px">
+              <div style="font-size:36px;margin-bottom:8px">📷</div>
+              <div style="font-size:13px;color:var(--text-dim)">点击上传封面图</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">支持 jpg / png / webp</div>
+              <div style="font-size:11px;color:var(--text-muted)">不上传则使用 TMDB 头像</div>
+            </div>
+            <div v-else style="position:relative;display:inline-block;max-width:200px">
+              <img :src="thumbPreview" style="width:100%;border-radius:10px;border:1px solid var(--glass-border);display:block">
+              <div @click="clearThumb" style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.7);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;border:2px solid var(--bg)">✕</div>
+            </div>
+          </el-upload>
+        </div>
+
+        <!-- 生成按钮 -->
+        <el-button @click="generateNfo" :loading="generating" :disabled="!person || !form.filename.trim()" type="primary" size="large"
+                   :style="'width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;font-size:15px;font-weight:600;height:46px;border-radius:12px'">
+          🚀 生成 NFO
+        </el-button>
+
+        <!-- 成功提示 -->
+        <div v-if="generated" style="margin-top:16px;padding:12px 16px;border-radius:10px;background:rgba(0,206,201,0.1);border:1px solid rgba(0,206,201,0.25);color:var(--green);font-size:13px;display:flex;align-items:center;gap:8px">
+          ✅ NFO 已生成，下载已开始
+        </div>
+      </div>
+    </div>
+  `,
+  data(){
+    return {
+      form: { filename: '', tmdbId: '' },
+      person: null,
+      lookingUp: false,
+      lookupError: '',
+      thumbFile: null,
+      thumbPreview: '',
+      generating: false,
+      generated: false
+    }
+  },
+  methods: {
+    async lookupPerson(){
+      const id = parseInt(this.form.tmdbId);
+      if(!id || id < 1){ this.lookupError='请输入有效的 TMDB ID'; return }
+      this.lookingUp=true; this.lookupError=''; this.person=null;
+      try {
+        const res = await fetch(`/api/nfo/person/${id}`);
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'查询失败') }
+        this.person = await res.json();
+      } catch(e){
+        this.lookupError = e.message;
+      } finally {
+        this.lookingUp=false;
+      }
+    },
+    handleFileChange(uploadFile){
+      this.thumbFile = uploadFile.raw;
+      const reader = new FileReader();
+      reader.onload = e => { this.thumbPreview = e.target.result };
+      reader.readAsDataURL(uploadFile.raw);
+    },
+    clearThumb(){
+      this.thumbFile = null;
+      this.thumbPreview = '';
+    },
+    async generateNfo(){
+      if(!this.form.filename.trim() || !this.person) return;
+      this.generating=true; this.generated=false;
+      try {
+        // 过滤文件名中不允许的字符
+        const safeFilename = this.form.filename.trim().replace(/[/\\:*?"<>|]/g, '_');
+        const formData = new FormData();
+        formData.append('filename', safeFilename);
+        formData.append('tmdb_id', this.person.tmdb_id);
+        if(this.thumbFile) formData.append('thumb', this.thumbFile);
+
+        const res = await fetch('/api/nfo/generate', { method:'POST', body: formData });
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'生成失败') }
+
+        // 下载 zip
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safeFilename}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        this.generated = true;
+        setTimeout(() => { this.generated = false }, 4000);
+      } catch(e){
+        ElementPlus.ElMessage.error(e.message || '生成失败');
+      } finally {
+        this.generating = false;
+      }
+    }
+  }
+}
+
 // ---- Router ----
 const routes = [
   {path:'/',component:Dashboard},
   {path:'/users',component:Users},
   {path:'/libraries',component:Libraries},
+  {path:'/nfo',component:NfoGenerator},
 ]
 const router = VueRouter.createRouter({
   history:VueRouter.createWebHashHistory(),

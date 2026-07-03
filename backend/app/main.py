@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-from .routers import users, libraries, dashboard, monitor
+from .routers import users, libraries, dashboard, monitor, nfo
 from .series_monitor import start_monitor
 import os
 
@@ -25,8 +25,9 @@ app.include_router(users.router)
 app.include_router(libraries.router)
 app.include_router(dashboard.router)
 app.include_router(monitor.router)
+app.include_router(nfo.router)
 
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "static")
 FRONTEND_PATH = os.path.join(STATIC_DIR, "index.html")
 
 app.mount("/lib", StaticFiles(directory=os.path.join(STATIC_DIR, "lib")), name="lib")
