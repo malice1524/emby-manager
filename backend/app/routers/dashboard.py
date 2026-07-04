@@ -283,6 +283,17 @@ async def _get_admin_user_id(client: httpx.AsyncClient) -> str:
     return ""
 
 
+def _emby_auth_headers(token: str, user_id: str = "") -> dict:
+    """Build Emby headers with optional user context for user-scoped operations."""
+    headers = {"X-Emby-Token": token}
+    if user_id:
+        headers["X-Emby-Authorization"] = (
+            'MediaBrowser Client="Emby Manager", Device="Server", '
+            f'DeviceId="emby-manager", Version="1.0.0", UserId="{user_id}"'
+        )
+    return headers
+
+
 async def _get_user_token(client: httpx.AsyncClient) -> str:
     """Get a user access token for admin operations."""
     from ..config import EMBY_ADMIN_USER, EMBY_ADMIN_PW
@@ -309,9 +320,16 @@ async def delete_media_item(item_id: str):
             f"{EMBY_URL}/Items/{item_id}",
         ]
 
-        # First try the configured API key. Many Emby setups allow admin API keys to delete items.
+        admin_user_id = await _get_admin_user_id(client)
+
+        # First try the configured API key with an explicit admin user context.
         for url in delete_urls:
-            resp = await client.request("DELETE", url, headers=HEADERS)
+            resp = await client.request(
+                "DELETE",
+                url,
+                params={"UserId": admin_user_id} if admin_user_id else None,
+                headers=_emby_auth_headers(HEADERS["X-Emby-Token"], admin_user_id),
+            )
             if resp.status_code in (200, 204):
                 return {"status": "ok"}
             errors.append(f"API key {resp.status_code}: {resp.text[:120]}")
@@ -320,7 +338,7 @@ async def delete_media_item(item_id: str):
         token = await _get_user_token(client)
         if token:
             for url in delete_urls:
-                resp = await client.request("DELETE", url, headers={"X-Emby-Token": token})
+                resp = await client.request("DELETE", url, headers=_emby_auth_headers(token, admin_user_id))
                 if resp.status_code in (200, 204):
                     return {"status": "ok"}
                 errors.append(f"admin token {resp.status_code}: {resp.text[:120]}")
