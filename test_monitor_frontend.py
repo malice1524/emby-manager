@@ -34,6 +34,13 @@ def assert_monitor_frontend(html: str):
     assert "name==='欧美电影'" in html
     assert 'dashboard-library-filter' in html
     assert 'libCountText(lib)' in html
+    assert "return '点击查看全部'" in html
+    assert 'grid-template-columns: repeat(5, 1fr)' in html
+    assert 'grid-template-columns: repeat(4, 1fr)' in html
+    assert 'class="library-items-dialog"' in html
+    assert "calc(100vw - 320px)" in html
+    assert 'margin-left: calc(240px +' in html
+    assert 'translateX(calc(-50% + 120px))' not in html
     assert '个路径' not in html
     assert "ElementPlus.ElMessage.error(e.message||'删除失败')" in html
     assert 'const NfoGenerator = {' in html

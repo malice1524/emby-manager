@@ -234,7 +234,7 @@ body {
   grid-template-columns: repeat(5, 1fr);
   gap: 12px; margin-bottom: 28px;
 }
-@media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
+@media (max-width: 480px) { .poster-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; } }
 
 .poster-card {
   position: relative; border-radius: 10px; overflow: hidden;
@@ -457,7 +457,7 @@ body {
 .el-overlay { background: rgba(0,0,0,0.6) !important; }
 @media (min-width: 769px) {
   .el-overlay { margin-left: 240px; width: calc(100% - 240px); }
-  .el-dialog { transform: translateX(calc(-50% + 120px)) !important; }
+  .library-items-dialog { width: min(85vw, calc(100vw - 320px)) !important; margin-left: calc(240px + (100vw - 240px - min(85vw, calc(100vw - 320px))) / 2) !important; margin-right: 0 !important; }
 }
 .el-dialog__header { border-bottom: 1px solid var(--glass-border); }
 .el-dialog__title { color: var(--text); font-weight: 600; }
@@ -979,7 +979,7 @@ const Libraries = {
       </div>
 
       <!-- Library Items Dialog - Poster Gallery -->
-      <el-dialog v-model="showItems" :title="curLib?.name" :width="isMobile?'96%':'85%'" top="12px" :fullscreen="isMobile"
+      <el-dialog v-model="showItems" :title="curLib?.name" :width="isMobile?'96%':'85%'" top="12px" :fullscreen="isMobile" class="library-items-dialog"
                  :style="isMobile ? 'margin-top:50px' : ''">
         <el-input v-model="search" placeholder="搜索媒体..." size="large" style="margin-bottom:14px" @input="onSearch" clearable/>
 
@@ -1093,10 +1093,7 @@ const Libraries = {
       return (counts.total || 0) + ' 个媒体'
     },
     libSubCountText(lib){
-      const counts = lib.counts || {}
-      if(lib.type === 'tvshows') return (counts.episodes || 0) + ' 集'
-      if(lib.type === 'movies') return '点击查看最近电影'
-      return '电影 ' + (counts.movies || 0) + ' · 剧集 ' + (counts.series || 0)
+      return '点击查看全部'
     },
     openUrl(url){ window.open(url, '_blank') },
     async openLib(lib){
