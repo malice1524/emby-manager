@@ -38,6 +38,13 @@ def assert_monitor_frontend(html: str):
     assert 'grid-template-columns: repeat(5, 1fr)' in html
     assert 'grid-template-columns: repeat(4, 1fr)' in html
     assert 'class="library-items-dialog"' in html
+    assert 'class="library-items-panel"' in html
+    assert 'class="library-items-scroll"' in html
+    assert 'class="library-pagination"' in html
+    assert 'layout="total, prev, pager, next, jumper"' in html
+    assert ':pager-count="isMobile ? 5 : 7"' in html
+    assert ':page-size="pageSize"' in html
+    assert 'height: calc(100vh - 150px)' in html
     assert "calc(100vw - 320px)" in html
     assert 'margin-left: calc(240px +' in html
     assert 'translateX(calc(-50% + 120px))' not in html

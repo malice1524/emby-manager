@@ -459,6 +459,16 @@ body {
   .el-overlay { margin-left: 240px; width: calc(100% - 240px); }
   .library-items-dialog { width: min(85vw, calc(100vw - 320px)) !important; margin-left: calc(240px + (100vw - 240px - min(85vw, calc(100vw - 320px))) / 2) !important; margin-right: 0 !important; }
 }
+.library-items-dialog .el-dialog__body { max-height: calc(100vh - 110px); overflow: hidden; }
+.library-items-panel { display: flex; flex-direction: column; height: calc(100vh - 150px); min-height: 360px; }
+.library-items-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
+.library-pagination { flex-shrink: 0; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--glass-border); display: flex; justify-content: center; }
+.library-pagination .el-pagination { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
+@media (max-width: 768px) {
+  .library-items-dialog .el-dialog__body { max-height: none; overflow: hidden; }
+  .library-items-panel { height: calc(100dvh - 118px); min-height: 0; }
+  .library-pagination { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+}
 .el-dialog__header { border-bottom: 1px solid var(--glass-border); }
 .el-dialog__title { color: var(--text); font-weight: 600; }
 .el-input__wrapper {
@@ -564,7 +574,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 生成</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.06</div>
+    <div class="sidebar-version">v1.11</div>
   </aside>
 
   <!-- Main -->
@@ -981,29 +991,33 @@ const Libraries = {
       <!-- Library Items Dialog - Poster Gallery -->
       <el-dialog v-model="showItems" :title="curLib?.name" :width="isMobile?'96%':'85%'" top="12px" :fullscreen="isMobile" class="library-items-dialog"
                  :style="isMobile ? 'margin-top:50px' : ''">
-        <el-input v-model="search" placeholder="搜索媒体..." size="large" style="margin-bottom:14px" @input="onSearch" clearable/>
+        <div class="library-items-panel">
+          <el-input v-model="search" placeholder="搜索媒体..." size="large" style="margin-bottom:14px;flex-shrink:0" @input="onSearch" clearable/>
 
-        <div v-if="itemsLoading" style="text-align:center;padding:60px 0;color:var(--text-muted)">加载中...</div>
+          <div class="library-items-scroll">
+            <div v-if="itemsLoading" style="text-align:center;padding:60px 0;color:var(--text-muted)">加载中...</div>
 
-        <div class="poster-grid" v-else-if="items.length">
-          <div class="poster-card fade-in" v-for="(item,i) in items" :key="item.id"
-               :style="'animation-delay:'+(i*0.03)+'s'" @click="openLibItem(item)">
-            <img v-if="item.has_image" :src="'/api/dashboard/images/'+item.id+'?w=300'" loading="lazy" alt=""
-                 @error="$event.target.style.display='none'">
-            <div v-else class="poster-placeholder">🎬</div>
-            <div class="poster-type" :class="item.type==='Series'?'series':'movie'">
-              {{item.type==='Series'?'剧集':item.type==='Movie'?'电影':'?'}}
+            <div class="poster-grid" v-else-if="items.length">
+              <div class="poster-card fade-in" v-for="(item,i) in items" :key="item.id"
+                   :style="'animation-delay:'+(i*0.03)+'s'" @click="openLibItem(item)">
+                <img v-if="item.has_image" :src="'/api/dashboard/images/'+item.id+'?w=300'" loading="lazy" alt=""
+                     @error="$event.target.style.display='none'">
+                <div v-else class="poster-placeholder">🎬</div>
+                <div class="poster-type" :class="item.type==='Series'?'series':'movie'">
+                  {{item.type==='Series'?'剧集':item.type==='Movie'?'电影':'?'}}
+                </div>
+                <div class="poster-overlay">
+                  <div class="tt">{{item.name}}</div>
+                  <div class="yr" v-if="item.year">{{item.year}}</div>
+                </div>
+              </div>
             </div>
-            <div class="poster-overlay">
-              <div class="tt">{{item.name}}</div>
-              <div class="yr" v-if="item.year">{{item.year}}</div>
-            </div>
+            <div v-else class="empty-state">未找到内容</div>
           </div>
-        </div>
-        <div v-else class="empty-state">未找到内容</div>
 
-        <div style="margin-top:14px;text-align:center" v-if="total>30">
-          <el-pagination small background layout="prev,next" :total="total" :page-size="30" v-model:current-page="page" @current-change="loadItems"/>
+          <div class="library-pagination" v-if="total>pageSize">
+            <el-pagination small background layout="total, prev, pager, next, jumper" :pager-count="isMobile ? 5 : 7" :total="total" :page-size="pageSize" v-model:current-page="page" @current-change="loadItems"/>
+          </div>
         </div>
       </el-dialog>
 
@@ -1075,7 +1089,7 @@ const Libraries = {
   data(){
     return {
       libraries:[], showItems:false, curLib:null,
-      items:[], itemsLoading:false, total:0, page:1, search:'',
+      items:[], itemsLoading:false, total:0, page:1, pageSize:30, search:'',
       isMobile: window.innerWidth < 640,
       showDetail:false, libDetailItem:null, libExpanded:false, showLibDel:false,
       _searchTimer:null
@@ -1106,7 +1120,7 @@ const Libraries = {
     },
     async loadItems(){
       if(!this.curLib)return; this.itemsLoading=true;
-      const params = new URLSearchParams({page:this.page-1, limit:30});
+      const params = new URLSearchParams({page:this.page-1, limit:this.pageSize});
       if(this.search) params.set('search', this.search);
       if(this.curLib.type) params.set('types', this.curLib.type);
       const data = await fetchJSON('/libraries/'+this.curLib.id+'/items?'+params);

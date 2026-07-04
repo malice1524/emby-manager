@@ -14,3 +14,11 @@ def test_delete_item_uses_user_context_with_api_key():
 def test_delete_item_keeps_admin_token_fallback():
     assert "token = await _get_user_token(client)" in SOURCE
     assert "admin token" in SOURCE
+    assert "当前 Emby API Key 无法执行删除" in SOURCE
+    assert "EMBY_ADMIN_USER" in SOURCE
+    assert "EMBY_ADMIN_PW" in SOURCE
+
+
+def test_spa_response_disables_index_cache():
+    main_source = (ROOT / "backend" / "app" / "main.py").read_text(encoding="utf-8")
+    assert '"Cache-Control": "no-cache, no-store, must-revalidate"' in main_source

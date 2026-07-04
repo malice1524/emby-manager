@@ -343,6 +343,11 @@ async def delete_media_item(item_id: str):
                     return {"status": "ok"}
                 errors.append(f"admin token {resp.status_code}: {resp.text[:120]}")
         else:
+            if any("Parameter 'user'" in err or "Parameter &#39;user&#39;" in err for err in errors):
+                raise HTTPException(
+                    status_code=403,
+                    detail="删除失败：当前 Emby API Key 无法执行删除，请在 Docker 环境变量中配置 EMBY_ADMIN_USER 和 EMBY_ADMIN_PW 后重启容器。",
+                )
             errors.append("admin token unavailable: set EMBY_ADMIN_PW if API key deletion is not allowed")
 
         raise HTTPException(status_code=403, detail="删除失败：" + " | ".join(errors[-3:]))

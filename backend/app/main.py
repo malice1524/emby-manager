@@ -44,4 +44,7 @@ async def health():
 async def spa(path: str = ""):
     if path.startswith("api/") or path.startswith("lib/"):
         return {"error": "not found"}
-    return FileResponse(FRONTEND_PATH)
+    return FileResponse(
+        FRONTEND_PATH,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
