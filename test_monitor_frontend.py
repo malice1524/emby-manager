@@ -22,6 +22,11 @@ def assert_monitor_frontend(html: str):
     assert "fetchJSON('/config'" in html
     assert "fetchJSON('/monitor/status'" in html
     assert "fetchJSON('/monitor/logs?limit=50'" in html
+    assert 'class="monitor-search-results"' in html
+    assert 'class="monitor-search-result-item"' in html
+    assert 'class="monitor-search-overview"' in html
+    assert '-webkit-line-clamp:2' in html
+    assert 'overflow-wrap:anywhere' in html
     assert 'const NfoGenerator = {' in html
     assert "{path:'/nfo',component:NfoGenerator}" in html
 
