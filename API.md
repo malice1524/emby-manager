@@ -1,138 +1,272 @@
-# API.md
+# API.md — Emby Manager 接口文档 ⭐⭐
 
-## 模块：系统
+> 用途：接口新增、接口修改、前后端联调、排查 API 问题时发送/读取。日常开发先读 `AI_CONTEXT.md`。
 
-### 健康检查
-- **请求地址**: `GET /api/health`
-- **请求参数**: 无
-- **返回参数**: `{"status": "ok"}`
-- **权限要求**: 无
-- **调用示例**:
-```bash
-curl http://localhost:8117/api/health
+## 0. 基础信息
+
+- 服务基础地址：`http://localhost:8000` 或 Docker 映射端口，如 `http://NAS:8117`
+- API 前缀：`/api`
+- 前端 SPA：`/` 和非 `/api` 路径由 `static/index.html` 兜底
+- 静态依赖：`/lib/*`
+- 认证：后端通过环境变量/配置中的 Emby 凭据访问 Emby；前端接口本身当前无登录鉴权
+
+## 1. 系统
+
+### 1.1 健康检查
+
+```http
+GET /api/health
 ```
 
----
+返回：
 
-## 模块：仪表盘
+```json
+{"status":"ok"}
+```
 
-### 获取概览数据
-- **请求地址**: `GET /api/dashboard/overview`
-- **请求参数**: 无
-- **返回参数**:
+## 2. 仪表盘 `/api/dashboard`
+
+主要文件：`backend/app/routers/dashboard.py`
+
+### 2.1 图片代理
+
+```http
+GET /api/dashboard/images/{item_id}?w=400&type=item
+```
+
+参数：
+
+| 参数 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|
+| `w` | int | 否 | 400 | 图片宽度 |
+| `type` | string | 否 | item | `item` 媒体图片；`user` 用户头像 |
+
+返回：图片二进制。
+
+### 2.2 概览
+
+```http
+GET /api/dashboard/overview
+```
+
+返回示例：
+
 ```json
 {
-  "media": { "movies": 5832, "series": 206, "episodes": 5817 },
-  "users": { "total": 4, "admins": 2 },
-  "sessions": { "active": 19, "streams": [...] },
+  "media": {"movies": 5832, "series": 206, "episodes": 5817},
+  "users": {"total": 4, "admins": 2},
+  "sessions": {"active": 1, "streams": []},
   "libraries": 19,
-  "server": { "name": "Malice", "version": "4.8.11.0" }
+  "server": {"name": "Emby", "version": "4.8.11.0"}
 }
 ```
-- **权限要求**: 无
 
-### 获取最近添加
-- **请求地址**: `GET /api/dashboard/recent`
-- **请求参数**:
+### 2.3 最近添加
 
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| limit | int | 否 | 12 | 返回数量（1-50） |
-| types | string | 否 | Movie,Series | 媒体类型 |
-| parent_id | string | 否 | "" | 按媒体库 ID 过滤 |
-| exclude_parent_ids | string | 否 | "" | 排除的媒体库 ID（逗号分隔） |
-| search | string | 否 | "" | 搜索关键词 |
+```http
+GET /api/dashboard/recent?limit=12&types=Movie,Series&parent_id=&exclude_parent_ids=&search=
+```
 
-- **返回参数**: `{"items": [{"id", "name", "type", "year", "overview", "rating", "image_url"}]}`
+参数：
 
-### 获取仪表盘统计（活动日志）
-- **请求地址**: `GET /api/dashboard/stats`
-- **返回参数**: `{"activity": [...], "system": {...}}`
+| 参数 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|
+| `limit` | int | 否 | 12 | 返回数量，通常 1-50 |
+| `types` | string | 否 | Movie,Series | Emby 类型，逗号分隔 |
+| `parent_id` | string | 否 | 空 | 指定媒体库 ID |
+| `exclude_parent_ids` | string | 否 | 空 | 排除媒体库 ID，逗号分隔 |
+| `search` | string | 否 | 空 | 搜索关键词 |
 
-### 获取媒体详情
-- **请求地址**: `GET /api/dashboard/item/{item_id}`
-- **返回参数**: `{"id", "name", "overview", "type", "year", "rating", "genres", "tmdb_id", "imdb_id", "tmdb_url", "imdb_url", "cast": [...]}`
+返回：
 
-### 删除媒体
-- **请求地址**: `DELETE /api/dashboard/item/{item_id}`
-- **返回参数**: `{"status": "ok"}`
-- **权限要求**: 需要配置 `EMBY_ADMIN_PW`
+```json
+{"items":[{"id":"...","name":"...","type":"Movie","year":2026,"overview":"...","rating":8.1,"image_url":"..."}]}
+```
 
-### 图片代理
-- **请求地址**: `GET /api/dashboard/images/{item_id}`
-- **请求参数**:
+### 2.4 媒体详情
 
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| w | int | 否 | 400 | 图片宽度 |
-| type | string | 否 | item | 图片类型：item/user |
+```http
+GET /api/dashboard/item/{item_id}
+```
 
-- **返回**: 图片二进制（Cache-Control: max-age=86400）
+返回字段包含：
 
----
+```text
+id, name, overview, type, year, rating, genres,
+tmdb_id, imdb_id, tmdb_url, imdb_url, cast
+```
 
-## 模块：用户管理
+### 2.5 活动/系统统计
 
-### 获取用户列表
-- **请求地址**: `GET /api/users`
-- **返回参数**: `{"users": [{"id", "name", "avatar_url", "has_password", "is_admin", "is_disabled", "last_login", "last_active", "created"}]}`
+```http
+GET /api/dashboard/stats
+```
 
-### 创建用户
-- **请求地址**: `POST /api/users`
-- **请求参数**: `name`(query, 必填), `password`(query, 可选)
-- **返回参数**: `{"status": "ok", "id": "..."}`
+返回：
 
-### 删除用户
-- **请求地址**: `DELETE /api/users/{user_id}`
-- **返回参数**: `{"status": "ok"}`
+```json
+{"activity": [], "system": {}}
+```
 
-### 修改密码
-- **请求地址**: `PUT /api/users/{user_id}/password`
-- **请求体**: `{"new_pw": "新密码"}`
-- **返回参数**: `{"status": "ok"}`
+### 2.6 删除媒体
 
-### 修改用户策略
-- **请求地址**: `PUT /api/users/{user_id}/policy`
-- **请求体**: `{"IsDisabled": true}`
-- **返回参数**: `{"status": "ok"}`
+```http
+DELETE /api/dashboard/item/{item_id}
+```
 
----
+返回：
 
-## 模块：媒体库管理
+```json
+{"status":"ok"}
+```
 
-### 获取媒体库列表
-- **请求地址**: `GET /api/libraries`
-- **返回参数**:
+注意：删除能力需要管理员凭据。若提示 API Key 不能删除，在 Docker Compose 配置：
+
+```text
+EMBY_ADMIN_USER
+EMBY_ADMIN_PW
+```
+
+## 3. 用户管理 `/api/users`
+
+主要文件：`backend/app/routers/users.py`
+
+### 3.1 用户列表
+
+```http
+GET /api/users
+```
+
+返回：
+
 ```json
 {
-  "libraries": [{
-    "id": "f930834e...", "name": "欧美电影", "type": "movies",
-    "counts": { "movies": 359, "series": 0, "episodes": 0, "total": 359 }
+  "users": [{
+    "id": "...",
+    "name": "user",
+    "avatar_url": "...",
+    "has_password": true,
+    "is_admin": false,
+    "is_disabled": false,
+    "last_login": "...",
+    "last_active": "...",
+    "created": "..."
   }]
 }
 ```
 
-### 获取媒体库内容
-- **请求地址**: `GET /api/libraries/{item_id}/items`
-- **请求参数**:
+### 3.2 创建用户
 
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| limit | int | 否 | 30 | 返回数量 |
-| page | int | 否 | 0 | 页码 |
-| search | string | 否 | "" | 搜索关键词 |
-| types | string | 否 | "" | 类型过滤：movies/tvshows |
+```http
+POST /api/users?name=用户名&password=密码
+```
 
-- **返回参数**: `{"items": [...], "total": 76}`
+返回：
 
----
+```json
+{"status":"ok","id":"..."}
+```
 
-## 模块：完结监控
+### 3.3 删除用户
 
-### TMDB 搜索剧集
-- **请求地址**: `GET /api/tmdb/search?q=xxx&page=1`
-- **权限要求**: 需要配置 TMDB API Key
-- **返回参数**:
+```http
+DELETE /api/users/{user_id}
+```
+
+返回：
+
+```json
+{"status":"ok"}
+```
+
+### 3.4 修改密码
+
+```http
+PUT /api/users/{user_id}/password
+Content-Type: application/json
+
+{"new_pw":"新密码"}
+```
+
+返回：
+
+```json
+{"status":"ok"}
+```
+
+### 3.5 修改用户策略
+
+```http
+PUT /api/users/{user_id}/policy
+Content-Type: application/json
+
+{"IsDisabled":true}
+```
+
+返回：
+
+```json
+{"status":"ok"}
+```
+
+## 4. 媒体库 `/api/libraries`
+
+主要文件：`backend/app/routers/libraries.py`
+
+### 4.1 媒体库列表
+
+```http
+GET /api/libraries
+```
+
+返回：
+
+```json
+{
+  "libraries": [{
+    "id": "...",
+    "name": "欧美电影",
+    "type": "movies",
+    "counts": {"movies": 359, "series": 0, "episodes": 0, "total": 359}
+  }]
+}
+```
+
+### 4.2 媒体库内容
+
+```http
+GET /api/libraries/{item_id}/items?limit=30&page=1&search=&types=
+```
+
+参数：
+
+| 参数 | 类型 | 必填 | 默认 | 说明 |
+|------|------|------|------|------|
+| `limit` | int | 否 | 30 | 每页数量 |
+| `page` | int | 否 | 1/0 | 页码；以前端实际传值为准 |
+| `search` | string | 否 | 空 | 搜索关键词 |
+| `types` | string | 否 | 空 | 类型过滤，如 movies/tvshows |
+
+返回：
+
+```json
+{"items":[{"id":"...","name":"...","type":"Movie","year":2026,"has_image":true}],"total":76}
+```
+
+前端依赖 `total` 做分页显示。
+
+## 5. TMDB 与完结监控
+
+主要文件：`backend/app/routers/monitor.py`
+
+### 5.1 TMDB 搜索剧集
+
+```http
+GET /api/tmdb/search?q=关键词&page=1
+```
+
+返回：
+
 ```json
 {
   "results": [{
@@ -147,31 +281,46 @@ curl http://localhost:8117/api/health
 }
 ```
 
-### TMDB 获取剧集详情
-- **请求地址**: `GET /api/tmdb/detail/{tmdb_id}`
-- **返回参数**:
-```json
-{
-  "tmdb_id": 95557,
-  "title": "凡人修仙传",
-  "status": "Returning Series",
-  "type": "动画",
-  "vote_average": 8.5,
-  "number_of_episodes": 200,
-  "next_episode_to_air": { "air_date": "2026-07-06", "episode_number": 181, "season_number": 1 },
-  "last_episode_to_air": { "air_date": "2026-06-29", "episode_number": 180, "season_number": 1 },
-  "last_air_date": "2026-06-29",
-  "overview": "..."
-}
+### 5.2 TMDB 剧集详情
+
+```http
+GET /api/tmdb/detail/{tmdb_id}
 ```
 
-### 验证 TMDB API Key
-- **请求地址**: `GET /api/tmdb/verify`
-- **返回参数**: `{"valid": true}` 或 `{"valid": false, "error": "..."}`
+返回字段包含：
 
-### 获取监控列表
-- **请求地址**: `GET /api/monitor/list`
-- **返回参数**:
+```text
+tmdb_id, title, status, type, vote_average,
+number_of_episodes, next_episode_to_air,
+last_episode_to_air, last_air_date, overview
+```
+
+### 5.3 验证 TMDB Key
+
+```http
+GET /api/tmdb/verify
+```
+
+返回：
+
+```json
+{"valid":true}
+```
+
+或：
+
+```json
+{"valid":false,"error":"..."}
+```
+
+### 5.4 获取监控列表
+
+```http
+GET /api/monitor/list
+```
+
+返回：
+
 ```json
 {
   "series": [{
@@ -180,8 +329,8 @@ curl http://localhost:8117/api/health
     "poster_url": "...",
     "current_status": "Returning Series",
     "notified_ended": false,
-    "next_episode": { "air_date": "2026-07-06", "episode_number": 181 },
-    "last_episode": { "air_date": "2026-06-29", "episode_number": 180 },
+    "next_episode": {"air_date": "2026-07-06", "episode_number": 181},
+    "last_episode": {"air_date": "2026-06-29", "episode_number": 180},
     "total_episodes": 200,
     "type": "动画",
     "vote_average": 8.5
@@ -189,68 +338,172 @@ curl http://localhost:8117/api/health
 }
 ```
 
-### 添加监控剧集
-- **请求地址**: `POST /api/monitor/add`
-- **请求体**: `{"tmdb_id": 95557, "title": "凡人修仙传", "year": "2020", "poster_url": "..."}`
-- **返回参数**: `{"success": true, "notification_sent": false}`
-- **说明**: 立即返回，异步查询 TMDB 详情并发送通知
+### 5.5 添加监控
 
-### 删除监控剧集
-- **请求地址**: `DELETE /api/monitor/{tmdb_id}`
-- **返回参数**: `{"success": true}`
+```http
+POST /api/monitor/add
+Content-Type: application/json
 
-### 获取运行状态
-- **请求地址**: `GET /api/monitor/status`
-- **返回参数**:
+{"tmdb_id":95557,"title":"凡人修仙传","year":"2020","poster_url":"..."}
+```
+
+返回：
+
 ```json
+{"success":true,"notification_sent":false}
+```
+
+说明：接口尽快返回，后续详情查询/通知可异步处理。
+
+### 5.6 删除监控
+
+```http
+DELETE /api/monitor/{tmdb_id}
+```
+
+返回：
+
+```json
+{"success":true}
+```
+
+### 5.7 监控状态
+
+```http
+GET /api/monitor/status
+```
+
+返回：监控任务状态、下次检测时间等，具体字段以实现为准。
+
+### 5.8 监控日志
+
+```http
+GET /api/monitor/logs?limit=50
+```
+
+返回：最近检测日志。
+
+## 6. 配置 `/api/config`
+
+主要文件：`backend/app/routers/monitor.py` + `backend/app/config.py`
+
+### 6.1 获取配置
+
+```http
+GET /api/config
+```
+
+返回字段：
+
+```text
+tmdb_api_key, tg_bot_token, tg_chat_id, proxy_url,
+update_template, end_template, check_interval_minutes
+```
+
+注意：前端会回显配置；不要在日志/聊天里输出真实 token。
+
+### 6.2 保存配置
+
+```http
+PUT /api/config
+Content-Type: application/json
+
 {
-  "last_check_time": "2026-06-30T01:00:00",
-  "next_check_time": "2026-06-30T01:30:00",
-  "monitored_count": 5,
-  "last_notification_time": "2026-06-30T00:30:00",
-  "is_running": true
+  "tmdb_api_key":"...",
+  "tg_bot_token":"...",
+  "tg_chat_id":"...",
+  "proxy_url":"http://host:port",
+  "update_template":"...",
+  "end_template":"...",
+  "check_interval_minutes":30
 }
 ```
 
-### 获取检查日志
-- **请求地址**: `GET /api/monitor/logs?limit=50`
-- **返回参数**:
+返回：
+
 ```json
-[
-  { "time": "2026-06-30T01:00:00", "status": "ok", "message": "检查完成 · 5 部剧"}
-]
+{"success":true}
 ```
 
----
+### 6.3 测试 Telegram
 
-## 模块：配置管理
-
-### 获取配置
-- **请求地址**: `GET /api/config`
-- **返回参数**:
-```json
-{
-  "tmdb_api_key": "...",
-  "tg_bot_token": "...",
-  "tg_chat_id": "...",
-  "proxy_url": "http://192.168.1.100:7890",
-  "update_template": "📺 ...",
-  "end_template": "🎬 ...",
-  "check_interval_minutes": 30
-}
+```http
+POST /api/config/test
 ```
 
-### 保存配置
-- **请求地址**: `PUT /api/config`
-- **请求体**: 同 GET 返回结构，字段值为 `"__skip__"` 时跳过更新
-- **返回参数**: `{"success": true}`
-- **说明**: 如果 `check_interval_minutes` 变化，自动重启定时任务
+返回：测试发送结果。
 
-### 测试 TG 通知
-- **请求地址**: `POST /api/config/test`
-- **返回参数**: `{"success": true}` 或 `{"success": false, "error": "..."}`
+### 6.4 测试代理
 
-### 测试代理连通性
-- **请求地址**: `POST /api/config/test-proxy`
-- **返回参数**: `{"success": true, "message": "代理连接成功"}` 或 `{"success": false, "error": "..."}`
-- **说明**: 用配置的代理访问 google.com 检测连通性
+```http
+POST /api/config/test-proxy
+```
+
+返回：代理连通性测试结果。
+
+## 7. NFO 生成 `/api/nfo`
+
+主要文件：`backend/app/routers/nfo.py`
+
+### 7.1 查询 TMDB 人物
+
+```http
+GET /api/nfo/person/{tmdb_id}
+```
+
+返回：TMDB 人物详情，通常包含：
+
+```text
+id, name, profile_url, biography 等
+```
+
+### 7.2 生成 NFO zip
+
+```http
+POST /api/nfo/generate
+Content-Type: multipart/form-data
+
+filename=自定义文件名
+tmdb_id=12345
+thumb=@cover.jpg   # 可选，支持 jpg/jpeg/png/webp
+```
+
+返回：zip 文件下载。
+
+zip 内容：
+
+```text
+自定义文件名.nfo
+自定义文件名.jpg/png/webp   # 如果上传封面或 TMDB 有头像
+```
+
+当前 NFO 格式：
+
+```xml
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<movie>
+  <title>自定义文件名</title>
+  <actor>
+    <name>演员名</name>
+    <tmdbid>12345</tmdbid>
+    <thumb>自定义文件名.jpg</thumb>
+  </actor>
+</movie>
+```
+
+错误：
+
+- 文件名为空：`400`
+- 图片格式不支持：`400`
+- TMDB 查询失败：`400`
+- 生成异常：`500`
+
+## 8. API 开发注意事项
+
+1. 新增后端路由优先放 `backend/app/routers/`。
+2. 新路由必须在 `backend/app/main.py` include。
+3. Docker 实际使用 `backend/app/`。
+4. 修改接口后同步更新 `API.md`。
+5. 涉及 JSON 结构时同步更新 `DATABASE.md`。
+6. 不要在错误信息或日志中泄露 API key、token、密码。
+7. 前端调用统一注意错误提示，不要只显示“失败”。

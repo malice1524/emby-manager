@@ -1,137 +1,215 @@
-# AI_CONTEXT.md — Emby Manager 项目上下文
+# AI_CONTEXT.md — Emby Manager 高频上下文 ⭐⭐⭐⭐⭐
 
-## 项目整体架构
+> 用途：每次开启新的 AI 会话优先发送/读取。目标是让 AI 快速知道项目规则、当前状态、常用命令和容易踩坑的地方。
 
-Emby Manager 是一个 Emby 媒体服务器 Web 管理面板 + 剧集完结监控系统，采用 **单容器前后端一体架构**。
+## 项目定位
 
-```
-用户浏览器 → FastAPI (uvicorn) → Emby API / TMDB API / Telegram API
-                ↓
-            静态文件 (Vue 3 SPA) + JSON 文件存储
-```
+Emby Manager 是一个 Emby 媒体服务器 Web 管理面板，提供仪表盘、用户管理、媒体库浏览、完结监控、NFO 生成等能力。
 
-- **后端**: Python FastAPI，异步 httpx 调用外部 API
-- **前端**: Vue 3 + Element Plus，单 HTML SPA
-- **存储**: 无数据库，配置/监控数据存 JSON 文件（Docker volume）
-- **定时任务**: APScheduler 每 N 分钟检测剧集状态
-- **部署**: 单 Docker 容器，GitHub Actions 推送 Docker Hub
+- 仓库：`malice1524/emby-manager`
+- 本地常用路径：`/var/minis/workspace/emby-manager`
+- Docker 镜像：`1524566636/emby-manager:latest`
+- 部署方式：单 Docker 容器，`main` 分支推送后 DockerHub 自动构建 latest
 
-## 核心业务逻辑
+## 技术栈
 
-### 认证
-- Emby API Key (`X-Emby-Token` 头) 认证
-- 删除操作需管理员密码 (`EMBY_ADMIN_PW`)
+- 后端：Python 3.12 + FastAPI + httpx + APScheduler
+- 前端：Vue 3 + Vue Router + Element Plus，单文件 SPA
+- 存储：无数据库；配置、监控列表、日志使用 JSON 文件
+- 运行：`uvicorn app.main:app --host 0.0.0.0 --port 8000`
 
-### 配置系统
-- 配置优先读 JSON 文件 → 环境变量兜底
-- 所有配置可在 Web 界面 ⚙️ 设置中修改，即时生效
-- 配置文件：`config.json` / `monitored_series.json` / `monitor_log.json`
+## 重要目录和文件
 
-### 完结监控流程
-```
-1. 用户通过 TMDB 搜索添加剧集到监控列表
-2. APScheduler 定时触发 check_series()
-3. 遍历监控列表，调 TMDB API 获取最新状态
-4. 检测更新（last_episode_air_date 变化）→ TG 通知
-5. 检测完结（status: Returning Series → Ended）→ TG 通知
-6. 更新 JSON，记录检查日志
-```
-
-### 通知模板
-- 默认模板支持 `{series_name}`、`{episode_info}`、`{air_date}` 等变量
-- 模板校验：保存时检测未知变量，提示但不阻止
-- 通知发送：优先 `sendPhoto`（带海报），失败降级为 `sendMessage`
-- 简介截断：完结通知简介仅显示前 4 行
-
-## 后端 API 总结
-
-| 模块 | 端点 | 方法 | 用途 |
-|------|------|------|------|
-| 仪表盘 | `/api/dashboard/*` | GET/DELETE | 概览、最近添加、详情、删除、图片代理 |
-| 用户 | `/api/users*` | GET/POST/DELETE/PUT | 用户 CRUD、密码、策略 |
-| 媒体库 | `/api/libraries*` | GET | 列表、数量统计、子项查询 |
-| TMDB | `/api/tmdb/*` | GET | 搜索、详情、验证 Key |
-| 监控 | `/api/monitor/*` | GET/POST/DELETE | 列表、添加、删除、状态、日志 |
-| 配置 | `/api/config*` | GET/PUT/POST | 读取、保存、测试 TG、测试代理 |
-| 系统 | `/api/health` | GET | 健康检查 |
-
-共 **24 个 API 端点**（含子路径）。
-
-## 前端关键数据结构
-
-### Monitor 组件
-```javascript
-data: {
-  searchQuery, searchResults: [], searching, searchError,
-  monitoredList: [], loadingList, refreshing,
-  showSettings: false,
-  filterStatus: 'all',  // all / continuing / ended
-  monitorStatus: null,
-  logs: [],
-  activeCollapse: []
-}
-computed: {
-  filteredList() // 按 filterStatus 筛选
-}
-methods: {
-  doSearch(), addSeries(), deleteSeries(),
-  loadList(), refreshList(), loadStatus(), loadLogs(),
-  fmtTime2(), daysUntil()
-}
+```text
+Dockerfile                    # 实际镜像构建入口，复制 backend/app 与 static
+backend/app/                  # Docker 实际使用的后端代码
+backend/app/main.py           # FastAPI 入口、路由注册、SPA fallback
+backend/app/routers/          # dashboard/users/libraries/monitor/nfo API
+backend/app/config.py         # 环境变量 + JSON 配置读取
+backend/app/series_monitor.py # 完结监控定时任务
+backend/app/tmdb_client.py    # TMDB API 封装
+backend/app/tg_notifier.py    # Telegram 通知
+frontend/index.html           # 前端源文件
+static/index.html             # Docker 实际服务的前端文件
+VERSION                       # 项目版本
+static/VERSION                # 静态版本，需和 VERSION 同步
+README.md                     # GitHub 展示文档
+AI_CONTEXT.md                 # 高频 AI 上下文
+PROJECT.md                    # 架构/大功能上下文
+API.md                        # API 文档
+DATABASE.md                   # JSON 持久化/数据说明
 ```
 
-### SettingsDialog 组件
-```javascript
-data: {
-  form: { tmdb_api_key, tg_bot_token, tg_chat_id, proxy_url, update_template, end_template, check_interval_minutes },
-  verifying, tmdbVerifyResult,
-  testing, tgTestResult,
-  proxyTesting, proxyTestResult,
-  saving, saveWarn,
-  showUpdateVars, showEndVars,
-  isMobile
-}
-methods: {
-  loadConfig(), verifyTmdb(), testTg(), testProxy(),
-  save(), resetDefaults(), validateTemplate()
-}
+注意：根目录 `app/` 是旧副本/兼容副本；Dockerfile 使用的是 `backend/app/`。除非明确需要同步旧副本，否则优先改 `backend/app/`。
+
+## 前端修改规则
+
+前端主要改：
+
+```text
+frontend/index.html
 ```
 
-## 关键配置
+但实际 Docker 读取：
 
-### config.py
-```python
-MONITOR_DATA_DIR = os.getenv("MONITOR_DATA_DIR", "/data")
-CONFIG_PATH = os.path.join(MONITOR_DATA_DIR, "config.json")
-MONITORED_SERIES_PATH = os.path.join(MONITOR_DATA_DIR, "monitored_series.json")
-
-def load_tg_config():
-    # 优先读 JSON，没有则用环境变量兜底
-
-def get_http_client():
-    # 返回带代理的 httpx.AsyncClient（如配置了代理）
+```text
+static/index.html
 ```
 
-## 开发规范
+所以前端改动必须同步到 `static/index.html`。如果没有同步脚本，就对两个文件做同样修改，并用测试确认：
 
-### 文件路径
-- **后端代码**: `backend/app/`（根目录 `app/` 是旧副本，修改两端需同步）
-- **前端 SPA**: `frontend/index.html`（单文件，约82KB）
-- **前端依赖**: `frontend/lib/`
+```bash
+python3 -m pytest test_monitor_frontend.py -q
+```
 
-### 代码风格
-- Python: FastAPI 异步路由，类型注解，httpx AsyncClient
-- JavaScript: Vue 3 Options API，Element Plus 组件，ES5 兼容语法
-- CSS: 自定义变量系统，暗色毛玻璃主题，8pt 网格
+## 当前版本规则
 
-### 推送前必须询问用户确认
-### 版本号规则
-每次推送代码时，版本号加 0.01（如 1.10 → 1.11）。到 0.09 后进位到 0.10（如 1.09 → 1.10）。版本号写在 VERSION 和 static/VERSION，两个文件同步。
+当前已知版本：`1.17`。
 
-## 后续开发注意事项
-1. 新路由在 `backend/app/main.py` 注册 `app.include_router()`
-2. 修改 `libraries.py` 需同步 `backend/app/routers/` 和 `app/routers/`
-3. Dockerfile 使用 `backend/` 下的代码，`frontend/` 下的静态文件
-4. 环境变量作为兜底，优先从 JSON 文件读取
-5. 新静态文件（JS/CSS）放 `frontend/lib/` 并复制到 `backend/static/lib/`
-6. TG 通知调用走 `get_http_client()` 自动支持代理
+每次用户明确要求“推送”时，推送前必须版本号 +0.01：
+
+```text
+1.17 → 1.18 → 1.19 → 1.20
+```
+
+必须同步四处：
+
+```text
+VERSION
+static/VERSION
+frontend/index.html 里的侧边栏 vX.XX
+static/index.html 里的侧边栏 vX.XX
+```
+
+## Git 推送规则
+
+- 未经用户明确允许，不能执行 `git push`。
+- 用户说“推送”后才允许推送。
+- 推送前必须先升级版本号。
+- 推送前必须跑完整检查。
+
+推荐流程：
+
+```bash
+git status --short
+# 修改版本号
+# 修改代码/文档
+git diff --check
+python3 -m pytest test_monitor_frontend.py test_dashboard_delete_backend.py -q
+git add ...
+git commit -m "..."
+git push origin main
+```
+
+如果 HTTPS 推送缺凭据，但环境变量 `GITHUB_TOKEN` 已设置，可用临时 header 推送；不要输出 token：
+
+```bash
+HEADER=$(python3 -c 'import os,base64; print("AUTHORIZATION: basic "+base64.b64encode(("x-access-token:"+os.environ["GITHUB_TOKEN"]).encode()).decode())')
+git -c http.https://github.com/.extraheader="$HEADER" push origin main
+```
+
+## 常用验证命令
+
+最常用完整检查：
+
+```bash
+git diff --check && python3 -m pytest test_monitor_frontend.py test_dashboard_delete_backend.py -q
+```
+
+当前预期：`5 passed`。
+
+其他：
+
+```bash
+python3 -m pytest test_monitor_frontend.py -q
+python3 -m pytest test_dashboard_delete_backend.py -q
+python3 -m pytest test_api_smoke.py -q
+```
+
+## 最近重点功能/状态
+
+### 媒体库弹窗
+
+当前方向是正确的：
+
+- 桌面/iPad 端媒体库弹窗固定位置
+- 上下留白一致
+- 外层不再上下拖动/滚动
+- 搜索框与分页固定可见
+- 海报列表在弹窗内部滚动
+- 关键 CSS：`.library-items-dialog`、`.library-items-panel`、`.library-items-scroll`、`.library-pagination`
+
+不要再通过单纯增大 `top` 解决遮挡，否则会造成上方空隙。
+
+### 媒体库卡片
+
+- 不显示“0个路径”
+- 显示电影/剧集数量
+- 副文案统一为“点击查看全部”
+
+### 完结监控
+
+- 搜索结果简介两行省略
+- `overflow-wrap:anywhere` 防止长文本撑宽页面
+- 刷新按钮使用 `monitor-refresh-btn` + 单个旋转图标
+
+### 删除接口
+
+如果删除用户/媒体提示 API Key 不能删除，需要在 Docker Compose 配置：
+
+```yaml
+EMBY_ADMIN_USER=管理员用户名
+EMBY_ADMIN_PW=管理员密码
+```
+
+### SPA 缓存
+
+`backend/app/main.py` 的 SPA fallback 已加：
+
+```text
+Cache-Control: no-cache, no-store, must-revalidate
+```
+
+用于减少浏览器缓存导致 UI 不一致。
+
+## 功能概览
+
+- 仪表盘：概览、最近添加、活动日志、正在播放、详情、删除媒体
+- 用户管理：列表、新建、删除、改密码、启用/禁用
+- 媒体库：列表、数量统计、海报墙、搜索、分页、跳页、详情弹窗
+- 完结监控：TMDB 搜索/详情/验证、监控列表、定时检测、TG 通知、日志
+- 配置：TMDB Key、TG Bot、代理、模板、检测间隔
+- NFO 生成：自定义文件名 + TMDB 人物 ID + 可选封面 → zip 下载
+
+## 环境变量
+
+核心：
+
+```text
+EMBY_URL
+EMBY_API_KEY
+EMBY_ADMIN_USER       # 删除功能需要
+EMBY_ADMIN_PW         # 删除功能需要
+MONITOR_DATA_DIR=/data
+TMDB_API_KEY          # 可由 Web 配置覆盖/兜底
+TG_BOT_TOKEN          # 可由 Web 配置覆盖/兜底
+TG_CHAT_ID            # 可由 Web 配置覆盖/兜底
+```
+
+配置优先级：JSON 文件 > 环境变量兜底。
+
+## 文档分层
+
+- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 每次新 AI 会话都发
+- `PROJECT.md`：⭐⭐⭐ 大功能、架构、目录、部署相关时发
+- `DATABASE.md`：⭐⭐ 数据结构、JSON 持久化、配置迁移时发
+- `API.md`：⭐⭐ 接口新增/修改/调试时发
+
+## 开发注意事项
+
+1. Docker 实际使用 `backend/app/` 和 `static/`。
+2. 前端修改必须保持 `frontend/index.html` 与 `static/index.html` 一致。
+3. 新 API 路由要在 `backend/app/main.py` include。
+4. 不要读取或输出密钥/token。
+5. 推送前必须升级版本号并跑测试。
+6. 未经用户明确允许不能 push。

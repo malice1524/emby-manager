@@ -1,254 +1,322 @@
-# Emby Manager 项目文档
+# PROJECT.md — Emby Manager 项目文档 ⭐⭐⭐
 
-## 项目简介
+> 用途：大功能开发、架构调整、部署改动、目录理解时发送/读取。日常小修优先读 `AI_CONTEXT.md`。
 
-### 项目名称
-Emby Manager
+## 1. 项目简介
 
-### 项目目标
-为 Emby 媒体服务器提供现代化的 Web 管理面板，支持跨网络访问、用户管理、媒体库浏览、剧集完结监控等管理功能，替代 Emby 原生管理界面的不便之处。
+Emby Manager 是一个面向 NAS/自建媒体库用户的 Emby Web 管理面板，用一个单容器应用提供：
 
-### 核心功能
-- 📊 **仪表盘** — 服务器状态、媒体统计、活跃会话实时监控
-- 👥 **用户管理** — 创建/删除用户、修改密码、启用/禁用账户
-- 📂 **媒体库** — 所有媒体库浏览、海报墙展示、按类型显示数量统计
-- 🖼️ **海报浏览** — 瀑布流加载、海报缩放、点击查看详情
-- 🌐 **跨网络访问** — 图片代理功能，解决内外网跨域问题
-- 🔍 **全局搜索** — 跨所有媒体库搜索媒体内容
-- 🔔 **完结监控** — 剧集状态检测、TMDB 数据查询、Telegram 通知推送
-- ⚙️ **自定义配置** — Web界面配置 TMDB Key、TG Bot、代理地址、通知模板
+- Emby 仪表盘
+- 用户管理
+- 媒体库浏览
+- 图片代理
+- 全局搜索
+- 剧集完结监控
+- Telegram 通知
+- NFO 生成
 
-## 技术栈
+项目目标：减少进入 Emby 原生后台的频率，让常用管理操作在一个移动端/桌面端友好的页面里完成。
 
-### 后端框架
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Python FastAPI | 3.12+ | Web API 框架 |
-| httpx | latest | 异步 HTTP 客户端（调用 Emby/TMDB/Telegram API） |
-| apscheduler | 3.10+ | 定时任务调度 |
-| uvicorn | latest | ASGI 服务器 |
+## 2. 当前架构
 
-### 前端框架
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Vue.js | 3.5.38 | 前端 SPA 框架 |
-| Vue Router | 4.6.4 | 前端路由 |
-| Element Plus | latest | UI 组件库 |
-| HTML/CSS | — | 自定义样式（暗色毛玻璃主题） |
-
-### 存储
-- **配置存储**: JSON 文件（`/data/config.json`、`/data/monitored_series.json`、`/data/monitor_log.json`）
-- **持久化**: Docker volume 挂载
-
-### Docker 部署
-| 文件 | 说明 |
-|------|------|
-| Dockerfile | 单容器构建文件（Python + 静态文件） |
-| docker-compose.yml | NAS 部署配置模板 |
-| GitHub Actions | CI/CD 自动构建并推送到 Docker Hub |
-
-## 项目目录结构
-
+```text
+用户浏览器
+  ↓
+Vue 3 单页应用（static/index.html）
+  ↓ /api/*
+FastAPI / uvicorn
+  ├─ Emby API
+  ├─ TMDB API
+  ├─ Telegram Bot API
+  ├─ JSON 文件持久化 /data/*.json
+  └─ APScheduler 完结监控定时任务
 ```
+
+特点：
+
+1. **单容器**：前端静态文件、后端 API、定时任务在同一容器内。
+2. **无传统数据库**：配置、监控列表、日志存 JSON 文件。
+3. **前端无构建步骤**：Vue/Element Plus 通过本地静态依赖加载，主要代码在单个 HTML。
+4. **图片代理**：前端图片请求通过后端代理，解决跨域/内外网访问问题。
+5. **Web 配置优先**：TMDB/TG/代理/模板等配置优先读 `/data/config.json`，环境变量兜底。
+
+## 3. 技术栈
+
+### 后端
+
+| 技术 | 用途 |
+|------|------|
+| Python 3.12 | 运行环境 |
+| FastAPI | Web API |
+| uvicorn | ASGI 服务 |
+| httpx | 异步请求 Emby/TMDB/TG |
+| APScheduler | 完结监控定时任务 |
+| JSON 文件 | 配置/监控数据持久化 |
+
+### 前端
+
+| 技术 | 用途 |
+|------|------|
+| Vue 3 Options API | SPA 组件逻辑 |
+| Vue Router | 前端路由 |
+| Element Plus | UI 组件 |
+| CSS 变量 | 暗色毛玻璃设计系统 |
+
+### 部署
+
+| 文件 | 用途 |
+|------|------|
+| `Dockerfile` | 单容器镜像构建 |
+| `docker-compose.yml` | 本地/NAS 部署模板 |
+| `.github/workflows/docker-publish.yml` | GitHub Actions 自动构建 DockerHub 镜像 |
+
+## 4. 目录结构
+
+```text
 emby-manager/
-├── .github/workflows/           # GitHub Actions 工作流
-│   └── deploy.yml               # 自动构建 Docker 镜像并推送到 Docker Hub
-├── backend/                     # Python FastAPI 后端（主代码）
-│   ├── app/                     # 应用主目录
-│   │   ├── __init__.py
-│   │   ├── main.py              # FastAPI 入口、路由注册、SPA 静态文件服务
-│   │   ├── config.py            # 配置：环境变量 + JSON 文件读取（优先级：JSON > 环境变量）
-│   │   ├── tmdb_client.py       # TMDB API 封装（搜索剧集、获取详情、验证 API Key）
-│   │   ├── tg_notifier.py       # Telegram 通知发送（更新提醒、完结提醒、自定义模板）
-│   │   ├── series_monitor.py    # 剧集监控核心（定时检测、状态对比、通知触发、日志记录）
-│   │   └── routers/             # 路由模块
-│   │       ├── dashboard.py     # 仪表盘 API（概览、最近添加、图片代理、删除媒体）
-│   │       ├── users.py         # 用户管理 API（CRUD、密码、策略）
-│   │       ├── libraries.py     # 媒体库 API（列表、数量统计、子项查询）
-│   │       └── monitor.py       # 完结监控 API（TMDB搜索/详情/验证、监控CRUD、配置读写/测试、状态/日志）
-│   ├── requirements.txt         # Python 依赖
-│   └── static/                  # 前端静态文件（构建后复制至此）
-│       ├── index.html           # Vue SPA 入口
-│       ├── favicon.png
-│       ├── VERSION
-│       └── lib/                 # 前端依赖库（Vue、Element Plus 等）
-├── frontend/                    # 前端源码
-│   ├── index.html               # 完整 SPA（Vue 3 + Element Plus，约82KB）
-│   ├── nginx.conf               # Nginx 配置（前端独立部署时使用）
-│   └── lib/                     # 前端依赖库
-├── docker-compose.hub.yml       # Docker Hub 部署模板
-├── docker-compose.yml           # 本地 Docker Compose 配置
-├── Dockerfile                   # 单容器 Docker 构建文件
-├── VERSION                      # 版本号
-├── favicon.png
+├── .github/workflows/
+│   └── docker-publish.yml       # main 推送后构建 DockerHub latest
+├── backend/
+│   ├── requirements.txt
+│   └── app/                     # Docker 实际使用的后端代码
+│       ├── main.py              # FastAPI 入口、路由注册、SPA fallback
+│       ├── config.py            # 环境变量 + JSON 配置
+│       ├── emby_client.py       # Emby 客户端/兼容逻辑（如存在）
+│       ├── tmdb_client.py       # TMDB 查询封装
+│       ├── tg_notifier.py       # Telegram 通知
+│       ├── series_monitor.py    # 完结监控核心
+│       └── routers/
+│           ├── dashboard.py     # 仪表盘/最近添加/详情/图片/删除媒体
+│           ├── users.py         # 用户管理
+│           ├── libraries.py     # 媒体库
+│           ├── monitor.py       # TMDB/监控/配置
+│           └── nfo.py           # NFO 生成
+├── app/                         # 旧副本/兼容副本，Docker 默认不用
+├── frontend/
+│   ├── index.html               # 前端源文件
+│   └── lib/                     # Vue/Router/Element Plus 静态依赖
+├── static/
+│   ├── index.html               # Docker 实际服务的 SPA
+│   ├── VERSION
+│   └── lib/
+├── test_monitor_frontend.py
+├── test_dashboard_delete_backend.py
+├── test_api_smoke.py
+├── VERSION
 ├── README.md
+├── AI_CONTEXT.md
 ├── PROJECT.md
 ├── API.md
-├── DATABASE.md
-└── AI_CONTEXT.md
+└── DATABASE.md
 ```
 
-## 系统架构
+## 5. 核心模块
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    用户浏览器 (手机/桌面)                         │
-│                   Vue 3 SPA + Element Plus                      │
-└────────────────────────┬────────────────────────────────────────┘
-                         │ HTTP/HTTPS
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  Docker 容器 (单一容器)                            │
-│  ┌──────────────────────────────────────────────────────────────┐│
-│  │              uvicorn (FastAPI ASGI Server)                    ││
-│  │  ┌─────────────┐  ┌──────────────┐  ┌───────────────────┐   ││
-│  │  │  SPA 服务    │  │  API 路由    │  │ 定时任务           │   ││
-│  │  │ (静态文件)   │  │ (REST API)  │  │ (APScheduler)     │   ││
-│  │  └─────────────┘  └──────┬───────┘  └───────────────────┘   ││
-│  └──────────────────────────┼──────────────────────────────────┘│
-└─────────────────────────────┼──────────────────────────────────┘
-              ┌───────────────┼───────────────┐
-              │               │               │
-              ▼               ▼               ▼
-    ┌────────────────┐ ┌──────────┐ ┌──────────────┐
-    │ Emby Media      │ │ TMDB API │ │ Telegram API │
-    │ Server          │ │ (剧集    │ │ (通知推送)   │
-    │ (内网/公网)      │ │  数据)   │ │              │
-    └────────────────┘ └──────────┘ └──────────────┘
+### 5.1 仪表盘
+
+主要文件：
+
+```text
+backend/app/routers/dashboard.py
+frontend/index.html
+static/index.html
 ```
 
-### 架构说明
-1. **单容器部署** — 后端 API + 前端 SPA + 定时任务都在一个 Docker 容器中
-2. **无独立数据库** — 所有数据实时从 Emby/TMDB API 获取；配置和监控列表存 JSON 文件
-3. **图片代理** — 前端图片请求走后端代理，解决内外网跨域问题
-4. **认证方式** — 使用 Emby API Key 认证，删除操作需额外管理员密码
-5. **定时检测** — APScheduler 每 N 分钟检测剧集状态变化，触发 TG 通知
+能力：
 
-## 已实现功能
+- 服务器信息
+- 媒体统计
+- 最近添加
+- 媒体库筛选
+- 活动日志
+- 正在播放
+- 媒体详情
+- 图片代理
+- 删除媒体
 
-### ✅ 仪表盘
-- [x] Hero 区域：服务器信息、媒体统计（电影/剧集/单集数）
-- [x] 最近添加海报墙 + 媒体库筛选
-- [x] 默认显示指定媒体库 + 排除特定媒体库
-- [x] 最近活动日志
-- [x] 正在播放：当前播放用户、进度条、海报缩略图
-- [x] 15 秒自动刷新在线状态
-- [x] 详情弹窗：TMDB/IMDb 链接、演员列表、简介
-- [x] 删除媒体按钮
+删除媒体通常需要管理员凭据，见环境变量：
 
-### ✅ 用户管理
-- [x] 查看用户列表（头像、名称、角色、状态）
-- [x] 新建/删除用户
-- [x] 修改密码（带确认密码验证）
-- [x] 启用/禁用用户
-
-### ✅ 媒体库管理
-- [x] 媒体库列表（卡片展示）
-- [x] 按类型显示数量统计
-- [x] 海报墙 + 瀑布流加载
-- [x] 媒体搜索（实时搜索关键词）
-- [x] 详情弹窗（TMDB/IMDb 链接、演员列表）
-
-### ✅ 完结监控
-- [x] TMDB 搜索剧集
-- [x] TMDB API Key 验证
-- [x] 监控列表管理（添加/删除）
-- [x] 剧集状态检测（连载中/已完结/已取消）
-- [x] 定时自动检测（APScheduler，间隔可配置）
-- [x] TG 更新提醒（新增一集时通知）
-- [x] TG 完结提醒（状态变为已完结时通知）
-- [x] 自定义通知模板（更新/完结分别可配置）
-- [x] 检查日志记录
-
-### ✅ 配置管理
-- [x] Web 界面配置 TMDB API Key
-- [x] Web 界面配置 TG Bot Token / Chat ID
-- [x] Web 界面配置代理地址
-- [x] Web 界面配置通知模板
-- [x] Web 界面配置检测间隔
-- [x] TMDB Key 验证按钮
-- [x] TG 测试发送按钮
-- [x] 代理连通性测试
-
-### ✅ UI/UX
-- [x] 暗色毛玻璃主题
-- [x] 响应式布局（手机/平板/桌面）
-- [x] 移动端 Safari 安全区域适配
-- [x] 海报卡片 hover 动效
-- [x] 弹窗/抽屉适配
-
-### ✅ 部署
-- [x] Docker 单容器部署
-- [x] GitHub Actions 自动构建推送到 Docker Hub
-- [x] 环境变量 + JSON 文件双配置
-
-## 待开发功能
-
-- [ ] 多语言支持（i18n）
-- [ ] 批量操作（批量删除、移动）
-- [ ] 播放记录统计图表
-- [ ] 系统通知/告警
-- [ ] 媒体库刷新/扫描触发
-- [ ] OAuth 认证支持
-
-## 配置说明
-
-### 环境变量
-
-| 变量名 | 必填 | 说明 | 默认值 |
-|--------|------|------|--------|
-| EMBY_URL | 是 | Emby 服务器地址 | http://localhost:8096 |
-| EMBY_API_KEY | 是 | Emby API Key | — |
-| EMBY_ADMIN_USER | 否 | Emby 管理员用户名（删除功能需要） | "Malice" |
-| EMBY_ADMIN_PW | 否 | Emby 管理员密码（删除功能需要） | "" |
-| TMDB_API_KEY | 否 | TMDB API Key（JSON 文件兜底） | "" |
-| TG_BOT_TOKEN | 否 | Telegram Bot Token（JSON 文件兜底） | "" |
-| TG_CHAT_ID | 否 | TG 接收者 ID（JSON 文件兜底） | "" |
-| MONITOR_DATA_DIR | 否 | 配置/监控列表存储目录 | "/data" |
-
-### 配置读取优先级
-配置读取顺序：**JSON 文件 > 环境变量**（JSON 文件优先，没有时兜底到环境变量）
-
-### JSON 文件说明
-
-| 文件 | 路径 | 用途 |
-|------|------|------|
-| config.json | `/data/config.json` | TMDB Key / TG Token/ChatID / 代理 / 通知模板 / 检测间隔 |
-| monitored_series.json | `/data/monitored_series.json` | 监控剧集列表 + 检测状态 |
-| monitor_log.json | `/data/monitor_log.json` | 最近 100 条检查日志 |
-
-## Docker 部署说明
-
-### docker-compose 结构
-
-```yaml
-version: "3.8"
-
-services:
-  emby-manager:
-    image: 1524566636/emby-manager:latest
-    container_name: emby-manager
-    environment:
-      - EMBY_URL=http://192.168.1.7:8096    # 你的 Emby 地址
-      - EMBY_API_KEY=你的API_Key              # Emby API Key
-      - MONITOR_DATA_DIR=/data               # 配置文件目录
-    ports:
-      - "8117:8000"
-    volumes:
-      - ./monitor_data:/data                 # 持久化配置 + 监控数据
-    restart: unless-stopped
+```text
+EMBY_ADMIN_USER
+EMBY_ADMIN_PW
 ```
 
-### 部署步骤
+### 5.2 用户管理
+
+主要文件：
+
+```text
+backend/app/routers/users.py
+```
+
+能力：
+
+- 用户列表
+- 创建用户
+- 删除用户
+- 修改密码
+- 启用/禁用用户
+
+### 5.3 媒体库
+
+主要文件：
+
+```text
+backend/app/routers/libraries.py
+frontend/index.html
+static/index.html
+```
+
+当前 UI 要点：
+
+- 媒体库卡片显示电影/剧集数量
+- 副文案为“点击查看全部”
+- 弹窗固定位置，上下留白一致
+- 搜索框和分页固定可见
+- 海报列表内部滚动
+- 分页支持 total、prev、pager、next、jumper
+
+### 5.4 完结监控
+
+主要文件：
+
+```text
+backend/app/routers/monitor.py
+backend/app/series_monitor.py
+backend/app/tmdb_client.py
+backend/app/tg_notifier.py
+backend/app/config.py
+```
+
+流程：
+
+```text
+用户搜索 TMDB 剧集
+  → 添加到 monitored_series.json
+  → APScheduler 定时检查 TMDB 状态
+  → 对比 last_episode/status
+  → Telegram 更新/完结通知
+  → 写 monitor_log.json
+```
+
+### 5.5 NFO 生成
+
+主要文件：
+
+```text
+backend/app/routers/nfo.py
+frontend/index.html
+static/index.html
+```
+
+流程：
+
+```text
+输入文件名 + TMDB 人物 ID + 可选封面
+  → 查询 TMDB 人物信息
+  → 生成 .nfo
+  → 使用上传封面或 TMDB profile 图片
+  → 打包 zip 下载
+```
+
+当前 NFO 结构为 `<movie>` 外壳内含 `<actor>`。
+
+## 6. 配置与环境变量
+
+| 变量 | 说明 |
+|------|------|
+| `EMBY_URL` | Emby 服务器地址 |
+| `EMBY_API_KEY` | Emby API Key |
+| `EMBY_ADMIN_USER` | 管理员用户名，删除功能需要 |
+| `EMBY_ADMIN_PW` | 管理员密码，删除功能需要 |
+| `MONITOR_DATA_DIR` | JSON 数据目录，默认 `/data` |
+| `TMDB_API_KEY` | TMDB Key，Web 配置兜底 |
+| `TG_BOT_TOKEN` | Telegram Bot Token，Web 配置兜底 |
+| `TG_CHAT_ID` | Telegram Chat ID，Web 配置兜底 |
+
+配置优先级：
+
+```text
+/data/config.json > 环境变量
+```
+
+## 7. 开发流程
+
+### 7.1 前端修改
+
+1. 改 `frontend/index.html`
+2. 同步到 `static/index.html`
+3. 跑测试：
 
 ```bash
-# 1. 拉取最新镜像
-docker pull 1524566636/emby-manager:latest
-
-# 2. 启动
-docker-compose up -d
-
-# 3. 访问 http://你的NAS地址:8117
-
-# 4. 打开 🔔完结监控 → ⚙️设置 → 配置 TMDB Key / TG Bot / 代理
+python3 -m pytest test_monitor_frontend.py -q
 ```
+
+### 7.2 后端修改
+
+1. 优先改 `backend/app/`
+2. 如测试或旧副本依赖根目录 `app/`，再同步根目录旧副本
+3. 新路由必须在 `backend/app/main.py` 注册
+4. 跑对应测试
+
+### 7.3 推送前
+
+必须：
+
+```bash
+git diff --check
+python3 -m pytest test_monitor_frontend.py test_dashboard_delete_backend.py -q
+```
+
+用户明确说“推送”后：
+
+1. 版本号 +0.01
+2. 同步四处版本号
+3. 测试通过
+4. commit
+5. push
+
+## 8. 版本号规则
+
+每次推送前版本号 +0.01：
+
+```text
+1.17 → 1.18
+1.18 → 1.19
+1.19 → 1.20
+```
+
+同步：
+
+```text
+VERSION
+static/VERSION
+frontend/index.html: vX.XX
+static/index.html: vX.XX
+```
+
+## 9. 测试说明
+
+现有测试：
+
+```text
+test_monitor_frontend.py          # 前端关键字符串/同步检查
+test_dashboard_delete_backend.py  # 删除接口提示/凭据相关测试
+test_api_smoke.py                 # API smoke test
+```
+
+常用命令：
+
+```bash
+git diff --check && python3 -m pytest test_monitor_frontend.py test_dashboard_delete_backend.py -q
+```
+
+## 10. 常见坑
+
+1. 只改 `frontend/index.html`，忘记同步 `static/index.html`。
+2. 只改 `VERSION`，忘记 `static/VERSION` 和侧边栏版本。
+3. 未经用户允许直接 `git push`。
+4. 用增大 `top` 解决媒体库弹窗遮挡，导致上方空隙。
+5. 删除接口失败时只看 API Key，忽略 `EMBY_ADMIN_USER/PW`。
+6. 输出 token/API key 到日志或聊天。
+7. 新增路由后忘记在 `main.py` include。
