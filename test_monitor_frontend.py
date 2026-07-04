@@ -44,9 +44,10 @@ def assert_monitor_frontend(html: str):
     assert 'layout="total, prev, pager, next, jumper"' in html
     assert ':pager-count="isMobile ? 5 : 7"' in html
     assert ':page-size="pageSize"' in html
-    assert 'height: calc(100vh - 128px)' in html
+    assert 'top="64px"' in html
+    assert 'height: calc(100vh - 184px)' in html
     assert '.library-items-dialog .poster-grid { grid-template-columns: repeat(6, 1fr); gap: 8px; }' in html
-    assert '.library-items-dialog .el-dialog__body { padding: 12px 16px 14px; max-height: calc(100vh - 84px); overflow: hidden; }' in html
+    assert '.library-items-dialog .el-dialog__body { padding: 12px 16px 14px; max-height: calc(100vh - 140px); overflow: hidden; }' in html
     assert 'max-height: 165px' not in html
     assert "calc(100vw - 320px)" in html
     assert 'margin-left: calc(240px +' in html
