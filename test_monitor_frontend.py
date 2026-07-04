@@ -27,6 +27,10 @@ def assert_monitor_frontend(html: str):
     assert 'class="monitor-search-overview"' in html
     assert '-webkit-line-clamp:2' in html
     assert 'overflow-wrap:anywhere' in html
+    assert 'class="monitor-refresh-btn"' in html
+    assert 'class="monitor-refresh-icon"' in html
+    assert ':class="{spinning:refreshing}"' in html
+    assert 'aria-label="刷新监控列表"' in html
     assert 'const NfoGenerator = {' in html
     assert "{path:'/nfo',component:NfoGenerator}" in html
 
