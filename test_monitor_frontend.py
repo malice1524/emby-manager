@@ -45,10 +45,12 @@ def assert_monitor_frontend(html: str):
     assert ':pager-count="isMobile ? 5 : 7"' in html
     assert ':page-size="pageSize"' in html
     assert 'top="48px"' in html
-    assert 'height: calc(100vh - 228px)' in html
+    assert '.el-overlay-dialog:has(.library-items-dialog) { overflow: hidden; }' in html
+    assert 'position: fixed !important; top: 48px !important; bottom: 48px !important;' in html
+    assert '.library-items-dialog .el-dialog__body { height: calc(100% - 56px); padding: 12px 16px 14px; overflow: hidden; }' in html
+    assert '.library-items-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }' in html
     assert '.library-items-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }' in html
     assert '.library-items-dialog .poster-grid { grid-template-columns: repeat(6, 1fr); gap: 8px; }' in html
-    assert '.library-items-dialog .el-dialog__body { padding: 12px 16px 14px; max-height: calc(100vh - 176px); overflow: hidden; }' in html
     assert 'max-height: 165px' not in html
     assert "calc(100vw - 320px)" in html
     assert 'margin-left: calc(240px +' in html
