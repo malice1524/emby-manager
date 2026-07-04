@@ -493,6 +493,12 @@ body {
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
 .page-header h1 { font-size: 20px; font-weight: 600; }
 
+/* Monitor page: keep Element Plus collapse in dark glass theme */
+.monitor-page .el-collapse { border: 1px solid var(--glass-border); border-radius: var(--radius-sm); overflow: hidden; background: var(--glass); }
+.monitor-page .el-collapse-item__header,
+.monitor-page .el-collapse-item__wrap { background: rgba(255,255,255,0.03); color: var(--text); border-bottom-color: var(--glass-border); }
+.monitor-page .el-collapse-item__content { color: var(--text-dim); padding: 12px; }
+
 /* ---- Animations ---- */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
@@ -530,6 +536,7 @@ body {
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 生成</a>
+      <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
     <div class="sidebar-version">v1.06</div>
   </aside>
@@ -1240,12 +1247,105 @@ const NfoGenerator = {
   }
 }
 
+const Monitor = {
+  template: `
+    <div class="monitor-page">
+      <div class="hero" style="padding:24px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;position:relative;z-index:1;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="hero-avatar" style="background:linear-gradient(135deg,var(--green),#00b894)">🔔</div>
+            <div><h2 style="font-size:18px;font-weight:600">完结监控</h2><div style="font-size:12px;color:var(--text-dim)">监控剧集更新与完结状态，推送 Telegram 通知</div></div>
+          </div>
+          <el-button @click="showSettings=true" type="primary" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text)">⚙️ 设置</el-button>
+        </div>
+      </div>
+
+      <div class="glass-card" style="margin-bottom:16px;padding:16px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input v-model="searchQuery" placeholder="输入剧名搜索..." @keyup.enter="doSearch" :disabled="searching" style="flex:1;min-width:180px;padding:10px 14px;font-size:14px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" />
+          <el-button type="primary" @click="doSearch" :loading="searching" style="background:var(--accent);border-color:var(--accent)">🔍 搜索</el-button>
+        </div>
+        <div v-if="searchError" style="margin-top:8px;font-size:12px;color:var(--red)">{{searchError}}</div>
+        <div v-if="searchResults.length" style="margin-top:12px;display:grid;gap:8px">
+          <div v-for="item in searchResults" :key="item.tmdb_id" @click="addSeries(item)" style="display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.03);cursor:pointer">
+            <img v-if="item.poster_url" :src="item.poster_url" style="width:42px;height:63px;object-fit:cover;border-radius:6px" @error="$event.target.style.display='none'" />
+            <div v-else style="width:42px;height:63px;border-radius:6px;background:var(--glass);display:flex;align-items:center;justify-content:center;flex-shrink:0">📺</div>
+            <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{item.title}}</div><div style="font-size:12px;color:var(--text-dim);margin-top:3px">{{item.year || '-'}} · ⭐ {{item.vote_average || '-'}}</div><div v-if="item.overview" style="font-size:11px;color:var(--text-muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{item.overview}}</div></div>
+            <el-button size="small" type="primary" style="background:var(--accent);border-color:var(--accent);flex-shrink:0">+ 添加</el-button>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card" style="padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div style="font-size:15px;font-weight:600">已监控剧集 <span style="font-size:12px;color:var(--text-dim);font-weight:400;margin-left:6px">{{monitoredList.length}} 部</span></div>
+            <div class="lib-filter" style="margin-bottom:0;display:inline-flex">
+              <span class="filter-chip" :class="{active:filterStatus==='all'}" @click="filterStatus='all'" style="font-size:11px;padding:3px 10px">全部</span>
+              <span class="filter-chip" :class="{active:filterStatus==='continuing'}" @click="filterStatus='continuing'" style="font-size:11px;padding:3px 10px">连载中</span>
+              <span class="filter-chip" :class="{active:filterStatus==='ended'}" @click="filterStatus='ended'" style="font-size:11px;padding:3px 10px">已完结</span>
+            </div>
+          </div>
+          <el-button size="small" @click="refreshList" :loading="refreshing" circle>🔄</el-button>
+        </div>
+        <div v-if="!monitoredList.length && !loadingList" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">暂无监控剧集，在上方搜索添加</div>
+        <div v-if="loadingList" style="text-align:center;padding:40px;color:var(--text-muted)">加载中...</div>
+        <div v-for="s in filteredList" :key="s.tmdb_id" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--glass-border)">
+          <img v-if="s.poster_url" :src="s.poster_url" style="width:44px;height:66px;object-fit:cover;border-radius:6px;flex-shrink:0" @error="$event.target.style.display='none'" />
+          <div v-else style="width:44px;height:66px;border-radius:6px;background:var(--glass);display:flex;align-items:center;justify-content:center;flex-shrink:0">📺</div>
+          <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.title}} <span v-if="s.year" style="font-size:12px;color:var(--text-dim);font-weight:400">({{s.year}})</span></div><div style="font-size:12px;color:var(--text-dim);margin-top:4px">{{s.type || '-'}} · ⭐ {{s.vote_average || '-'}}</div><div v-if="s.last_episode?.episode_number" style="font-size:12px;color:var(--text-dim);margin-top:2px">📺 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' / '+s.total_episodes+' 集' : ''}}</div><div v-if="s.next_episode?.air_date && s.current_status!=='Ended' && s.current_status!=='Canceled'" style="font-size:12px;color:var(--green);margin-top:2px">📅 {{s.next_episode.air_date}} · {{daysUntil(s.next_episode.air_date)}}</div></div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0"><span v-if="s.current_status==='Ended'" style="font-size:12px;color:var(--red)">🔴 已完结</span><span v-else-if="s.current_status==='Canceled'" style="font-size:12px;color:var(--text-muted)">⚫ 已取消</span><span v-else style="font-size:12px;color:var(--green)">🟢 连载中</span><span v-if="s.current_status==='Ended'" style="font-size:11px;color:var(--text-dim)">{{s.notified_ended ? '✅ 已通知' : '⏳ 待通知'}}</span><el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)">删除</el-button></div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <el-collapse v-model="activeCollapse">
+          <el-collapse-item title="📊 运行状态" name="status"><div class="glass-card" style="padding:16px"><div v-if="monitorStatus" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:13px"><div><span style="color:var(--text-dim)">状态：</span>{{monitorStatus.is_running ? '🟢 运行中' : '🔴 已停止'}}</div><div><span style="color:var(--text-dim)">监控剧集：</span>{{monitorStatus.monitored_count}} 部</div><div><span style="color:var(--text-dim)">上次检查：</span>{{fmtTime2(monitorStatus.last_check_time)}}</div><div><span style="color:var(--text-dim)">最近通知：</span>{{fmtTime2(monitorStatus.last_notification_time)}}</div></div><div v-else style="color:var(--text-muted);font-size:13px">加载中...</div></div></el-collapse-item>
+          <el-collapse-item title="📄 检查日志" name="logs"><div class="glass-card" style="padding:16px"><div v-if="logs.length"><div v-for="(log,i) in logs" :key="i" style="padding:6px 0;border-bottom:1px solid var(--glass-border);font-size:12px;display:flex;gap:8px"><span style="color:var(--text-muted);flex-shrink:0">{{fmtTime2(log.time)}}</span><span :style="{color: log.status==='ok' ? 'var(--green)' : 'var(--orange)'}">{{log.status==='ok' ? '✅' : '⚠️'}}</span><span style="color:var(--text-dim)">{{log.message}}</span></div></div><div v-else style="color:var(--text-muted);font-size:13px">暂无日志</div></div></el-collapse-item>
+        </el-collapse>
+      </div>
+
+      <el-dialog v-model="showSettings" title="⚙️ 完结监控设置" width="min(92vw,520px)" :style="'--el-dialog-bg-color:var(--surface);--el-dialog-text-color:var(--text);--el-dialog-border-color:var(--glass-border)'">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">TMDB API Key</div><input v-model="config.tmdb_api_key" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Bot Token</div><input v-model="config.tg_bot_token" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Chat ID</div><input v-model="config.tg_chat_id" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">代理 URL（可选）</div><input v-model="config.proxy_url" placeholder="http://127.0.0.1:7890" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">检查间隔（分钟）</div><input v-model.number="config.check_interval_minutes" type="number" min="1" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">更新通知模板</div><textarea v-model="config.update_template" rows="3" placeholder="可选，自定义新集通知模板" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none;resize:vertical"></textarea></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">完结通知模板</div><textarea v-model="config.end_template" rows="3" placeholder="可选，自定义完结通知模板" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none;resize:vertical"></textarea></div>
+        </div>
+        <template #footer><div style="display:flex;gap:8px;justify-content:flex-end"><el-button @click="testConfig">测试通知</el-button><el-button @click="saveConfig" type="primary" style="background:var(--accent);border-color:var(--accent)">💾 保存</el-button></div></template>
+      </el-dialog>
+    </div>
+  `,
+  data(){ return { searchQuery:'', searchResults:[], searching:false, searchError:'', monitoredList:[], loadingList:false, refreshing:false, showSettings:false, filterStatus:'all', monitorStatus:null, logs:[], activeCollapse:[], config:{tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',proxy_url:'',update_template:'',end_template:'',check_interval_minutes:30} } },
+  computed:{ filteredList(){ if(this.filterStatus==='continuing') return this.monitoredList.filter(s=>s.current_status!=='Ended'&&s.current_status!=='Canceled'); if(this.filterStatus==='ended') return this.monitoredList.filter(s=>s.current_status==='Ended'); return this.monitoredList } },
+  async mounted(){ await this.loadList(); await this.loadConfig(); await this.loadStatus(); await this.loadLogs(); this._statusTimer=setInterval(()=>{this.loadStatus();this.loadLogs()},30000) },
+  beforeUnmount(){ if(this._statusTimer) clearInterval(this._statusTimer) },
+  methods:{
+    async doSearch(){ if(!this.searchQuery.trim()) return; this.searching=true; this.searchError=''; try{ const d=await fetchJSON('/tmdb/search?q='+encodeURIComponent(this.searchQuery.trim())); this.searchResults=d.results||[]; if(!this.searchResults.length) this.searchError='未找到相关剧集' }catch(e){ this.searchError=e.message }finally{ this.searching=false } },
+    async addSeries(item){ try{ const d=await fetchJSON('/monitor/add',{method:'POST',body:JSON.stringify({tmdb_id:item.tmdb_id,title:item.title,year:item.year,poster_url:item.poster_url})}); ElementPlus.ElMessage.success(d.notification_sent?'已添加并发送通知':'已添加'); this.searchResults=[]; this.searchQuery=''; await this.loadList(); await this.loadStatus() }catch(e){ ElementPlus.ElMessage.error(e.message) } },
+    async deleteSeries(tmdbId){ try{ await ElementPlus.ElMessageBox.confirm('确定要删除该剧集的监控吗？','确认删除',{type:'warning'}); await fetchJSON('/monitor/'+tmdbId,{method:'DELETE'}); this.monitoredList=this.monitoredList.filter(s=>s.tmdb_id!==tmdbId); ElementPlus.ElMessage.success('已删除'); await this.loadStatus() }catch(e){ if(e!=='cancel') ElementPlus.ElMessage.error(e.message||'删除失败') } },
+    async loadList(){ this.loadingList=true; try{ const d=await fetchJSON('/monitor/list'); this.monitoredList=d.series||[] }catch(e){}finally{ this.loadingList=false } },
+    async refreshList(){ this.refreshing=true; await this.loadList(); this.refreshing=false },
+    async loadConfig(){ try{ const d=await fetchJSON('/config'); this.config={...this.config,...d} }catch(e){} },
+    async saveConfig(){ try{ const payload={...this.config,check_interval_minutes:Number(this.config.check_interval_minutes)||30}; await fetchJSON('/config',{method:'PUT',body:JSON.stringify(payload)}); ElementPlus.ElMessage.success('保存成功'); this.showSettings=false; await this.loadStatus() }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') } },
+    async testConfig(){ try{ const d=await fetchJSON('/config/test',{method:'POST'}); d.success ? ElementPlus.ElMessage.success(d.message||'测试消息已发送') : ElementPlus.ElMessage.error(d.error||'测试失败') }catch(e){ ElementPlus.ElMessage.error(e.message||'测试失败') } },
+    async loadStatus(){ try{ this.monitorStatus=await fetchJSON('/monitor/status') }catch(e){} },
+    async loadLogs(){ try{ this.logs=await fetchJSON('/monitor/logs?limit=50') }catch(e){} },
+    fmtTime2(t){ if(!t) return '-'; return new Date(t).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) },
+    daysUntil(dateStr){ if(!dateStr) return ''; const now=new Date(); const today=new Date(now.getFullYear(),now.getMonth(),now.getDate()); const p=dateStr.split('-'); const target=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])); const diff=Math.round((target-today)/86400000); if(diff<0)return'已播出'; if(diff===0)return'今天'; if(diff===1)return'明天'; return diff+'天后' }
+  }
+}
+
 // ---- Router ----
 const routes = [
   {path:'/',component:Dashboard},
   {path:'/users',component:Users},
   {path:'/libraries',component:Libraries},
   {path:'/nfo',component:NfoGenerator},
+  {path:'/monitor',component:Monitor},
 ]
 const router = VueRouter.createRouter({
   history:VueRouter.createWebHashHistory(),

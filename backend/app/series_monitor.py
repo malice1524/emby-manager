@@ -4,6 +4,7 @@ import asyncio
 from datetime import datetime, timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from zoneinfo import ZoneInfo
 
 from .config import MONITORED_SERIES_PATH, MONITOR_DATA_DIR, load_tg_config
 from . import tmdb_client, tg_notifier
@@ -11,7 +12,9 @@ from . import tmdb_client, tg_notifier
 LOG_PATH = os.path.join(MONITOR_DATA_DIR, "monitor_log.json")
 MAX_LOG_ENTRIES = 100
 
-scheduler = AsyncIOScheduler(timezone="UTC")
+MONITOR_TIMEZONE = ZoneInfo(os.getenv("TZ", "Asia/Shanghai") if os.getenv("TZ", "Asia/Shanghai") in {"UTC", "Asia/Shanghai"} else "Asia/Shanghai")
+
+scheduler = AsyncIOScheduler(timezone=MONITOR_TIMEZONE)
 _last_check_time = None
 _next_check_time = None
 _last_notification_time = None
@@ -178,7 +181,7 @@ def _get_interval():
 def start_monitor():
     """启动定时任务"""
     interval = _get_interval()
-    trigger = IntervalTrigger(minutes=interval)
+    trigger = IntervalTrigger(minutes=interval, timezone=MONITOR_TIMEZONE)
 
     # 首次运行时立即执行一次
     scheduler.add_job(
@@ -203,5 +206,5 @@ def restart_monitor():
     if scheduler.running:
         scheduler.reschedule_job(
             "series_monitor",
-            trigger=IntervalTrigger(minutes=_get_interval())
+            trigger=IntervalTrigger(minutes=_get_interval(), timezone=MONITOR_TIMEZONE)
         )
