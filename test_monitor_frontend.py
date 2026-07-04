@@ -45,7 +45,8 @@ def assert_monitor_frontend(html: str):
     assert ':pager-count="isMobile ? 5 : 7"' in html
     assert ':page-size="pageSize"' in html
     assert 'height: calc(100vh - 150px)' in html
-    assert '.library-items-dialog .poster-grid { grid-template-columns: repeat(6, 1fr); gap: 10px; }' in html
+    assert '.library-items-dialog .poster-grid { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 8px; }' in html
+    assert '.library-items-dialog .poster-card { max-height: 165px; }' in html
     assert "calc(100vw - 320px)" in html
     assert 'margin-left: calc(240px +' in html
     assert 'translateX(calc(-50% + 120px))' not in html

@@ -458,7 +458,8 @@ body {
 @media (min-width: 769px) {
   .el-overlay { margin-left: 240px; width: calc(100% - 240px); }
   .library-items-dialog { width: min(85vw, calc(100vw - 320px)) !important; margin-left: calc(240px + (100vw - 240px - min(85vw, calc(100vw - 320px))) / 2) !important; margin-right: 0 !important; }
-  .library-items-dialog .poster-grid { grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .library-items-dialog .poster-grid { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 8px; }
+  .library-items-dialog .poster-card { max-height: 165px; }
 }
 .library-items-dialog .el-dialog__body { max-height: calc(100vh - 110px); overflow: hidden; }
 .library-items-panel { display: flex; flex-direction: column; height: calc(100vh - 150px); min-height: 360px; }
@@ -575,7 +576,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 生成</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.12</div>
+    <div class="sidebar-version">v1.13</div>
   </aside>
 
   <!-- Main -->
