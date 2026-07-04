@@ -360,12 +360,17 @@ body {
 .lib-filter {
   display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
 }
+.dashboard-library-filter {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px;
+  margin-bottom: 16px; width: 100%;
+}
 .filter-chip {
   padding: 5px 14px; border-radius: 20px; font-size: 12px; cursor: pointer;
   background: var(--glass); border: 1px solid var(--glass-border);
   color: var(--text-dim); transition: all 0.2s ease;
   user-select: none; -webkit-user-select: none; white-space: nowrap;
 }
+.dashboard-library-filter .filter-chip { text-align: center; padding: 7px 10px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .filter-chip:hover { border-color: var(--glass-border-hover); color: var(--text); }
 .filter-chip.active {
   background: rgba(108,92,231,0.2); border-color: var(--accent);
@@ -628,7 +633,7 @@ const Dashboard = {
       </div>
 
       <!-- Library Filter Chips -->
-      <div class="lib-filter" v-if="libraries.length">
+      <div class="lib-filter dashboard-library-filter" v-if="libraries.length">
         <span class="filter-chip" v-for="lib in libraries" :key="lib.id"
               :class="{active:activeLibrary===lib.id}"
               @click="filterLibrary(lib.id, lib.name)">{{lib.name}}</span>
@@ -823,9 +828,9 @@ const Dashboard = {
         var allLibs = libs.libraries || []
         var excludeNames = {'欧美自拍':1,'亚洲自拍':1,'日本有码':1}
         this._excludeIds = allLibs.filter(function(l){return excludeNames[l.name]}).map(function(l){return l.id}).join(',')
-        // Set default to 动画电影
+        // Set default to 欧美电影
         var defaultLibId = ''
-        for(var i=0;i<allLibs.length;i++){if(allLibs[i].name==='动画电影'){defaultLibId=allLibs[i].id;break}}
+        for(var i=0;i<allLibs.length;i++){if(allLibs[i].name==='欧美电影'){defaultLibId=allLibs[i].id;break}}
         // Fetch recent with default library
         try {
           var url = '/dashboard/recent?limit=18'
@@ -834,7 +839,7 @@ const Dashboard = {
           const r2 = await fetchJSON(url)
           this.recent = r2.items || []
           this.activeLibrary = defaultLibId
-          this.libraryName = defaultLibId ? '动画电影' : ''
+          this.libraryName = defaultLibId ? '欧美电影' : ''
         } catch(e) {}
       } catch(e) { console.error(e) }
       this.loaded = true
@@ -863,12 +868,13 @@ const Dashboard = {
     async deleteDetailItem(){
       if(!this.detailItem || !this.detailItem.id) return
       try {
-        const res = await fetchJSON('/dashboard/item/'+this.detailItem.id, {method:'DELETE'})
+        await fetchJSON('/dashboard/item/'+this.detailItem.id, {method:'DELETE'})
+        this.recent = this.recent.filter(item => item.id !== this.detailItem.id)
         ElementPlus.ElMessage.success('已删除')
         this.showDetailDel = false
         this.showDetail = false
         setTimeout(() => this.refreshAll(), 100)
-      } catch(e) { ElementPlus.ElMessage.error('删除失败'); this.showDetailDel = false }
+      } catch(e) { ElementPlus.ElMessage.error(e.message||'删除失败'); this.showDetailDel = false }
     },
     async deleteLibItem(){
       if(!this.libDetailItem || !this.libDetailItem.id) return
@@ -967,8 +973,8 @@ const Libraries = {
         <div class="lib-card fade-in" :class="{tv: lib.type==='tvshows'}" v-for="(lib,i) in libraries" :key="lib.id" :style="'animation-delay:'+(i*0.03)+'s'" @click.stop="openLib(lib)">
           <span class="type-badge">{{ lib.type==='tvshows' ? '电视剧' : '电影' }}</span>
           <h3>{{lib.name}}</h3>
-          <p>{{lib.locations.length}} 个路径</p>
-          <p class="path">{{lib.locations[0]||''}}</p>
+          <p>{{libCountText(lib)}}</p>
+          <p class="path">{{libSubCountText(lib)}}</p>
         </div>
       </div>
 
@@ -1071,7 +1077,7 @@ const Libraries = {
       libraries:[], showItems:false, curLib:null,
       items:[], itemsLoading:false, total:0, page:1, search:'',
       isMobile: window.innerWidth < 640,
-      showDetail:false, libDetailItem:null, libExpanded:false,
+      showDetail:false, libDetailItem:null, libExpanded:false, showLibDel:false,
       _searchTimer:null
     }
   },
@@ -1080,6 +1086,18 @@ const Libraries = {
     window.addEventListener('resize',()=>{this.isMobile=window.innerWidth<640})
   },
   methods: {
+    libCountText(lib){
+      const counts = lib.counts || {}
+      if(lib.type === 'tvshows') return (counts.series || 0) + ' 部剧集'
+      if(lib.type === 'movies') return (counts.movies || 0) + ' 部电影'
+      return (counts.total || 0) + ' 个媒体'
+    },
+    libSubCountText(lib){
+      const counts = lib.counts || {}
+      if(lib.type === 'tvshows') return (counts.episodes || 0) + ' 集'
+      if(lib.type === 'movies') return '点击查看最近电影'
+      return '电影 ' + (counts.movies || 0) + ' · 剧集 ' + (counts.series || 0)
+    },
     openUrl(url){ window.open(url, '_blank') },
     async openLib(lib){
       this.curLib=lib; this.page=1; this.search=''; this.showItems=true;
@@ -1099,12 +1117,24 @@ const Libraries = {
       this.itemsLoading=false;
     },
     async openLibItem(item){
-      this.showDetail=true; this.libExpanded=false;
+      this.showDetail=true; this.libExpanded=false; this.showLibDel=false;
       this.libDetailItem=item;
       try {
         const detail = await fetchJSON('/dashboard/item/'+item.id);
         this.libDetailItem = detail;
       } catch(e) { /* keep basic */ }
+    },
+    async deleteLibItem(){
+      if(!this.libDetailItem || !this.libDetailItem.id) return
+      try {
+        await fetchJSON('/dashboard/item/'+this.libDetailItem.id, {method:'DELETE'})
+        this.items = this.items.filter(item => item.id !== this.libDetailItem.id)
+        if(this.total > 0) this.total -= 1
+        ElementPlus.ElMessage.success('已删除')
+        this.showLibDel = false
+        this.showDetail = false
+        setTimeout(() => this.loadItems(), 100)
+      } catch(e) { ElementPlus.ElMessage.error(e.message||'删除失败'); this.showLibDel = false }
     }
   }
 }

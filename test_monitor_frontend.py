@@ -31,6 +31,11 @@ def assert_monitor_frontend(html: str):
     assert 'class="monitor-refresh-icon"' in html
     assert ':class="{spinning:refreshing}"' in html
     assert 'aria-label="刷新监控列表"' in html
+    assert "name==='欧美电影'" in html
+    assert 'dashboard-library-filter' in html
+    assert 'libCountText(lib)' in html
+    assert '个路径' not in html
+    assert "ElementPlus.ElMessage.error(e.message||'删除失败')" in html
     assert 'const NfoGenerator = {' in html
     assert "{path:'/nfo',component:NfoGenerator}" in html
 

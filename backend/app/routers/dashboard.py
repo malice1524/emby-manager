@@ -190,17 +190,21 @@ async def get_recent_items(
 async def get_item_detail(item_id: str):
     """Get detailed item info including TMDB ID, cast, genres."""
     async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(
-            f"{EMBY_URL}/Users/fb1f0470dfae4ecc8649529346f199fc/Items/{item_id}",
-            params={
-                "Fields": "ProviderIds,People,Genres,CommunityRating,Overview,ProductionYear",
-            },
-            headers=HEADERS,
-        )
-        if resp.status_code != 200:
-            raise HTTPException(status_code=404, detail="Item not found")
+        fields = "ProviderIds,People,Genres,CommunityRating,Overview,ProductionYear"
+        admin_user_id = await _get_admin_user_id(client)
+        urls = []
+        if admin_user_id:
+            urls.append(f"{EMBY_URL}/emby/Users/{admin_user_id}/Items/{item_id}")
+        urls.append(f"{EMBY_URL}/emby/Items/{item_id}")
 
-        data = resp.json()
+        data = None
+        for url in urls:
+            resp = await client.get(url, params={"Fields": fields}, headers=HEADERS)
+            if resp.status_code == 200:
+                data = resp.json()
+                break
+        if data is None:
+            raise HTTPException(status_code=404, detail="Item not found")
         provider_ids = data.get("ProviderIds", {})
         tmdb_id = provider_ids.get("Tmdb")
         imdb_id = provider_ids.get("Imdb")
@@ -267,38 +271,60 @@ async def get_dashboard_stats():
         }
 
 
+async def _get_admin_user_id(client: httpx.AsyncClient) -> str:
+    users_resp = await client.get(f"{EMBY_URL}/emby/Users", headers=HEADERS)
+    if users_resp.status_code == 200:
+        users = users_resp.json()
+        for user in users:
+            if user.get("Policy", {}).get("IsAdministrator"):
+                return user.get("Id", "")
+        if users:
+            return users[0].get("Id", "")
+    return ""
+
+
 async def _get_user_token(client: httpx.AsyncClient) -> str:
     """Get a user access token for admin operations."""
     from ..config import EMBY_ADMIN_USER, EMBY_ADMIN_PW
     if not EMBY_ADMIN_PW:
         return ""
-    try:
-        auth_header = 'MediaBrowser Client="Emby Manager", Device="Server", DeviceId="emby-manager", Version="1.0.0"'
-        resp = await client.post(
-            f"{EMBY_URL}/emby/Users/AuthenticateByName",
-            json={"Username": EMBY_ADMIN_USER, "Pw": EMBY_ADMIN_PW},
-            headers={"X-Emby-Authorization": auth_header},
-        )
-        if resp.status_code == 200:
-            return resp.json().get("AccessToken", "")
-    except Exception:
-        pass
+    auth_header = 'MediaBrowser Client="Emby Manager", Device="Server", DeviceId="emby-manager", Version="1.0.0"'
+    resp = await client.post(
+        f"{EMBY_URL}/emby/Users/AuthenticateByName",
+        json={"Username": EMBY_ADMIN_USER, "Pw": EMBY_ADMIN_PW},
+        headers={"X-Emby-Authorization": auth_header},
+    )
+    if resp.status_code == 200:
+        return resp.json().get("AccessToken", "")
     return ""
 
 
 @router.delete("/item/{item_id}")
 async def delete_media_item(item_id: str):
     """Delete a media item from Emby."""
-    async with httpx.AsyncClient(timeout=15) as client:
-        token = await _get_user_token(client)
-        if not token:
-            raise HTTPException(status_code=403, detail="Delete requires EMBY_ADMIN_PW environment variable")
-        
-        resp = await client.request(
-            "DELETE",
+    async with httpx.AsyncClient(timeout=20) as client:
+        errors = []
+        delete_urls = [
             f"{EMBY_URL}/emby/Items/{item_id}",
-            headers={"X-Emby-Token": token},
-        )
-        if resp.status_code not in (200, 204):
-            raise HTTPException(status_code=resp.status_code, detail="Failed to delete item")
-        return {"status": "ok"}
+            f"{EMBY_URL}/Items/{item_id}",
+        ]
+
+        # First try the configured API key. Many Emby setups allow admin API keys to delete items.
+        for url in delete_urls:
+            resp = await client.request("DELETE", url, headers=HEADERS)
+            if resp.status_code in (200, 204):
+                return {"status": "ok"}
+            errors.append(f"API key {resp.status_code}: {resp.text[:120]}")
+
+        # Fall back to an authenticated admin user token when configured.
+        token = await _get_user_token(client)
+        if token:
+            for url in delete_urls:
+                resp = await client.request("DELETE", url, headers={"X-Emby-Token": token})
+                if resp.status_code in (200, 204):
+                    return {"status": "ok"}
+                errors.append(f"admin token {resp.status_code}: {resp.text[:120]}")
+        else:
+            errors.append("admin token unavailable: set EMBY_ADMIN_PW if API key deletion is not allowed")
+
+        raise HTTPException(status_code=403, detail="删除失败：" + " | ".join(errors[-3:]))
