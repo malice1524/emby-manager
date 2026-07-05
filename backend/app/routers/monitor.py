@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+from apscheduler.triggers.cron import CronTrigger
 from typing import Optional
 from .. import tmdb_client, tg_notifier, series_monitor
 from ..config import MONITORED_SERIES_PATH, CONFIG_PATH, MONITOR_DATA_DIR, load_tg_config
@@ -174,9 +175,7 @@ async def get_config():
         "tg_bot_token": cfg.get("tg_bot_token", ""),
         "tg_chat_id": cfg.get("tg_chat_id", ""),
         "proxy_url": cfg.get("proxy_url", ""),
-        "update_template": cfg.get("update_template", ""),
-        "end_template": cfg.get("end_template", ""),
-        "check_interval_minutes": cfg.get("check_interval_minutes", 30)
+        "check_cron": cfg.get("check_cron", "*/30 * * * *"),
     }
 
 class SaveConfigRequest(BaseModel):
@@ -184,9 +183,7 @@ class SaveConfigRequest(BaseModel):
     tg_bot_token: str = ""
     tg_chat_id: str = ""
     proxy_url: str = ""
-    update_template: str = ""
-    end_template: str = ""
-    check_interval_minutes: int = 30
+    check_cron: str = "*/30 * * * *"
 
 @router.put("/config")
 async def save_config(req: SaveConfigRequest):
@@ -207,12 +204,12 @@ async def save_config(req: SaveConfigRequest):
         cfg["tg_chat_id"] = req.tg_chat_id
     if req.proxy_url and req.proxy_url != "__skip__":
         cfg["proxy_url"] = req.proxy_url
-    # 模板允许清空（空字符串也保存）
-    if req.update_template != "__skip__":
-        cfg["update_template"] = req.update_template
-    if req.end_template != "__skip__":
-        cfg["end_template"] = req.end_template
-    cfg["check_interval_minutes"] = max(1, req.check_interval_minutes)
+    check_cron = (req.check_cron or "*/30 * * * *").strip()
+    try:
+        CronTrigger.from_crontab(check_cron, timezone=series_monitor.MONITOR_TIMEZONE)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Cron 规则无效：{e}")
+    cfg["check_cron"] = check_cron
 
     with open(CONFIG_PATH, "w") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)

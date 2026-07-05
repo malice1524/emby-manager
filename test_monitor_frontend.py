@@ -23,10 +23,19 @@ def assert_monitor_frontend(html: str):
     assert "fetchJSON('/monitor/status'" in html
     assert "fetchJSON('/monitor/logs?limit=50'" in html
     assert 'class="monitor-search-results"' in html
+    assert 'class="monitor-search-results-header"' in html
+    assert '@click="clearSearchResults"' in html
+    assert 'onSearchInput()' in html
     assert 'class="monitor-search-result-item"' in html
     assert 'class="monitor-search-overview"' in html
     assert '-webkit-line-clamp:2' in html
     assert 'overflow-wrap:anywhere' in html
+    assert 'check_cron' in html
+    assert '检查 Cron 规则' in html
+    assert 'setTimeout(()=>this.loadList({background:true}),2000)' in html
+    assert '更新通知模板' not in html
+    assert '完结通知模板' not in html
+    assert '检查间隔（分钟）' not in html
     assert 'class="monitor-refresh-btn"' in html
     assert 'class="monitor-refresh-icon"' in html
     assert ':class="{spinning:refreshing}"' in html

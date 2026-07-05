@@ -3,7 +3,7 @@ import os
 import asyncio
 from datetime import datetime, timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from zoneinfo import ZoneInfo
 
 from .config import MONITORED_SERIES_PATH, MONITOR_DATA_DIR, load_tg_config
@@ -173,17 +173,23 @@ async def check_series():
         "message": msg
     })
 
-def _get_interval():
-    """从配置获取检测间隔"""
+def _get_cron_expression():
+    """从配置获取 cron 表达式，旧配置自动兼容为分钟间隔"""
     cfg = load_tg_config()
-    return cfg.get("check_interval_minutes", 30)
+    cron_expr = cfg.get("check_cron", "")
+    if cron_expr:
+        return cron_expr
+    interval = max(1, int(cfg.get("check_interval_minutes", 30) or 30))
+    return f"*/{interval} * * * *"
+
+def _build_trigger():
+    """构建 cron 触发器，支持标准 5 段 crontab 规则"""
+    return CronTrigger.from_crontab(_get_cron_expression(), timezone=MONITOR_TIMEZONE)
 
 def start_monitor():
     """启动定时任务"""
-    interval = _get_interval()
-    trigger = IntervalTrigger(minutes=interval, timezone=MONITOR_TIMEZONE)
+    trigger = _build_trigger()
 
-    # 首次运行时立即执行一次
     scheduler.add_job(
         _run_async_check,
         trigger=trigger,
@@ -206,5 +212,5 @@ def restart_monitor():
     if scheduler.running:
         scheduler.reschedule_job(
             "series_monitor",
-            trigger=IntervalTrigger(minutes=_get_interval(), timezone=MONITOR_TIMEZONE)
+            trigger=_build_trigger()
         )

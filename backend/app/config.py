@@ -31,6 +31,7 @@ def load_tg_config():
         "update_template": config.get("update_template", ""),
         "end_template": config.get("end_template", ""),
         "check_interval_minutes": config.get("check_interval_minutes", 30),
+        "check_cron": config.get("check_cron", "") or os.getenv("CHECK_CRON", "*/30 * * * *"),
     }
 
 def get_http_client():

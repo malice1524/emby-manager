@@ -158,6 +158,9 @@ body {
 .monitor-search-btn.el-button { height: 40px; min-width: 96px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; font-weight: 600; background: var(--accent); border-color: var(--accent); box-shadow: 0 8px 22px rgba(108,92,231,0.18); }
 .monitor-search-btn.el-button:hover, .monitor-search-btn.el-button:focus { background: #7a6cf0; border-color: #7a6cf0; }
 .monitor-search-results { margin-top: 12px; display: grid; gap: 8px; max-width: 100%; overflow: hidden; }
+.monitor-search-results-header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:2px 2px 4px; font-size:12px; color:var(--text-dim); }
+.monitor-search-clear { border:0; background:transparent; color:var(--text-dim); cursor:pointer; font-size:12px; padding:4px 6px; border-radius:6px; }
+.monitor-search-clear:hover { color:var(--text); background:var(--glass); }
 .monitor-search-result-item { display: flex; align-items: center; gap: 12px; min-width: 0; max-width: 100%; padding: 10px; border: 1px solid var(--glass-border); border-radius: 10px; background: rgba(255,255,255,0.03); cursor: pointer; }
 .monitor-search-poster { width: 42px; height: 63px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
 .monitor-search-poster-placeholder { width: 42px; height: 63px; border-radius: 6px; background: var(--glass); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -595,7 +598,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 生成</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.19</div>
+    <div class="sidebar-version">v1.20</div>
   </aside>
 
   <!-- Main -->
@@ -1345,11 +1348,12 @@ const Monitor = {
 
       <div class="glass-card" style="margin-bottom:16px;padding:16px">
         <div class="monitor-search-bar">
-          <input v-model="searchQuery" placeholder="输入剧名搜索..." @keyup.enter="doSearch" :disabled="searching" class="monitor-search-input" />
+          <input v-model="searchQuery" placeholder="输入剧名搜索..." @keyup.enter="doSearch" @input="onSearchInput" :disabled="searching" class="monitor-search-input" />
           <el-button type="primary" @click="doSearch" :loading="searching" class="monitor-search-btn">🔍 搜索</el-button>
         </div>
         <div v-if="searchError" style="margin-top:8px;font-size:12px;color:var(--red)">{{searchError}}</div>
         <div v-if="searchResults.length" class="monitor-search-results">
+          <div class="monitor-search-results-header"><span>搜索结果 · {{searchResults.length}} 条</span><button type="button" class="monitor-search-clear" @click="clearSearchResults">关闭</button></div>
           <div v-for="item in searchResults" :key="item.tmdb_id" @click="addSeries(item)" class="monitor-search-result-item">
             <img v-if="item.poster_url" :src="item.poster_url" class="monitor-search-poster" @error="$event.target.style.display='none'" />
             <div v-else class="monitor-search-poster-placeholder">📺</div>
@@ -1397,28 +1401,28 @@ const Monitor = {
           <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Bot Token</div><input v-model="config.tg_bot_token" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
           <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Chat ID</div><input v-model="config.tg_chat_id" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
           <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">代理 URL（可选）</div><input v-model="config.proxy_url" placeholder="http://127.0.0.1:7890" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
-          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">检查间隔（分钟）</div><input v-model.number="config.check_interval_minutes" type="number" min="1" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
-          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">更新通知模板</div><textarea v-model="config.update_template" rows="3" placeholder="可选，自定义新集通知模板" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none;resize:vertical"></textarea></div>
-          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">完结通知模板</div><textarea v-model="config.end_template" rows="3" placeholder="可选，自定义完结通知模板" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none;resize:vertical"></textarea></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">检查 Cron 规则</div><input v-model="config.check_cron" placeholder="*/30 * * * *" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /><div style="font-size:11px;color:var(--text-muted);margin-top:5px">标准 5 段 cron，例如 */30 * * * * 表示每 30 分钟检查一次</div></div>
         </div>
         <template #footer><div style="display:flex;gap:8px;justify-content:flex-end"><el-button @click="testConfig">测试通知</el-button><el-button @click="saveConfig" type="primary" style="background:var(--accent);border-color:var(--accent)">💾 保存</el-button></div></template>
       </el-dialog>
     </div>
   `,
-  data(){ return { searchQuery:'', searchResults:[], searching:false, searchError:'', monitoredList:[], loadingList:false, refreshing:false, hasCachedList:false, showSettings:false, filterStatus:'all', monitorStatus:null, logs:[], activeCollapse:[], config:{tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',proxy_url:'',update_template:'',end_template:'',check_interval_minutes:30} } },
+  data(){ return { searchQuery:'', searchResults:[], searching:false, searchError:'', monitoredList:[], loadingList:false, refreshing:false, hasCachedList:false, showSettings:false, filterStatus:'all', monitorStatus:null, logs:[], activeCollapse:[], config:{tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',proxy_url:'',check_cron:'*/30 * * * *'} } },
   computed:{ filteredList(){ if(this.filterStatus==='continuing') return this.monitoredList.filter(s=>s.current_status!=='Ended'&&s.current_status!=='Canceled'); if(this.filterStatus==='ended') return this.monitoredList.filter(s=>s.current_status==='Ended'); return this.monitoredList } },
   async mounted(){ this.restoreCachedList(); this.loadList({background:this.hasCachedList}); await this.loadConfig(); await this.loadStatus(); await this.loadLogs(); this._statusTimer=setInterval(()=>{this.loadStatus();this.loadLogs()},30000) },
   beforeUnmount(){ if(this._statusTimer) clearInterval(this._statusTimer) },
   methods:{
-    async doSearch(){ if(!this.searchQuery.trim()) return; this.searching=true; this.searchError=''; try{ const d=await fetchJSON('/tmdb/search?q='+encodeURIComponent(this.searchQuery.trim())); this.searchResults=d.results||[]; if(!this.searchResults.length) this.searchError='未找到相关剧集' }catch(e){ this.searchError=e.message }finally{ this.searching=false } },
-    async addSeries(item){ try{ const d=await fetchJSON('/monitor/add',{method:'POST',body:JSON.stringify({tmdb_id:item.tmdb_id,title:item.title,year:item.year,poster_url:item.poster_url})}); ElementPlus.ElMessage.success(d.notification_sent?'已添加并发送通知':'已添加'); this.searchResults=[]; this.searchQuery=''; await this.loadList(); await this.loadStatus() }catch(e){ ElementPlus.ElMessage.error(e.message) } },
+    onSearchInput(){ if(!this.searchQuery.trim()) this.clearSearchResults() },
+    clearSearchResults(){ this.searchResults=[]; this.searchError='' },
+    async doSearch(){ if(!this.searchQuery.trim()){ this.clearSearchResults(); return } this.searching=true; this.searchError=''; try{ const d=await fetchJSON('/tmdb/search?q='+encodeURIComponent(this.searchQuery.trim())); this.searchResults=d.results||[]; if(!this.searchResults.length) this.searchError='未找到相关剧集' }catch(e){ this.searchError=e.message }finally{ this.searching=false } },
+    async addSeries(item){ try{ const d=await fetchJSON('/monitor/add',{method:'POST',body:JSON.stringify({tmdb_id:item.tmdb_id,title:item.title,year:item.year,poster_url:item.poster_url})}); if(!this.monitoredList.some(s=>s.tmdb_id===item.tmdb_id)){ this.monitoredList=[...this.monitoredList,{tmdb_id:item.tmdb_id,title:item.title,year:item.year,poster_url:item.poster_url,last_status:'Unknown',current_status:'Unknown',notified_ended:false}]; this.hasCachedList=true; this.saveCachedList() } ElementPlus.ElMessage.success(d.notification_sent?'已添加并发送通知':'已添加，正在后台刷新信息'); this.clearSearchResults(); this.searchQuery=''; this.loadList({background:true}); setTimeout(()=>this.loadList({background:true}),2000); await this.loadStatus() }catch(e){ ElementPlus.ElMessage.error(e.message) } },
     async deleteSeries(tmdbId){ try{ await ElementPlus.ElMessageBox.confirm('确定要删除该剧集的监控吗？','确认删除',{type:'warning'}); await fetchJSON('/monitor/'+tmdbId,{method:'DELETE'}); this.monitoredList=this.monitoredList.filter(s=>s.tmdb_id!==tmdbId); this.saveCachedList(); ElementPlus.ElMessage.success('已删除'); await this.loadStatus() }catch(e){ if(e!=='cancel') ElementPlus.ElMessage.error(e.message||'删除失败') } },
     restoreCachedList(){ try{ const raw=localStorage.getItem('emby-manager:monitor:list'); if(!raw) return; const cached=JSON.parse(raw); if(Array.isArray(cached.series)){ this.monitoredList=cached.series; this.hasCachedList=this.monitoredList.length>0 } }catch(e){ localStorage.removeItem('emby-manager:monitor:list') } },
     saveCachedList(){ try{ localStorage.setItem('emby-manager:monitor:list', JSON.stringify({series:this.monitoredList, savedAt:Date.now()})) }catch(e){} },
     async loadList(opts={}){ const background=!!opts.background; if(background) this.refreshing=true; else this.loadingList=true; try{ const d=await fetchJSON('/monitor/list'); this.monitoredList=d.series||[]; this.hasCachedList=this.monitoredList.length>0; this.saveCachedList() }catch(e){}finally{ if(background) this.refreshing=false; else this.loadingList=false } },
     async refreshList(){ this.refreshing=true; await this.loadList({background:true}); this.refreshing=false },
     async loadConfig(){ try{ const d=await fetchJSON('/config'); this.config={...this.config,...d} }catch(e){} },
-    async saveConfig(){ try{ const payload={...this.config,check_interval_minutes:Number(this.config.check_interval_minutes)||30}; await fetchJSON('/config',{method:'PUT',body:JSON.stringify(payload)}); ElementPlus.ElMessage.success('保存成功'); this.showSettings=false; await this.loadStatus() }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') } },
+    async saveConfig(){ try{ const payload={tmdb_api_key:this.config.tmdb_api_key,tg_bot_token:this.config.tg_bot_token,tg_chat_id:this.config.tg_chat_id,proxy_url:this.config.proxy_url,check_cron:(this.config.check_cron||'*/30 * * * *').trim()}; await fetchJSON('/config',{method:'PUT',body:JSON.stringify(payload)}); ElementPlus.ElMessage.success('保存成功'); this.showSettings=false; await this.loadStatus() }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') } },
     async testConfig(){ try{ const d=await fetchJSON('/config/test',{method:'POST'}); d.success ? ElementPlus.ElMessage.success(d.message||'测试消息已发送') : ElementPlus.ElMessage.error(d.error||'测试失败') }catch(e){ ElementPlus.ElMessage.error(e.message||'测试失败') } },
     async loadStatus(){ try{ this.monitorStatus=await fetchJSON('/monitor/status') }catch(e){} },
     async loadLogs(){ try{ this.logs=await fetchJSON('/monitor/logs?limit=50') }catch(e){} },

@@ -23,3 +23,13 @@ def test_api_smoke_and_spa_contains_monitor_and_nfo():
         assert response.status_code == 200
         assert "完结监控" in response.text
         assert "NFO 生成" in response.text
+
+        response = client.put("/api/config", json={"check_cron": "*/15 * * * *"})
+        assert response.status_code == 200, response.text
+        response = client.get("/api/config")
+        assert response.status_code == 200
+        assert response.json()["check_cron"] == "*/15 * * * *"
+
+        response = client.put("/api/config", json={"check_cron": "bad cron"})
+        assert response.status_code == 400
+        assert "Cron 规则无效" in response.text
