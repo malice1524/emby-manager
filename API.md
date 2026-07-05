@@ -396,8 +396,7 @@ GET /api/config
 返回字段：
 
 ```text
-tmdb_api_key, tg_bot_token, tg_chat_id, proxy_url,
-update_template, end_template, check_interval_minutes
+tmdb_api_key, tg_bot_token, tg_chat_id, proxy_url, check_cron
 ```
 
 注意：前端会回显配置；不要在日志/聊天里输出真实 token。
@@ -413,9 +412,7 @@ Content-Type: application/json
   "tg_bot_token":"...",
   "tg_chat_id":"...",
   "proxy_url":"http://host:port",
-  "update_template":"...",
-  "end_template":"...",
-  "check_interval_minutes":30
+  "check_cron":"*/30 * * * *"
 }
 ```
 
@@ -423,6 +420,18 @@ Content-Type: application/json
 
 ```json
 {"success":true}
+```
+
+`check_cron` 使用标准 5 段 crontab 表达式。非法规则返回：
+
+```http
+400 Bad Request
+```
+
+示例错误：
+
+```json
+{"detail":"Cron 规则无效：..."}
 ```
 
 ### 6.3 测试 Telegram
@@ -507,3 +516,10 @@ zip 内容：
 5. 涉及 JSON 结构时同步更新 `DATABASE.md`。
 6. 不要在错误信息或日志中泄露 API key、token、密码。
 7. 前端调用统一注意错误提示，不要只显示“失败”。
+
+## 9. 文档发送优先级
+
+- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 每次新会话都发
+- `PROJECT.md`：⭐⭐⭐ 大功能、架构相关时发
+- `DATABASE.md`：⭐⭐ 数据库/JSON 持久化改动时发
+- `API.md`：⭐⭐ 接口改动时发

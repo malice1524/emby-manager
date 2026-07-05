@@ -1,6 +1,6 @@
 # PROJECT.md — Emby Manager 项目文档 ⭐⭐⭐
 
-> 用途：大功能开发、架构调整、部署改动、目录理解时发送/读取。日常小修优先读 `AI_CONTEXT.md`。
+> 用途：大功能开发、架构调整、部署改动、目录理解时发送/读取。日常新会话优先读 `AI_CONTEXT.md`；只有大功能、架构相关时再读本文件。
 
 ## 1. 项目简介
 
@@ -38,7 +38,7 @@ FastAPI / uvicorn
 2. **无传统数据库**：配置、监控列表、日志存 JSON 文件。
 3. **前端无构建步骤**：Vue/Element Plus 通过本地静态依赖加载，主要代码在单个 HTML。
 4. **图片代理**：前端图片请求通过后端代理，解决跨域/内外网访问问题。
-5. **Web 配置优先**：TMDB/TG/代理/模板等配置优先读 `/data/config.json`，环境变量兜底。
+5. **Web 配置优先**：TMDB/TG/代理/Cron 检查规则等配置优先读 `/data/config.json`，环境变量兜底。
 
 ## 3. 技术栈
 
@@ -265,25 +265,26 @@ python3 -m pytest test_monitor_frontend.py -q
 
 ```bash
 git diff --check
-python3 -m pytest test_monitor_frontend.py test_dashboard_delete_backend.py -q
+python3 -m py_compile backend/app/config.py backend/app/routers/monitor.py backend/app/series_monitor.py
+python3 -m pytest test_monitor_frontend.py test_api_smoke.py -q
 ```
 
 用户明确说“推送”后：
 
-1. 版本号 +0.01
-2. 同步四处版本号
+1. 非纯文档变更：版本号 +0.01；纯文档更新：不推进版本号
+2. 非纯文档变更需同步四处版本号
 3. 测试通过
 4. commit
 5. push
 
 ## 8. 版本号规则
 
-每次推送前版本号 +0.01：
+非纯文档变更每次推送前版本号 +0.01；纯文档更新不推进版本号。当前已知版本：`1.20`。
 
 ```text
-1.17 → 1.18
-1.18 → 1.19
-1.19 → 1.20
+1.20 → 1.21
+1.21 → 1.22
+1.22 → 1.23
 ```
 
 同步：
@@ -301,22 +302,29 @@ static/index.html: vX.XX
 
 ```text
 test_monitor_frontend.py          # 前端关键字符串/同步检查
-test_dashboard_delete_backend.py  # 删除接口提示/凭据相关测试
-test_api_smoke.py                 # API smoke test
+test_dashboard_delete_backend.py  # 删除接口提示/凭据相关测试，可按需单独跑
+test_api_smoke.py                 # API smoke test + 配置接口校验
 ```
 
 常用命令：
 
 ```bash
-git diff --check && python3 -m pytest test_monitor_frontend.py test_dashboard_delete_backend.py -q
+git diff --check && python3 -m py_compile backend/app/config.py backend/app/routers/monitor.py backend/app/series_monitor.py && python3 -m pytest test_monitor_frontend.py test_api_smoke.py -q
 ```
 
 ## 10. 常见坑
 
 1. 只改 `frontend/index.html`，忘记同步 `static/index.html`。
-2. 只改 `VERSION`，忘记 `static/VERSION` 和侧边栏版本。
+2. 非纯文档变更只改 `VERSION`，忘记 `static/VERSION` 和侧边栏版本；纯文档更新则不要改版本号。
 3. 未经用户允许直接 `git push`。
 4. 用增大 `top` 解决媒体库弹窗遮挡，导致上方空隙。
 5. 删除接口失败时只看 API Key，忽略 `EMBY_ADMIN_USER/PW`。
 6. 输出 token/API key 到日志或聊天。
 7. 新增路由后忘记在 `main.py` include。
+
+## 11. 文档发送优先级
+
+- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 每次新会话都发
+- `PROJECT.md`：⭐⭐⭐ 大功能、架构相关时发
+- `DATABASE.md`：⭐⭐ 数据库/JSON 持久化改动时发
+- `API.md`：⭐⭐ 接口改动时发

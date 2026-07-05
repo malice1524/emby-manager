@@ -66,9 +66,8 @@ backend/app/series_monitor.py
 | `tg_bot_token` | string | Telegram Bot Token | `TG_BOT_TOKEN` |
 | `tg_chat_id` | string | Telegram 接收用户/群 ID | `TG_CHAT_ID` |
 | `proxy_url` | string | HTTP/HTTPS 代理地址 | 无或实现内兜底 |
-| `update_template` | string | 更新提醒模板 | 默认模板 |
-| `end_template` | string | 完结提醒模板 | 默认模板 |
-| `check_interval_minutes` | int | 自动检测间隔分钟 | 默认值 |
+| `check_cron` | string | 标准 5 段 cron 检查规则，如 `*/30 * * * *` | `CHECK_CRON` 或默认值 |
+| `check_interval_minutes` | int | 旧版本自动检测间隔分钟，仅用于兼容迁移 | 默认 30 |
 
 ### 3.3 示例
 
@@ -78,9 +77,7 @@ backend/app/series_monitor.py
   "tg_bot_token": "不要在文档里写真实 token",
   "tg_chat_id": "123456789",
   "proxy_url": "http://192.168.1.100:7890",
-  "update_template": "📺 {series_name} 更新了 {episode_info}",
-  "end_template": "🎬 {series_name} 已完结",
-  "check_interval_minutes": 30
+  "check_cron": "*/30 * * * *"
 }
 ```
 
@@ -88,7 +85,9 @@ backend/app/series_monitor.py
 
 - 不要把真实 API Key/Token 提交到 Git。
 - AI/日志/错误输出不要打印真实配置值。
-- 保存配置时可校验模板变量，但未知变量通常只提示，不强制阻止。
+- `check_cron` 使用标准 5 段 crontab 表达式；保存配置时后端会校验，非法规则返回 400。
+- 旧字段 `check_interval_minutes` 仅用于兼容历史配置；没有 `check_cron` 时会自动转成 `*/N * * * *`。
+- 前端设置页不再展示 `update_template` / `end_template`；Telegram 通知使用后端默认模板。
 
 ## 4. `/data/monitored_series.json`
 
@@ -302,3 +301,10 @@ monitor_data/monitor_log.json
    - `API.md`
 4. 不要把敏感值写进 README、测试快照或日志。
 5. NFO 当前使用临时文件，不应写入持久化 JSON。
+
+## 10. 文档发送优先级
+
+- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 每次新会话都发
+- `PROJECT.md`：⭐⭐⭐ 大功能、架构相关时发
+- `DATABASE.md`：⭐⭐ 数据库/JSON 持久化改动时发
+- `API.md`：⭐⭐ 接口改动时发

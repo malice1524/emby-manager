@@ -64,12 +64,14 @@ python3 -m pytest test_monitor_frontend.py -q
 
 ## 当前版本规则
 
-当前已知版本：`1.17`。
+当前已知版本：`1.20`。
 
-每次用户明确要求“推送”时，推送前必须版本号 +0.01：
+每次用户明确要求“推送”时，若包含代码/功能/接口/数据结构等实际项目变更，推送前必须版本号 +0.01。
+
+**纯文档更新不推进版本号**，例如只改 `AI_CONTEXT.md`、`PROJECT.md`、`DATABASE.md`、`API.md` 时，不需要修改 `VERSION` 或侧边栏版本。
 
 ```text
-1.17 → 1.18 → 1.19 → 1.20
+1.20 → 1.21 → 1.22 → 1.23
 ```
 
 必须同步四处：
@@ -85,17 +87,18 @@ static/index.html 里的侧边栏 vX.XX
 
 - 未经用户明确允许，不能执行 `git push`。
 - 用户说“推送”后才允许推送。
-- 推送前必须先升级版本号。
+- 非纯文档变更推送前必须先升级版本号；纯文档更新不推进版本号。
 - 推送前必须跑完整检查。
 
 推荐流程：
 
 ```bash
 git status --short
-# 修改版本号
+# 非纯文档变更：修改版本号；纯文档更新：跳过版本号
 # 修改代码/文档
 git diff --check
-python3 -m pytest test_monitor_frontend.py test_dashboard_delete_backend.py -q
+python3 -m py_compile backend/app/config.py backend/app/routers/monitor.py backend/app/series_monitor.py
+python3 -m pytest test_monitor_frontend.py test_api_smoke.py -q
 git add ...
 git commit -m "..."
 git push origin main
@@ -113,10 +116,10 @@ git -c http.https://github.com/.extraheader="$HEADER" push origin main
 最常用完整检查：
 
 ```bash
-git diff --check && python3 -m pytest test_monitor_frontend.py test_dashboard_delete_backend.py -q
+git diff --check && python3 -m py_compile backend/app/config.py backend/app/routers/monitor.py backend/app/series_monitor.py && python3 -m pytest test_monitor_frontend.py test_api_smoke.py -q
 ```
 
-当前预期：`5 passed`。
+当前预期：`3 passed`。
 
 其他：
 
@@ -150,6 +153,12 @@ python3 -m pytest test_api_smoke.py -q
 ### 完结监控
 
 - 搜索结果简介两行省略
+- 搜索结果区域有“关闭”按钮；搜索框清空时应清空搜索结果
+- 添加订阅后先乐观插入列表，再后台刷新，并延迟二次刷新以等待 TMDB 异步详情更新
+- 已监控剧集列表在卡片内部滚动，不让整个页面被长列表撑开
+- 已监控剧集使用 `localStorage` 缓存，进入页面先展示缓存再后台刷新
+- 调度配置使用标准 5 段 cron 规则，例如 `*/30 * * * *`
+- 设置页不再暴露“更新通知模板/完结通知模板”输入项
 - `overflow-wrap:anywhere` 防止长文本撑宽页面
 - 刷新按钮使用 `monitor-refresh-btn` + 单个旋转图标
 
@@ -178,7 +187,7 @@ Cache-Control: no-cache, no-store, must-revalidate
 - 用户管理：列表、新建、删除、改密码、启用/禁用
 - 媒体库：列表、数量统计、海报墙、搜索、分页、跳页、详情弹窗
 - 完结监控：TMDB 搜索/详情/验证、监控列表、定时检测、TG 通知、日志
-- 配置：TMDB Key、TG Bot、代理、模板、检测间隔
+- 配置：TMDB Key、TG Bot、代理、Cron 检查规则
 - NFO 生成：自定义文件名 + TMDB 人物 ID + 可选封面 → zip 下载
 
 ## 环境变量
@@ -200,10 +209,10 @@ TG_CHAT_ID            # 可由 Web 配置覆盖/兜底
 
 ## 文档分层
 
-- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 每次新 AI 会话都发
-- `PROJECT.md`：⭐⭐⭐ 大功能、架构、目录、部署相关时发
-- `DATABASE.md`：⭐⭐ 数据结构、JSON 持久化、配置迁移时发
-- `API.md`：⭐⭐ 接口新增/修改/调试时发
+- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 每次新会话都发
+- `PROJECT.md`：⭐⭐⭐ 大功能、架构相关时发
+- `DATABASE.md`：⭐⭐ 数据库/JSON 持久化改动时发
+- `API.md`：⭐⭐ 接口改动时发
 
 ## 开发注意事项
 
