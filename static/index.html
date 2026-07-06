@@ -601,7 +601,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.22</div>
+    <div class="sidebar-version">v1.23</div>
   </aside>
 
   <!-- Main -->
@@ -1277,7 +1277,11 @@ const NfoGenerator = {
           </div>
         </div>
         <div v-else style="font-size:13px;color:var(--green);margin-bottom:12px">暂无待重命名图片计划</div>
-        <el-button @click="executeAutomation" :loading="executing" type="primary" size="large" style="width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;font-weight:600;border-radius:12px">执行图片重命名 + 生成每集 NFO</el-button>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
+          <el-checkbox v-model="refreshEmby">执行后刷新 Emby 元数据</el-checkbox>
+          <el-button @click="refreshEmbyNow" :loading="refreshingEmby" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text)">刷新 Emby 元数据</el-button>
+        </div>
+        <el-button @click="executeAutomation" :loading="executing" type="primary" size="large" style="width:100%;margin-top:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;font-weight:600;border-radius:12px">执行图片重命名 + 生成每集 NFO</el-button>
       </div>
 
       <div v-if="logs.length" class="glass-card">
@@ -1288,7 +1292,7 @@ const NfoGenerator = {
   `,
   data(){
     return {
-      selectedDir: '', browseData: null, browseError: '', browsing:false, scanData: null, scanning:false, executing:false, savingTvshow:false, logs: [],
+      selectedDir: '', browseData: null, browseError: '', browsing:false, scanData: null, scanning:false, executing:false, savingTvshow:false, refreshEmby:true, refreshingEmby:false, logs: [],
       tv: { title:'', tmdb_id:'', dateadded:'', sorttitle:'', plot:'', outline:'', overwrite:false },
       artworkKinds: [
         {key:'poster', label:'poster.jpg', file:'poster.jpg'},
@@ -1358,11 +1362,21 @@ const NfoGenerator = {
         const data = await res.json(); this.scanData = data.scan; ev.target.value=''; ElementPlus.ElMessage.success(`已上传 ${data.saved.length} 张图片`);
       }catch(e){ ElementPlus.ElMessage.error(e.message||'上传失败') }
     },
+    async refreshEmbyNow(){
+      this.refreshingEmby=true;
+      try{
+        const res = await fetch('/api/nfo/automation/refresh-emby',{method:'POST'});
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'刷新失败') }
+        this.logs = ['刷新Emby媒体库: 已提交'].concat(this.logs || []);
+        ElementPlus.ElMessage.success('已提交 Emby 元数据刷新');
+      }catch(e){ ElementPlus.ElMessage.error(e.message||'刷新失败') }
+      finally{ this.refreshingEmby=false }
+    },
     async executeAutomation(){
       if(!this.scanData){ return }
       this.executing=true; this.logs=[];
       try{
-        const res = await fetch('/api/nfo/automation/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir})});
+        const res = await fetch('/api/nfo/automation/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir, refresh_emby:this.refreshEmby})});
         if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'执行失败') }
         const data = await res.json(); this.logs = data.logs; this.scanData = data.scan; ElementPlus.ElMessage.success('执行完成');
       }catch(e){ ElementPlus.ElMessage.error(e.message||'执行失败') }

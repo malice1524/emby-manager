@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import httpx
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -22,6 +23,7 @@ class ActorDirRequest(BaseModel):
 
 class ExecuteRequest(BaseModel):
     actor_dir: str
+    refresh_emby: bool = True
 
 
 class TvshowRequest(BaseModel):
@@ -215,6 +217,19 @@ def _tvshow_xml(req: TvshowRequest) -> str:
     )
 
 
+async def _refresh_emby_library() -> dict:
+    emby_url = os.getenv("EMBY_URL", "").rstrip("/")
+    emby_api_key = os.getenv("EMBY_API_KEY", "")
+    if not emby_url or not emby_api_key:
+        raise HTTPException(status_code=400, detail="缺少 EMBY_URL 或 EMBY_API_KEY，无法刷新 Emby")
+    url = f"{emby_url}/Library/Refresh"
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(url, headers={"X-Emby-Token": emby_api_key})
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Emby 刷新失败: HTTP {resp.status_code} {resp.text[:200]}")
+    return {"ok": True, "status_code": resp.status_code}
+
+
 @router.get("/automation/browse")
 async def browse_automation(path: str | None = Query(default=None)):
     root = _media_root()
@@ -251,6 +266,11 @@ async def scan_automation(req: ActorDirRequest):
     return _build_scan(_safe_actor_dir(req.actor_dir))
 
 
+@router.post("/automation/refresh-emby")
+async def refresh_emby_automation():
+    return await _refresh_emby_library()
+
+
 @router.post("/automation/execute")
 async def execute_automation(req: ExecuteRequest):
     actor_dir = _safe_actor_dir(req.actor_dir)
@@ -279,6 +299,13 @@ async def execute_automation(req: ExecuteRequest):
             continue
         nfo.write_text(_episode_nfo(item["title"], item["season"], item["episode"]), encoding="utf-8")
         logs.append(f"生成NFO: {nfo.name}")
+
+    if req.refresh_emby:
+        try:
+            await _refresh_emby_library()
+            logs.append("刷新Emby媒体库: 已提交")
+        except HTTPException as exc:
+            logs.append(f"刷新Emby媒体库失败: {exc.detail}")
 
     return {"ok": True, "logs": logs, "scan": _build_scan(actor_dir)}
 

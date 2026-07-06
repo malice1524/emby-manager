@@ -191,7 +191,7 @@ Cache-Control: no-cache, no-store, must-revalidate
 - 媒体库：列表、数量统计、海报墙、搜索、分页、跳页、详情弹窗
 - 完结监控：TMDB 搜索/详情/验证、TMDB 单集详情、TVmaze 播出时间补充、监控列表、定时检测、TG 通知、日志
 - 配置：TMDB Key、TG Bot、代理、Cron 检查规则
-- NFO 自动化：演员目录扫描、tvshow.nfo 表单、poster/fanart/logo 上传、剧集图片重命名、每集 nfo 批量生成
+- NFO 自动化：演员目录扫描、tvshow.nfo 表单、poster/fanart/logo 上传、剧集图片重命名、每集 nfo 批量生成、触发 Emby 媒体库刷新
 
 ## 环境变量
 

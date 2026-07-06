@@ -533,13 +533,21 @@ multipart/form-data:
 
 图片保存到 `Season 1`，再通过扫描/执行流程按 `IMG_*` 与 mtime 生成重命名计划。
 
-### 7.6 执行自动化
+### 7.6 刷新 Emby 元数据
+
+```http
+POST /api/nfo/automation/refresh-emby
+```
+
+调用 Emby `/Library/Refresh`，提交媒体库刷新任务。NFO 自动化执行接口默认会在完成后自动刷新，也可以通过页面按钮手动刷新。
+
+### 7.7 执行自动化
 
 ```http
 POST /api/nfo/automation/execute
 Content-Type: application/json
 
-{"actor_dir":".../Sienna Moore"}
+{"actor_dir":".../Sienna Moore", "refresh_emby": true}
 ```
 
 执行：
@@ -547,6 +555,7 @@ Content-Type: application/json
 - `IMG_*.JPG` 按 mtime 从早到晚匹配缺图剧集并重命名为同名 `.JPG`
 - 为缺失/空的同名 `.nfo` 生成：`episodedetails/title/season/episode`
 - 不覆盖已有剧集图片或 nfo
+- `refresh_emby` 默认为 `true`，执行完成后调用 Emby `/Library/Refresh`；失败只写入日志，不回滚本地 NFO/图片操作
 
 安全：只允许操作 `NFO_MEDIA_ROOT` 下目录，默认 `/vol1/1000/docker/strm`。
 

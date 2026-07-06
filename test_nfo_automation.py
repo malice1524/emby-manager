@@ -91,6 +91,46 @@ def test_nfo_automation_scans_executes_and_writes_tvshow(tmp_path, monkeypatch):
         assert "媒体根目录" in bad_browse.text
 
 
+def test_nfo_automation_refreshes_emby_after_execute(tmp_path, monkeypatch):
+    root, actor, _season = _make_actor_tree(tmp_path)
+    monkeypatch.setenv("NFO_MEDIA_ROOT", str(root))
+    monkeypatch.setenv("EMBY_URL", "http://emby.local:8096")
+    monkeypatch.setenv("EMBY_API_KEY", "test-key")
+    calls = []
+
+    class FakeResponse:
+        status_code = 204
+        text = ""
+
+    class FakeAsyncClient:
+        def __init__(self, timeout=15):
+            self.timeout = timeout
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+        async def post(self, url, headers=None):
+            calls.append((url, headers))
+            return FakeResponse()
+
+    from backend.app.routers import nfo
+    monkeypatch.setattr(nfo.httpx, "AsyncClient", FakeAsyncClient)
+
+    with TestClient(app) as client:
+        manual = client.post("/api/nfo/automation/refresh-emby")
+        assert manual.status_code == 200, manual.text
+        assert manual.json()["ok"] is True
+
+        ex = client.post("/api/nfo/automation/execute", json={"actor_dir": str(actor), "refresh_emby": True})
+        assert ex.status_code == 200, ex.text
+        logs = ex.json()["logs"]
+        assert "刷新Emby媒体库: 已提交" in logs
+
+    assert len(calls) == 2
+    assert all(url == "http://emby.local:8096/Library/Refresh" for url, _headers in calls)
+    assert all(headers["X-Emby-Token"] == "test-key" for _url, headers in calls)
+
+
 def test_nfo_automation_rejects_paths_outside_media_root(tmp_path, monkeypatch):
     # Covered in the main TestClient session above to avoid restarting the app scheduler twice.
     assert True

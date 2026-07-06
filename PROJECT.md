@@ -226,6 +226,7 @@ static/index.html
   → 上传剧集图片
   → 按 mtime 匹配缺图集数并重命名为同名 .JPG
   → 为缺失剧集批量生成同名 .nfo
+  → 可自动或手动触发 Emby /Library/Refresh
 ```
 
 安全规则：

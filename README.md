@@ -115,6 +115,7 @@ DockerHub 镜像：
 4. 上传/替换 `poster.jpg`、`fanart.jpg`、`logo.png`
 5. 上传剧集图片，系统按 `IMG_*` 与 mtime 匹配缺图集数
 6. 执行图片重命名并批量生成每集同名 `.nfo`
+7. 可勾选“执行后刷新 Emby 元数据”，或手动点击“刷新 Emby 元数据”触发 Emby 媒体库刷新
 
 Docker 部署需要挂载媒体目录，例如：
 
