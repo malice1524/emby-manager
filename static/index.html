@@ -601,7 +601,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.23</div>
+    <div class="sidebar-version">v1.24</div>
   </aside>
 
   <!-- Main -->
@@ -1365,7 +1365,8 @@ const NfoGenerator = {
     async refreshEmbyNow(){
       this.refreshingEmby=true;
       try{
-        const res = await fetch('/api/nfo/automation/refresh-emby',{method:'POST'});
+        const payload = this.selectedDir ? {actor_dir:this.selectedDir} : {};
+        const res = await fetch('/api/nfo/automation/refresh-emby',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'刷新失败') }
         this.logs = ['刷新Emby媒体库: 已提交'].concat(this.logs || []);
         ElementPlus.ElMessage.success('已提交 Emby 元数据刷新');

@@ -21,6 +21,10 @@ class ActorDirRequest(BaseModel):
     actor_dir: str
 
 
+class RefreshEmbyRequest(BaseModel):
+    actor_dir: str | None = None
+
+
 class ExecuteRequest(BaseModel):
     actor_dir: str
     refresh_emby: bool = True
@@ -217,17 +221,84 @@ def _tvshow_xml(req: TvshowRequest) -> str:
     )
 
 
-async def _refresh_emby_library() -> dict:
+def _emby_settings() -> tuple[str, str]:
     emby_url = os.getenv("EMBY_URL", "").rstrip("/")
     emby_api_key = os.getenv("EMBY_API_KEY", "")
     if not emby_url or not emby_api_key:
         raise HTTPException(status_code=400, detail="缺少 EMBY_URL 或 EMBY_API_KEY，无法刷新 Emby")
+    return emby_url, emby_api_key
+
+
+def _map_to_emby_path(local_path: Path) -> str | None:
+    emby_root = os.getenv("EMBY_MEDIA_ROOT", "").rstrip("/")
+    if not emby_root:
+        return None
+    nfo_root = _media_root()
+    try:
+        relative = local_path.resolve().relative_to(nfo_root)
+    except ValueError:
+        return None
+    relative_text = relative.as_posix()
+    return f"{emby_root}/{relative_text}" if relative_text else emby_root
+
+
+async def _refresh_emby_library() -> dict:
+    emby_url, emby_api_key = _emby_settings()
     url = f"{emby_url}/Library/Refresh"
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(url, headers={"X-Emby-Token": emby_api_key})
     if resp.status_code >= 400:
         raise HTTPException(status_code=502, detail=f"Emby 刷新失败: HTTP {resp.status_code} {resp.text[:200]}")
-    return {"ok": True, "status_code": resp.status_code}
+    return {"ok": True, "mode": "library", "status_code": resp.status_code}
+
+
+async def _refresh_emby_for_actor(actor_dir: Path) -> dict:
+    emby_path = _map_to_emby_path(actor_dir)
+    if not emby_path:
+        return await _refresh_emby_library()
+
+    emby_url, emby_api_key = _emby_settings()
+    headers = {"X-Emby-Token": emby_api_key}
+    async with httpx.AsyncClient(timeout=15) as client:
+        search = await client.get(
+            f"{emby_url}/Items",
+            headers=headers,
+            params={"Recursive": "true", "Fields": "Path", "Path": emby_path},
+        )
+        if search.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"Emby 查询项目失败: HTTP {search.status_code} {search.text[:200]}")
+        items = search.json().get("Items", [])
+        if not items:
+            fallback = await client.post(f"{emby_url}/Library/Refresh", headers=headers)
+            if fallback.status_code >= 400:
+                raise HTTPException(status_code=502, detail=f"Emby 全库兜底刷新失败: HTTP {fallback.status_code} {fallback.text[:200]}")
+            return {"ok": True, "mode": "library_fallback", "path": emby_path, "status_code": fallback.status_code}
+
+        item = items[0]
+        item_id = item.get("Id")
+        if not item_id:
+            raise HTTPException(status_code=502, detail="Emby 查询项目返回缺少 Id")
+        refresh = await client.post(
+            f"{emby_url}/Items/{item_id}/Refresh",
+            headers=headers,
+            params={
+                "Recursive": "true",
+                "MetadataRefreshMode": "FullRefresh",
+                "ImageRefreshMode": "FullRefresh",
+                "ReplaceAllMetadata": "false",
+                "ReplaceAllImages": "false",
+            },
+        )
+        if refresh.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"Emby 项目刷新失败: HTTP {refresh.status_code} {refresh.text[:200]}")
+        return {
+            "ok": True,
+            "mode": "item",
+            "item_id": item_id,
+            "name": item.get("Name") or actor_dir.name,
+            "path": emby_path,
+            "status_code": refresh.status_code,
+        }
 
 
 @router.get("/automation/browse")
@@ -267,7 +338,9 @@ async def scan_automation(req: ActorDirRequest):
 
 
 @router.post("/automation/refresh-emby")
-async def refresh_emby_automation():
+async def refresh_emby_automation(req: RefreshEmbyRequest | None = None):
+    if req and req.actor_dir:
+        return await _refresh_emby_for_actor(_safe_actor_dir(req.actor_dir))
     return await _refresh_emby_library()
 
 
@@ -302,8 +375,13 @@ async def execute_automation(req: ExecuteRequest):
 
     if req.refresh_emby:
         try:
-            await _refresh_emby_library()
-            logs.append("刷新Emby媒体库: 已提交")
+            refresh_result = await _refresh_emby_for_actor(actor_dir)
+            if refresh_result.get("mode") == "item":
+                logs.append(f"刷新Emby项目: {refresh_result.get('name') or actor_dir.name}")
+            elif refresh_result.get("mode") == "library_fallback":
+                logs.append("未找到Emby项目，已改为全库刷新")
+            else:
+                logs.append("刷新Emby媒体库: 已提交")
         except HTTPException as exc:
             logs.append(f"刷新Emby媒体库失败: {exc.detail}")
 

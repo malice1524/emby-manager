@@ -7,9 +7,10 @@ services:
     environment:
       - EMBY_URL=http://47.109.19.131:8116
       - EMBY_API_KEY=你的Emby_API_Key
-      - NFO_MEDIA_ROOT=/vol1/1000/docker/strm
+      - NFO_MEDIA_ROOT=/vol1/1000/docker/strm/已整理/PornHub
+      - EMBY_MEDIA_ROOT=/pron/PornHub
     volumes:
-      - /vol1/1000/docker/strm:/vol1/1000/docker/strm
+      - /vol1/1000/docker/strm/已整理/PornHub:/vol1/1000/docker/strm/已整理/PornHub
     ports:
       - "8117:8000"
     restart: unless-stopped

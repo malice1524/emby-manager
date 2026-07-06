@@ -555,7 +555,7 @@ Content-Type: application/json
 - `IMG_*.JPG` 按 mtime 从早到晚匹配缺图剧集并重命名为同名 `.JPG`
 - 为缺失/空的同名 `.nfo` 生成：`episodedetails/title/season/episode`
 - 不覆盖已有剧集图片或 nfo
-- `refresh_emby` 默认为 `true`，执行完成后调用 Emby `/Library/Refresh`；失败只写入日志，不回滚本地 NFO/图片操作
+- `refresh_emby` 默认为 `true`，执行完成后优先按 `NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT` 路径映射查找当前演员目录对应的 Emby 项目并精准刷新；找不到项目时自动兜底调用 Emby `/Library/Refresh`，失败只写入日志，不回滚本地 NFO/图片操作
 
 安全：只允许操作 `NFO_MEDIA_ROOT` 下目录，默认 `/vol1/1000/docker/strm`。
 

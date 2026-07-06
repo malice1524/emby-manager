@@ -124,7 +124,17 @@ volumes:
   - /vol1/1000/docker/strm:/vol1/1000/docker/strm
 ```
 
-后端默认只允许操作 `NFO_MEDIA_ROOT` 内的目录，默认值为 `/vol1/1000/docker/strm`。
+后端默认只允许操作 `NFO_MEDIA_ROOT` 内的目录，默认值为 `/vol1/1000/docker/strm`。如需精准刷新当前演员目录，可配置 `EMBY_MEDIA_ROOT`，例如：
+
+```yaml
+environment:
+  - NFO_MEDIA_ROOT=/vol1/1000/docker/strm/已整理/PornHub
+  - EMBY_MEDIA_ROOT=/pron/PornHub
+volumes:
+  - /vol1/1000/docker/strm/已整理/PornHub:/vol1/1000/docker/strm/已整理/PornHub
+```
+
+这样本地目录 `/vol1/1000/docker/strm/已整理/PornHub/Sienna Moore` 会映射到 Emby 路径 `/pron/PornHub/Sienna Moore`，执行后优先精准刷新该演员目录；找不到 Emby 项目时自动兜底全库刷新。
 
 ## 常见问题
 

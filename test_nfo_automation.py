@@ -109,8 +109,8 @@ def test_nfo_automation_refreshes_emby_after_execute(tmp_path, monkeypatch):
             return self
         async def __aexit__(self, exc_type, exc, tb):
             return False
-        async def post(self, url, headers=None):
-            calls.append((url, headers))
+        async def post(self, url, headers=None, params=None):
+            calls.append((url, headers, params))
             return FakeResponse()
 
     from backend.app.routers import nfo
@@ -127,10 +127,61 @@ def test_nfo_automation_refreshes_emby_after_execute(tmp_path, monkeypatch):
         assert "刷新Emby媒体库: 已提交" in logs
 
     assert len(calls) == 2
-    assert all(url == "http://emby.local:8096/Library/Refresh" for url, _headers in calls)
-    assert all(headers["X-Emby-Token"] == "test-key" for _url, headers in calls)
+    assert all(url == "http://emby.local:8096/Library/Refresh" for url, _headers, _params in calls)
+    assert all(headers["X-Emby-Token"] == "test-key" for _url, headers, _params in calls)
 
 
-def test_nfo_automation_rejects_paths_outside_media_root(tmp_path, monkeypatch):
+def test_nfo_automation_refreshes_current_actor_directory_when_emby_root_is_configured(tmp_path, monkeypatch):
+    root, actor, _season = _make_actor_tree(tmp_path)
+    nfo_root = root / "已整理" / "PornHub"
+    monkeypatch.setenv("NFO_MEDIA_ROOT", str(nfo_root))
+    monkeypatch.setenv("EMBY_MEDIA_ROOT", "/pron/PornHub")
+    monkeypatch.setenv("EMBY_URL", "http://emby.local:8096")
+    monkeypatch.setenv("EMBY_API_KEY", "test-key")
+    calls = []
+
+    class FakeResponse:
+        def __init__(self, status_code=200, data=None, text=""):
+            self.status_code = status_code
+            self._data = data or {}
+            self.text = text
+        def json(self):
+            return self._data
+
+    class FakeAsyncClient:
+        def __init__(self, timeout=15):
+            self.timeout = timeout
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+        async def get(self, url, headers=None, params=None):
+            calls.append(("GET", url, params))
+            assert params["Path"] == "/pron/PornHub/Sienna Moore"
+            return FakeResponse(data={"Items": [{"Id": "emby-actor-id", "Name": "Sienna Moore"}]})
+        async def post(self, url, headers=None, params=None):
+            calls.append(("POST", url, params))
+            return FakeResponse(status_code=204)
+
+    from backend.app.routers import nfo
+    monkeypatch.setattr(nfo.httpx, "AsyncClient", FakeAsyncClient)
+
+    with TestClient(app) as client:
+        ex = client.post("/api/nfo/automation/execute", json={"actor_dir": str(actor), "refresh_emby": True})
+        assert ex.status_code == 200, ex.text
+        logs = ex.json()["logs"]
+        assert "刷新Emby项目: Sienna Moore" in logs
+
+    assert calls == [
+        ("GET", "http://emby.local:8096/Items", {"Recursive": "true", "Fields": "Path", "Path": "/pron/PornHub/Sienna Moore"}),
+        ("POST", "http://emby.local:8096/Items/emby-actor-id/Refresh", {
+            "Recursive": "true",
+            "MetadataRefreshMode": "FullRefresh",
+            "ImageRefreshMode": "FullRefresh",
+            "ReplaceAllMetadata": "false",
+            "ReplaceAllImages": "false",
+        }),
+    ]
+
     # Covered in the main TestClient session above to avoid restarting the app scheduler twice.
     assert True
