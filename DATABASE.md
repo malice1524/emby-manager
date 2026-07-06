@@ -10,7 +10,8 @@ Emby Manager 当前**不使用传统数据库**，没有 MySQL/PostgreSQL/SQLite
 
 ```text
 Emby API        # 用户、媒体库、媒体详情、会话、图片等
-TMDB API        # 剧集监控、NFO 人物信息
+TMDB API        # 剧集监控、单集详情、NFO 人物信息
+TVmaze API      # 剧集更新通知的精确播出时间（免 API Key）
 Telegram API    # 通知发送
 JSON 文件       # 本地配置、监控列表、监控日志
 ```
@@ -101,6 +102,7 @@ backend/app/series_monitor.py
 backend/app/series_monitor.py
 backend/app/routers/monitor.py
 backend/app/tmdb_client.py
+backend/app/tvmaze_client.py
 ```
 
 ### 4.2 主结构
@@ -159,6 +161,8 @@ backend/app/tmdb_client.py
 - `tmdb_id` 应唯一。
 - 删除监控按 `tmdb_id` 删除。
 - 检测更新通常比较 `last_episode_air_date` / `last_episode_number`。
+- 若 TMDB 的 `next_episode_to_air.air_date <= 今天(项目 TZ)` 且比当前记录更新，也会按新集处理，避免 TMDB 延迟把今日集移动到 `last_episode_to_air` 导致通知晚一天。
+- TG 更新通知发送前会临时补拉 TMDB 单集详情与 TVmaze 播出时间；这些增强字段不写入 `monitored_series.json`，只用于当次通知。
 - 完结通知通常依赖状态变为 `Ended` 且 `notified_ended=false`。
 
 ## 5. `/data/monitor_log.json`
@@ -216,15 +220,26 @@ backend/app/tmdb_client.py
 | 数据 | TMDB 端点 | 用途 |
 |------|-----------|------|
 | 剧集搜索 | `/search/tv` | 完结监控添加 |
-| 剧集详情 | `/tv/{id}` | 状态、集数、播出日期 |
+| 剧集详情 | `/tv/{id}` | 状态、集数、播出日期、last/next episode |
+| 剧集外部 ID | `/tv/{id}/external_ids` | 获取 tvdb_id/imdb_id，用于匹配 TVmaze |
+| 单集详情 | `/tv/{id}/season/{season}/episode/{episode}` | 更新通知的单集标题、简介、剧照、评分、片长 |
 | 人物详情 | `/person/{id}` | NFO 生成人物名称/头像 |
 
-### 6.3 Telegram API
+### 6.3 TVmaze API
+
+| 数据 | TVmaze 端点 | 用途 |
+|------|-------------|------|
+| 剧集匹配 | `/lookup/shows?thetvdb={id}` / `/lookup/shows?imdb={id}` | 用 TMDB external_ids 匹配 TVmaze show |
+| 单集列表 | `/shows/{tvmaze_id}/episodes` | 匹配 season/episode，获取 `airstamp` 并转北京时间 |
+
+TVmaze 当前不需要 API Key；匹配或请求失败时不影响原有 TMDB 更新通知，会降级为 TMDB 播出日期。
+
+### 6.4 Telegram API
 
 | 数据 | Telegram 端点 | 用途 |
 |------|---------------|------|
 | 文本消息 | `/bot{token}/sendMessage` | 通知降级发送 |
-| 图片消息 | `/bot{token}/sendPhoto` | 带海报通知 |
+| 图片消息 | `/bot{token}/sendPhoto` | 带图片通知；更新通知优先单集剧照，缺失时使用剧集海报 |
 
 ## 7. 数据流
 
@@ -253,8 +268,10 @@ backend/app/tmdb_client.py
 APScheduler
   → 读 /data/monitored_series.json
   → 调 TMDB /tv/{id}
-  → 对比状态/最新集
-  → 发送 TG 通知
+  → 对比状态/最新集（含当天或更早的 next_episode_to_air）
+  → 新集补拉 TMDB 单集详情
+  → 用 TMDB external_ids 匹配 TVmaze 并获取北京时间播出时间
+  → 发送 TG 通知（单集剧照优先，缺失自动降级）
   → 写回 monitored_series.json
   → 追加 monitor_log.json
 ```

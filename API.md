@@ -257,7 +257,7 @@ GET /api/libraries/{item_id}/items?limit=30&page=1&search=&types=
 
 ## 5. TMDB 与完结监控
 
-主要文件：`backend/app/routers/monitor.py`
+主要文件：`backend/app/routers/monitor.py`、`backend/app/series_monitor.py`、`backend/app/tmdb_client.py`、`backend/app/tvmaze_client.py`、`backend/app/tg_notifier.py`
 
 ### 5.1 TMDB 搜索剧集
 
@@ -294,6 +294,8 @@ tmdb_id, title, status, type, vote_average,
 number_of_episodes, next_episode_to_air,
 last_episode_to_air, last_air_date, overview
 ```
+
+说明：定时检测更新时，后端除了使用 `last_episode_to_air`，也会把 `next_episode_to_air.air_date <= 今天(项目 TZ)` 且比本地记录更新的单集视为已更新，避免 TMDB 当天未及时移动字段导致 TG 通知晚一天。
 
 ### 5.3 验证 TMDB Key
 
@@ -353,7 +355,7 @@ Content-Type: application/json
 {"success":true,"notification_sent":false}
 ```
 
-说明：接口尽快返回，后续详情查询/通知可异步处理。
+说明：接口尽快返回，后续详情查询/通知可异步处理。更新通知默认会尽量补充 TMDB 单集详情（标题、简介、剧照、评分、片长）和 TVmaze 北京时间播出时间；任一外部数据源失败时自动降级，不影响基础通知。
 
 ### 5.6 删除监控
 
@@ -382,6 +384,21 @@ GET /api/monitor/logs?limit=50
 ```
 
 返回：最近检测日志。
+
+### 5.9 更新通知增强数据源
+
+定时检测发现新集后，后端会在发送 TG 更新通知前临时补充：
+
+```text
+TMDB /tv/{id}/season/{season}/episode/{episode}
+  → 单集标题、简介、剧照、单集评分、片长
+TMDB /tv/{id}/external_ids
+  → tvdb_id / imdb_id
+TVmaze /lookup/shows + /shows/{id}/episodes
+  → 单集精确播出时间，转换为北京时间
+```
+
+这些增强数据不新增对外 API，也不写入 `/data/monitored_series.json`；只用于当次通知。TVmaze 不需要 API Key，匹配失败或无时间时自动降级为 TMDB 的 `air_date`。
 
 ## 6. 配置 `/api/config`
 

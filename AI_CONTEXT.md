@@ -27,7 +27,8 @@ backend/app/main.py           # FastAPI 入口、路由注册、SPA fallback
 backend/app/routers/          # dashboard/users/libraries/monitor/nfo API
 backend/app/config.py         # 环境变量 + JSON 配置读取
 backend/app/series_monitor.py # 完结监控定时任务
-backend/app/tmdb_client.py    # TMDB API 封装
+backend/app/tmdb_client.py    # TMDB API 封装（剧集详情、external_ids、单集详情）
+backend/app/tvmaze_client.py  # TVmaze 免 Key 播出时间补充
 backend/app/tg_notifier.py    # Telegram 通知
 frontend/index.html           # 前端源文件
 static/index.html             # Docker 实际服务的前端文件
@@ -64,14 +65,14 @@ python3 -m pytest test_monitor_frontend.py -q
 
 ## 当前版本规则
 
-当前已知版本：`1.20`。
+当前已知版本：`1.21`。
 
 每次用户明确要求“推送”时，若包含代码/功能/接口/数据结构等实际项目变更，推送前必须版本号 +0.01。
 
 **纯文档更新不推进版本号**，例如只改 `AI_CONTEXT.md`、`PROJECT.md`、`DATABASE.md`、`API.md` 时，不需要修改 `VERSION` 或侧边栏版本。
 
 ```text
-1.20 → 1.21 → 1.22 → 1.23
+1.21 → 1.22 → 1.23 → 1.24
 ```
 
 必须同步四处：
@@ -161,6 +162,8 @@ python3 -m pytest test_api_smoke.py -q
 - 设置页不再暴露“更新通知模板/完结通知模板”输入项
 - `overflow-wrap:anywhere` 防止长文本撑宽页面
 - 刷新按钮使用 `monitor-refresh-btn` + 单个旋转图标
+- 更新检测不仅看 `last_episode_to_air`，也会把 `next_episode_to_air.air_date <= 今天(项目 TZ)` 的剧集视为新集，避免 TMDB 延迟移动字段导致 TG 通知晚一天
+- 更新通知会补拉 TMDB 单集详情（标题、简介、剧照、评分、片长）和 TVmaze 精确播出时间（免 API Key，转北京时间）；任一数据源失败时自动降级为原有播出日期/海报通知
 
 ### 删除接口
 
@@ -186,7 +189,7 @@ Cache-Control: no-cache, no-store, must-revalidate
 - 仪表盘：概览、最近添加、活动日志、正在播放、详情、删除媒体
 - 用户管理：列表、新建、删除、改密码、启用/禁用
 - 媒体库：列表、数量统计、海报墙、搜索、分页、跳页、详情弹窗
-- 完结监控：TMDB 搜索/详情/验证、监控列表、定时检测、TG 通知、日志
+- 完结监控：TMDB 搜索/详情/验证、TMDB 单集详情、TVmaze 播出时间补充、监控列表、定时检测、TG 通知、日志
 - 配置：TMDB Key、TG Bot、代理、Cron 检查规则
 - NFO 生成：自定义文件名 + TMDB 人物 ID + 可选封面 → zip 下载
 

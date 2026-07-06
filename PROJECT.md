@@ -27,6 +27,7 @@ Vue 3 单页应用（static/index.html）
 FastAPI / uvicorn
   ├─ Emby API
   ├─ TMDB API
+  ├─ TVmaze API
   ├─ Telegram Bot API
   ├─ JSON 文件持久化 /data/*.json
   └─ APScheduler 完结监控定时任务
@@ -49,7 +50,7 @@ FastAPI / uvicorn
 | Python 3.12 | 运行环境 |
 | FastAPI | Web API |
 | uvicorn | ASGI 服务 |
-| httpx | 异步请求 Emby/TMDB/TG |
+| httpx | 异步请求 Emby/TMDB/TVmaze/TG |
 | APScheduler | 完结监控定时任务 |
 | JSON 文件 | 配置/监控数据持久化 |
 
@@ -83,6 +84,7 @@ emby-manager/
 │       ├── config.py            # 环境变量 + JSON 配置
 │       ├── emby_client.py       # Emby 客户端/兼容逻辑（如存在）
 │       ├── tmdb_client.py       # TMDB 查询封装
+│       ├── tvmaze_client.py     # TVmaze 播出时间补充
 │       ├── tg_notifier.py       # Telegram 通知
 │       ├── series_monitor.py    # 完结监控核心
 │       └── routers/
@@ -184,6 +186,7 @@ static/index.html
 backend/app/routers/monitor.py
 backend/app/series_monitor.py
 backend/app/tmdb_client.py
+backend/app/tvmaze_client.py
 backend/app/tg_notifier.py
 backend/app/config.py
 ```
@@ -194,8 +197,10 @@ backend/app/config.py
 用户搜索 TMDB 剧集
   → 添加到 monitored_series.json
   → APScheduler 定时检查 TMDB 状态
-  → 对比 last_episode/status
-  → Telegram 更新/完结通知
+  → 对比 last_episode/status；当天或更早的 next_episode_to_air 也按新集处理
+  → 新集补拉 TMDB 单集详情（标题/简介/剧照/评分/片长）
+  → 通过 TMDB external_ids 匹配 TVmaze，补充北京时间播出时间
+  → Telegram 更新/完结通知（缺失字段自动降级）
   → 写 monitor_log.json
 ```
 
@@ -279,12 +284,12 @@ python3 -m pytest test_monitor_frontend.py test_api_smoke.py -q
 
 ## 8. 版本号规则
 
-非纯文档变更每次推送前版本号 +0.01；纯文档更新不推进版本号。当前已知版本：`1.20`。
+非纯文档变更每次推送前版本号 +0.01；纯文档更新不推进版本号。当前已知版本：`1.21`。
 
 ```text
-1.20 → 1.21
 1.21 → 1.22
 1.22 → 1.23
+1.23 → 1.24
 ```
 
 同步：
