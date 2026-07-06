@@ -60,6 +60,55 @@ async def get_person_detail(tmdb_id: int):
     except Exception as e:
         return {"error": str(e)}
 
+async def get_tv_external_ids(tmdb_id: int):
+    """获取剧集外部 ID，用于匹配 TVmaze 等外部数据源"""
+    key = _get_api_key()
+    if not key:
+        return {}
+    try:
+        from .config import get_http_client
+        async with get_http_client() as client:
+            resp = await client.get(
+                f"{TMDB_API_BASE}/tv/{tmdb_id}/external_ids",
+                params={"api_key": key}
+            )
+            if resp.status_code != 200:
+                return {}
+            data = resp.json()
+            return {
+                "imdb_id": data.get("imdb_id") or "",
+                "tvdb_id": data.get("tvdb_id") or "",
+            }
+    except Exception:
+        return {}
+
+async def get_episode_detail(tmdb_id: int, season_number: int, episode_number: int):
+    """获取 TMDB 单集详情，用于丰富更新通知"""
+    key = _get_api_key()
+    if not key:
+        return {}
+    try:
+        from .config import get_http_client
+        async with get_http_client() as client:
+            resp = await client.get(
+                f"{TMDB_API_BASE}/tv/{tmdb_id}/season/{season_number}/episode/{episode_number}",
+                params={"api_key": key, "language": "zh-CN"}
+            )
+            if resp.status_code != 200:
+                return {}
+            data = resp.json()
+            still_url = f"{POSTER_BASE}{data.get('still_path')}" if data.get("still_path") else ""
+            return {
+                "name": data.get("name", ""),
+                "overview": data.get("overview", ""),
+                "air_date": data.get("air_date", ""),
+                "runtime": data.get("runtime") or 0,
+                "vote_average": round(data.get("vote_average", 0), 1),
+                "still_url": still_url,
+            }
+    except Exception:
+        return {}
+
 async def search_tv(query: str, page: int = 1):
     """搜索剧集"""
     key = _get_api_key()

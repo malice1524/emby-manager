@@ -7,7 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from zoneinfo import ZoneInfo
 
 from .config import MONITORED_SERIES_PATH, MONITOR_DATA_DIR, load_tg_config
-from . import tmdb_client, tg_notifier
+from . import tmdb_client, tg_notifier, tvmaze_client
 
 LOG_PATH = os.path.join(MONITOR_DATA_DIR, "monitor_log.json")
 MAX_LOG_ENTRIES = 100
@@ -99,16 +99,45 @@ async def check_series():
             end_template = cfg.get("end_template", "")
 
             # ---- 更新检测 ----
-            if last_ep and last_ep.get("air_date"):
-                last_air_date = last_ep["air_date"]
-                last_ep_num = last_ep["episode_number"]
-                last_season = last_ep["season_number"]
+            candidate_ep = last_ep
+            next_ep = detail.get("next_episode_to_air")
+            if next_ep and next_ep.get("air_date"):
+                today = datetime.now(MONITOR_TIMEZONE).date().isoformat()
+                # TMDB 有时会到播出日次日才把今日集从 next_episode_to_air
+                # 移到 last_episode_to_air；今日及以前的 next episode 应视为已更新。
+                if next_ep["air_date"] <= today:
+                    if not candidate_ep or next_ep["air_date"] > candidate_ep.get("air_date", ""):
+                        candidate_ep = next_ep
+
+            if candidate_ep and candidate_ep.get("air_date"):
+                last_air_date = candidate_ep["air_date"]
+                last_ep_num = candidate_ep["episode_number"]
+                last_season = candidate_ep["season_number"]
 
                 if last_air_date > series.get("last_episode_air_date", ""):
                     # 有新集
                     episode_info = f"S{last_season:02d}E{last_ep_num:02d}" if last_season else f"E{last_ep_num:02d}"
                     progress = f"{last_ep_num}/{total_eps}" if total_eps else f"{last_ep_num}"
                     air_date = last_air_date
+
+                    episode_detail = {}
+                    tvmaze_airtime = None
+                    try:
+                        episode_detail = await tmdb_client.get_episode_detail(
+                            series["tmdb_id"], last_season, last_ep_num
+                        )
+                    except Exception:
+                        episode_detail = {}
+                    try:
+                        external_ids = await tmdb_client.get_tv_external_ids(series["tmdb_id"])
+                        tvmaze_airtime = await tvmaze_client.get_episode_airtime_by_external_ids(
+                            tvdb_id=external_ids.get("tvdb_id"),
+                            imdb_id=external_ids.get("imdb_id"),
+                            season_number=last_season,
+                            episode_number=last_ep_num,
+                        )
+                    except Exception:
+                        tvmaze_airtime = None
 
                     result = await tg_notifier.send_update_notification(
                         series_name=series["title"],
@@ -118,7 +147,13 @@ async def check_series():
                         series_type=detail.get("type", "未知"),
                         rating=detail.get("vote_average", 0),
                         poster_url=series.get("poster_url"),
-                        custom_template=update_template if update_template else None
+                        custom_template=update_template if update_template else None,
+                        episode_name=episode_detail.get("name", ""),
+                        air_time=(tvmaze_airtime or {}).get("air_time_display", ""),
+                        episode_rating=episode_detail.get("vote_average", 0),
+                        runtime=episode_detail.get("runtime") or (tvmaze_airtime or {}).get("runtime") or 0,
+                        episode_overview=episode_detail.get("overview", ""),
+                        episode_still_url=episode_detail.get("still_url", ""),
                     )
                     if result.get("success"):
                         updated_count += 1
