@@ -539,7 +539,9 @@ multipart/form-data:
 POST /api/nfo/automation/refresh-emby
 ```
 
-调用 Emby `/Library/Refresh`，提交媒体库刷新任务。NFO 自动化执行接口默认会在完成后自动刷新，也可以通过页面按钮手动刷新。
+调用 Emby 刷新任务。带 `actor_dir` 时优先按 `NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT` 映射精准刷新当前演员目录；不带 `actor_dir` 时调用 `/Library/Refresh` 全库刷新。NFO 自动化执行接口默认会在完成后自动刷新，也可以通过页面按钮手动刷新。
+
+注意：单独保存 `tvshow.nfo`、上传 `poster/fanart/logo`、上传剧集图片接口本身不会自动刷新 Emby。需要立即生效时，前端会让用户点击“刷新 Emby 元数据”；批量处理建议在所有上传/保存完成后统一刷新。
 
 ### 7.7 执行自动化
 
@@ -571,7 +573,7 @@ Content-Type: application/json
 
 ## 9. 文档发送优先级
 
-- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 每次新会话都发
+- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 新会话从 GitHub 拉取/接手 Emby Manager 时开头读一次，了解项目后同一对话不必重复读取
 - `PROJECT.md`：⭐⭐⭐ 大功能、架构相关时发
 - `DATABASE.md`：⭐⭐ 数据库/JSON 持久化改动时发
 - `API.md`：⭐⭐ 接口改动时发

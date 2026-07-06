@@ -219,15 +219,21 @@ static/index.html
 功能：
 
 ```text
-输入演员目录
+浏览选择演员目录
   → 扫描 Season 1 内 .strm/.JPG/.nfo
-  → 可视化填写 tvshow.nfo
-  → 上传/替换 poster.jpg、fanart.jpg、logo.png
+  → 可视化填写 tvshow.nfo（保存后如需立即生效，手动刷新 Emby）
+  → 上传/替换 poster.jpg、fanart.jpg、logo.png（上传后如需立即生效，手动刷新 Emby）
   → 上传剧集图片
   → 按 mtime 匹配缺图集数并重命名为同名 .JPG
   → 为缺失剧集批量生成同名 .nfo
-  → 优先按路径映射精准触发当前演员目录 Emby 刷新，找不到则兜底全库刷新
+  → 执行自动化后默认按路径映射精准触发当前演员目录 Emby 刷新，找不到则兜底全库刷新
 ```
+
+刷新规则：
+
+- 执行自动化后默认刷新当前选择的 Emby 演员目录
+- 单独保存 `tvshow.nfo`、上传 `poster/fanart/logo`、上传剧集图片不自动刷新，避免频繁扫描；需要立即生效时点击“刷新 Emby 元数据”
+- 手动刷新按钮会传当前选择目录；未选择目录时才全库刷新
 
 安全规则：
 
@@ -273,10 +279,10 @@ python3 -m pytest test_monitor_frontend.py test_api_smoke.py -q
 
 ## 8. 版本号规则
 
-非纯文档变更每次推送前版本号 +0.01；纯文档更新不推进版本号。当前已知版本：`1.21`。
+非纯文档变更每次推送前版本号 +0.01；纯文档更新不推进版本号。当前已知版本：`1.25`。
 
 ```text
-1.21 → 1.22
+1.21 → 1.22 → 1.23 → 1.24 → 1.25
 1.22 → 1.23
 1.23 → 1.24
 ```
@@ -318,7 +324,7 @@ git diff --check && python3 -m py_compile backend/app/config.py backend/app/rout
 
 ## 11. 文档发送优先级
 
-- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 每次新会话都发
+- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 新会话从 GitHub 拉取/接手 Emby Manager 时开头读一次，了解项目后同一对话不必重复读取
 - `PROJECT.md`：⭐⭐⭐ 大功能、架构相关时发
 - `DATABASE.md`：⭐⭐ 数据库/JSON 持久化改动时发
 - `API.md`：⭐⭐ 接口改动时发

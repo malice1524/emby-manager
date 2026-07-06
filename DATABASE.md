@@ -223,7 +223,7 @@ backend/app/tvmaze_client.py
 | 剧集详情 | `/tv/{id}` | 状态、集数、播出日期、last/next episode |
 | 剧集外部 ID | `/tv/{id}/external_ids` | 获取 tvdb_id/imdb_id，用于匹配 TVmaze |
 | 单集详情 | `/tv/{id}/season/{season}/episode/{episode}` | 更新通知的单集标题、简介、剧照、评分、片长 |
-| 人物详情 | `/person/{id}` | NFO 生成人物名称/头像 |
+| 人物详情 | `/person/{id}` | 当前 NFO 自动化不再依赖旧人物 zip 生成流程；保留 TMDB 客户端给其他功能复用 |
 
 ### 6.3 TVmaze API
 
@@ -276,17 +276,20 @@ APScheduler
   → 追加 monitor_log.json
 ```
 
-### 7.4 NFO 生成
+### 7.4 NFO 自动化
 
 ```text
-前端提交 filename + tmdb_id + thumb
-  → GET TMDB person detail
-  → 临时目录生成 .nfo 和封面
-  → 打包 zip 返回
-  → BackgroundTasks 清理临时目录
+前端浏览选择演员目录
+  → GET /api/nfo/automation/browse 读取 NFO_MEDIA_ROOT 下目录
+  → POST /api/nfo/automation/scan 统计 Season 1 内 .strm/.JPG/.nfo
+  → POST /api/nfo/automation/tvshow 保存 tvshow.nfo（写媒体目录，不写 /data）
+  → POST /api/nfo/automation/upload-artwork 上传 poster/fanart/logo（写媒体目录，不写 /data）
+  → POST /api/nfo/automation/upload-episode-images 上传剧集图片为 IMG_UPLOAD_*.JPG
+  → POST /api/nfo/automation/execute 重命名剧集图片、生成每集 nfo
+  → 默认按 NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT 映射精准刷新当前 Emby 演员目录，找不到则全库刷新
 ```
 
-NFO 生成不写入 `/data`。
+NFO 自动化不写入 `/data`。单独保存 `tvshow.nfo` 或上传图片后不会自动刷新 Emby；需要立即生效时由前端点击“刷新 Emby 元数据”调用 `POST /api/nfo/automation/refresh-emby`。
 
 ## 8. 备份与迁移
 
@@ -317,11 +320,11 @@ monitor_data/monitor_log.json
    - `DATABASE.md`
    - `API.md`
 4. 不要把敏感值写进 README、测试快照或日志。
-5. NFO 当前使用临时文件，不应写入持久化 JSON。
+5. NFO 自动化写媒体目录，不写 `/data`；保存/上传类操作不自动刷新 Emby，执行自动化或手动刷新按钮才触发刷新。
 
 ## 10. 文档发送优先级
 
-- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 每次新会话都发
+- `AI_CONTEXT.md`：⭐⭐⭐⭐⭐ 新会话从 GitHub 拉取/接手 Emby Manager 时开头读一次，了解项目后同一对话不必重复读取
 - `PROJECT.md`：⭐⭐⭐ 大功能、架构相关时发
 - `DATABASE.md`：⭐⭐ 数据库/JSON 持久化改动时发
 - `API.md`：⭐⭐ 接口改动时发
