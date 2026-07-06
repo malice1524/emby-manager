@@ -185,3 +185,56 @@ def test_nfo_automation_refreshes_current_actor_directory_when_emby_root_is_conf
 
     # Covered in the main TestClient session above to avoid restarting the app scheduler twice.
     assert True
+
+
+def test_uploaded_episode_images_are_renamed_to_pending_img_files_and_matched(tmp_path, monkeypatch):
+    root = tmp_path / "strm"
+    actor = root / "已整理" / "PornHub" / "Sienna Moore"
+    season = actor / "Season 1"
+    season.mkdir(parents=True)
+    (season / "Sienna Moore.S01E37.重新上传测试.strm").write_text("http://example/video", encoding="utf-8")
+    monkeypatch.setenv("NFO_MEDIA_ROOT", str(root))
+
+    with TestClient(app) as client:
+        upload = client.post(
+            "/api/nfo/automation/upload-episode-images",
+            data={"actor_dir": str(actor)},
+            files=[("images", ("cover-from-phone.jpg", b"new-cover", "image/jpeg"))],
+        )
+        assert upload.status_code == 200, upload.text
+        saved = upload.json()["saved"]
+        assert len(saved) == 1
+        assert saved[0].startswith("IMG_UPLOAD_")
+        assert saved[0].endswith(".JPG")
+        assert upload.json()["scan"]["image_plan"][0]["source"] == saved[0]
+        assert upload.json()["scan"]["image_plan"][0]["target"] == "Sienna Moore.S01E37.重新上传测试.JPG"
+
+        ex = client.post("/api/nfo/automation/execute", json={"actor_dir": str(actor), "refresh_emby": False})
+        assert ex.status_code == 200, ex.text
+        assert (season / "Sienna Moore.S01E37.重新上传测试.JPG").read_bytes() == b"new-cover"
+        assert (season / "Sienna Moore.S01E37.重新上传测试.nfo").exists()
+
+
+def test_uploaded_episode_images_take_priority_over_old_pending_images(tmp_path, monkeypatch):
+    root = tmp_path / "strm"
+    actor = root / "已整理" / "PornHub" / "Sienna Moore"
+    season = actor / "Season 1"
+    season.mkdir(parents=True)
+    (season / "Sienna Moore.S01E37.重新上传测试.strm").write_text("http://example/video", encoding="utf-8")
+    old = season / "IMG_0001.JPG"
+    old.write_bytes(b"old-leftover")
+    os.utime(old, (1, 1))
+    monkeypatch.setenv("NFO_MEDIA_ROOT", str(root))
+
+    with TestClient(app) as client:
+        upload = client.post(
+            "/api/nfo/automation/upload-episode-images",
+            data={"actor_dir": str(actor)},
+            files=[("images", ("cover-from-phone.jpg", b"new-cover", "image/jpeg"))],
+        )
+        assert upload.status_code == 200, upload.text
+        assert upload.json()["scan"]["image_plan"][0]["source"].startswith("IMG_UPLOAD_")
+        ex = client.post("/api/nfo/automation/execute", json={"actor_dir": str(actor), "refresh_emby": False})
+        assert ex.status_code == 200, ex.text
+        assert (season / "Sienna Moore.S01E37.重新上传测试.JPG").read_bytes() == b"new-cover"
+        assert old.exists()

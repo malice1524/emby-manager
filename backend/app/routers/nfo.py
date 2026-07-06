@@ -13,7 +13,7 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/api/nfo", tags=["nfo"])
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
-PENDING_IMAGE_RE = re.compile(r"^IMG_\d+", re.I)
+PENDING_IMAGE_RE = re.compile(r"^IMG_(?:\d+|UPLOAD_)", re.I)
 STRM_RE = re.compile(r"^(?P<actor>.+)\.S(?P<season>\d+)E(?P<episode>\d+)\.(?P<title>.+)\.strm$", re.I)
 
 
@@ -102,7 +102,7 @@ def _pending_images(season: Path):
     for path in season.iterdir():
         if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES and PENDING_IMAGE_RE.match(path.name):
             images.append(path)
-    images.sort(key=lambda p: (p.stat().st_mtime, p.name))
+    images.sort(key=lambda p: (0 if p.name.upper().startswith("IMG_UPLOAD_") else 1, p.stat().st_mtime, p.name))
     return images
 
 
@@ -431,16 +431,21 @@ async def upload_episode_images(actor_dir: str = Form(...), images: list[UploadF
     actor = _safe_actor_dir(actor_dir)
     season = _season_dir(actor)
     saved = []
-    for image in images:
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+    base_mtime = datetime.now().timestamp()
+    for index, image in enumerate(images, start=1):
         suffix = Path(image.filename or "").suffix.lower()
         if suffix not in IMAGE_SUFFIXES:
             raise HTTPException(status_code=400, detail=f"不支持的图片格式: {image.filename}")
-        target = season / Path(image.filename or "upload.jpg").name
-        if target.exists():
-            stem = target.stem
-            target = season / f"{stem}.upload.{datetime.now().strftime('%Y%m%d%H%M%S%f')}{target.suffix}"
+        target = season / f"IMG_UPLOAD_{timestamp}_{index:03d}.JPG"
+        while target.exists():
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+            target = season / f"IMG_UPLOAD_{timestamp}_{index:03d}.JPG"
         content = await image.read()
         if content:
             target.write_bytes(content)
+            # Preserve the user's upload order for later mtime-based matching.
+            ordered_time = base_mtime + index / 1000
+            os.utime(target, (ordered_time, ordered_time))
             saved.append(target.name)
     return {"ok": True, "saved": saved, "scan": _build_scan(actor)}
