@@ -467,62 +467,88 @@ POST /api/config/test-proxy
 
 返回：代理连通性测试结果。
 
-## 7. NFO 生成 `/api/nfo`
+## 7. NFO 自动化 `/api/nfo`
 
 主要文件：`backend/app/routers/nfo.py`
 
-### 7.1 查询 TMDB 人物
+### 7.1 浏览媒体目录
 
 ```http
-GET /api/nfo/person/{tmdb_id}
+GET /api/nfo/automation/browse?path=/vol1/1000/docker/strm/已整理/PornHub
 ```
 
-返回：TMDB 人物详情，通常包含：
+`path` 可省略；省略时从 `NFO_MEDIA_ROOT` 根目录开始。返回当前目录、父目录、媒体根目录、子目录列表，以及每个子目录是否包含 `Season 1`（可作为演员目录选择）。前端只通过这个目录浏览器选择演员目录，不提供手动路径输入。
 
-```text
-id, name, profile_url, biography 等
-```
-
-### 7.2 生成 NFO zip
+### 7.2 扫描演员目录
 
 ```http
-POST /api/nfo/generate
-Content-Type: multipart/form-data
+POST /api/nfo/automation/scan
+Content-Type: application/json
 
-filename=自定义文件名
-tmdb_id=12345
-thumb=@cover.jpg   # 可选，支持 jpg/jpeg/png/webp
+{"actor_dir":"/vol1/1000/docker/strm/已整理/PornHub/Sienna Moore"}
 ```
 
-返回：zip 文件下载。
+返回：演员名、Season 1 路径、`tvshow/poster/fanart/logo` 存在状态、`.strm/.JPG/.nfo` 计数、缺图/缺 nfo 集数、`IMG_*` 图片重命名预览。
 
-zip 内容：
+### 7.3 保存 tvshow.nfo
 
-```text
-自定义文件名.nfo
-自定义文件名.jpg/png/webp   # 如果上传封面或 TMDB 有头像
+```http
+POST /api/nfo/automation/tvshow
+Content-Type: application/json
+
+{
+  "actor_dir":".../Sienna Moore",
+  "title":"Sienna Moore",
+  "plot":"简介",
+  "outline":"简介",
+  "tmdb_id":"6329873",
+  "dateadded":"2026-07-06 18:00:00",
+  "overwrite":true
+}
 ```
 
-当前 NFO 格式：
+字段顺序：`plot → outline → lockdata → dateadded → title → actor → sorttitle → season → episode → displayorder`。覆盖已有文件前会自动备份。
 
-```xml
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<movie>
-  <title>自定义文件名</title>
-  <actor>
-    <name>演员名</name>
-    <tmdbid>12345</tmdbid>
-    <thumb>自定义文件名.jpg</thumb>
-  </actor>
-</movie>
+### 7.4 上传演员图片
+
+```http
+POST /api/nfo/automation/upload-artwork
+multipart/form-data:
+  actor_dir=.../Sienna Moore
+  kind=poster|fanart|logo
+  overwrite=true
+  image=<file>
 ```
 
-错误：
+保存为固定文件名：`poster.jpg`、`fanart.jpg`、`logo.png`，替换前自动备份。
 
-- 文件名为空：`400`
-- 图片格式不支持：`400`
-- TMDB 查询失败：`400`
-- 生成异常：`500`
+### 7.5 上传剧集图片
+
+```http
+POST /api/nfo/automation/upload-episode-images
+multipart/form-data:
+  actor_dir=.../Sienna Moore
+  images=<files>
+```
+
+图片保存到 `Season 1`，再通过扫描/执行流程按 `IMG_*` 与 mtime 生成重命名计划。
+
+### 7.6 执行自动化
+
+```http
+POST /api/nfo/automation/execute
+Content-Type: application/json
+
+{"actor_dir":".../Sienna Moore"}
+```
+
+执行：
+
+- `IMG_*.JPG` 按 mtime 从早到晚匹配缺图剧集并重命名为同名 `.JPG`
+- 为缺失/空的同名 `.nfo` 生成：`episodedetails/title/season/episode`
+- 不覆盖已有剧集图片或 nfo
+
+安全：只允许操作 `NFO_MEDIA_ROOT` 下目录，默认 `/vol1/1000/docker/strm`。
 
 ## 8. API 开发注意事项
 

@@ -22,7 +22,9 @@ def test_api_smoke_and_spa_contains_monitor_and_nfo():
         response = client.get("/")
         assert response.status_code == 200
         assert "完结监控" in response.text
-        assert "NFO 生成" in response.text
+        assert "NFO 自动化" in response.text
+        assert "浏览选择演员目录" in response.text
+        assert "placeholder=\"/vol1/1000/docker/strm" not in response.text
 
         response = client.put("/api/config", json={"check_cron": "*/15 * * * *"})
         assert response.status_code == 200, response.text

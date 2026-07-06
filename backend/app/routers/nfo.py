@@ -1,113 +1,341 @@
 import os
-import zipfile
-import tempfile
+import re
 import shutil
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, BackgroundTasks
-from fastapi.responses import FileResponse
-from ..tmdb_client import get_person_detail
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
 from xml.sax.saxutils import escape
+
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/nfo", tags=["nfo"])
 
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
+PENDING_IMAGE_RE = re.compile(r"^IMG_\d+", re.I)
+STRM_RE = re.compile(r"^(?P<actor>.+)\.S(?P<season>\d+)E(?P<episode>\d+)\.(?P<title>.+)\.strm$", re.I)
 
-def build_movie_nfo(title: str, actor_name: str, tmdb_id: int, thumb_filename: str | None) -> str:
-    """生成完整视频 NFO（<movie> 外壳，内含 <actor>）"""
-    safe_title = escape(title)
-    safe_name = escape(actor_name)
-    thumb_line = f"    <thumb>{escape(thumb_filename)}</thumb>\n" if thumb_filename else ""
-    return f"""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<movie>
-  <title>{safe_title}</title>
-  <actor>
-    <name>{safe_name}</name>
-    <tmdbid>{tmdb_id}</tmdbid>
-{thumb_line}  </actor>
-</movie>
-"""
 
-@router.get("/person/{tmdb_id}")
-async def get_person(tmdb_id: int):
-    """查询演员信息"""
-    person = await get_person_detail(tmdb_id)
-    if "error" in person:
-        raise HTTPException(status_code=400, detail=person["error"])
-    return person
+class ActorDirRequest(BaseModel):
+    actor_dir: str
 
-@router.post("/generate")
-async def generate_nfo(
-    background_tasks: BackgroundTasks,
-    filename: str = Form(...),
-    tmdb_id: int = Form(...),
-    thumb: UploadFile = File(None)
-):
-    """生成视频 NFO + 封面图，打包 zip 下载"""
-    safe_filename = filename.strip().replace("/", "_").replace("\\", "_").replace(":", "_").replace("*", "_").replace("?", "_").replace('"', "_").replace("<", "_").replace(">", "_").replace("|", "_")
-    if not safe_filename:
-        raise HTTPException(status_code=400, detail="文件名称不能为空")
 
-    person = await get_person_detail(tmdb_id)
-    if "error" in person:
-        raise HTTPException(status_code=400, detail=person["error"])
+class ExecuteRequest(BaseModel):
+    actor_dir: str
 
-    actor_name = person["name"]
-    profile_url = person.get("profile_url", "")
 
-    thumb_ext = ".jpg"
-    if thumb and thumb.filename:
-        _, ext = os.path.splitext(thumb.filename)
-        ext = ext.lower()
-        if ext not in ALLOWED_EXTENSIONS:
-            raise HTTPException(status_code=400, detail=f"不支持的图片格式: {ext}，仅支持 jpg/png/webp")
-        thumb_ext = ext
+class TvshowRequest(BaseModel):
+    actor_dir: str
+    title: str
+    plot: str = ""
+    outline: str = ""
+    tmdb_id: str = ""
+    dateadded: str = ""
+    lockdata: bool = False
+    sorttitle: str = ""
+    displayorder: str = "aired"
+    overwrite: bool = False
 
-    thumb_filename = f"{safe_filename}{thumb_ext}"
 
-    tmp_dir = tempfile.mkdtemp()
+def _media_root() -> Path:
+    return Path(os.getenv("NFO_MEDIA_ROOT", "/vol1/1000/docker/strm")).resolve()
+
+
+def _safe_actor_dir(actor_dir: str) -> Path:
+    path = Path(actor_dir).expanduser().resolve()
+    root = _media_root()
     try:
-        # 封面图
-        thumb_path = os.path.join(tmp_dir, thumb_filename)
-        has_thumb = False
-        if thumb and thumb.filename:
-            content = await thumb.read()
-            if content:
-                with open(thumb_path, "wb") as f:
-                    f.write(content)
-                has_thumb = True
-        elif profile_url:
-            import httpx
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(profile_url)
-                if resp.status_code == 200:
-                    with open(thumb_path, "wb") as f:
-                        f.write(resp.content)
-                    has_thumb = True
+        path.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"演员目录必须位于媒体根目录内: {root}")
+    if not path.exists() or not path.is_dir():
+        raise HTTPException(status_code=404, detail="演员目录不存在")
+    return path
 
-        # NFO：完整视频 NFO（<movie> 外壳）
-        nfo_content = build_movie_nfo(
-            title=safe_filename,
-            actor_name=actor_name,
-            tmdb_id=tmdb_id,
-            thumb_filename=thumb_filename if has_thumb else None
-        )
-        nfo_path = os.path.join(tmp_dir, f"{safe_filename}.nfo")
-        with open(nfo_path, "w", encoding="utf-8") as f:
-            f.write(nfo_content)
 
-        # 打包 zip
-        zip_path = os.path.join(tmp_dir, f"{safe_filename}.zip")
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.write(nfo_path, f"{safe_filename}.nfo")
-            if has_thumb and os.path.exists(thumb_path):
-                zf.write(thumb_path, thumb_filename)
+def _safe_browse_dir(path_value: str | None = None) -> Path:
+    root = _media_root()
+    path = Path(path_value).expanduser().resolve() if path_value else root
+    try:
+        path.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"浏览目录必须位于媒体根目录内: {root}")
+    if not path.exists() or not path.is_dir():
+        raise HTTPException(status_code=404, detail="目录不存在")
+    return path
 
-        background_tasks.add_task(shutil.rmtree, tmp_dir, ignore_errors=True)
 
-        return FileResponse(
-            zip_path,
-            media_type="application/zip",
-            filename=f"{safe_filename}.zip"
-        )
-    except Exception as e:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-        raise HTTPException(status_code=500, detail=f"生成失败: {str(e)}")
+def _season_dir(actor_dir: Path) -> Path:
+    season = actor_dir / "Season 1"
+    if not season.exists() or not season.is_dir():
+        raise HTTPException(status_code=404, detail="Season 1 目录不存在")
+    return season
+
+
+def _parse_strms(season: Path):
+    items = []
+    for path in season.glob("*.strm"):
+        match = STRM_RE.match(path.name)
+        if not match:
+            continue
+        items.append({
+            "actor": match.group("actor"),
+            "season": int(match.group("season")),
+            "episode": int(match.group("episode")),
+            "episode_code": f"S{int(match.group('season')):02d}E{match.group('episode')}",
+            "title": match.group("title"),
+            "filename": path.name,
+            "path": path,
+        })
+    items.sort(key=lambda x: (x["season"], x["episode"], x["filename"]))
+    return items
+
+
+def _pending_images(season: Path):
+    images = []
+    for path in season.iterdir():
+        if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES and PENDING_IMAGE_RE.match(path.name):
+            images.append(path)
+    images.sort(key=lambda p: (p.stat().st_mtime, p.name))
+    return images
+
+
+def _episode_nfo(title: str, season: int, episode: int) -> str:
+    return (
+        '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n'
+        '<episodedetails>\n'
+        f'  <title>{escape(title)}</title>\n'
+        f'  <season>{season}</season>\n'
+        f'  <episode>{episode}</episode>\n'
+        '</episodedetails>\n'
+    )
+
+
+def _build_scan(actor_dir: Path):
+    season = _season_dir(actor_dir)
+    strms = _parse_strms(season)
+    pending = _pending_images(season)
+
+    episodes = []
+    missing_images = []
+    missing_nfo = []
+    existing_images = 0
+    existing_nfo = 0
+    for item in strms:
+        strm_path = item["path"]
+        image_path = strm_path.with_suffix(".JPG")
+        nfo_path = strm_path.with_suffix(".nfo")
+        has_image = image_path.exists()
+        has_nfo = nfo_path.exists() and nfo_path.stat().st_size > 0
+        if has_image:
+            existing_images += 1
+        else:
+            missing_images.append({k: item[k] for k in ["season", "episode", "episode_code", "title", "filename"]})
+        if has_nfo:
+            existing_nfo += 1
+        else:
+            missing_nfo.append({k: item[k] for k in ["season", "episode", "episode_code", "title", "filename"]})
+        episodes.append({
+            "season": item["season"],
+            "episode": item["episode"],
+            "episode_code": item["episode_code"],
+            "title": item["title"],
+            "filename": item["filename"],
+            "has_image": has_image,
+            "has_nfo": has_nfo,
+            "image_name": image_path.name if has_image else "",
+            "nfo_name": nfo_path.name if has_nfo else "",
+        })
+
+    image_plan = []
+    for src, item in zip(pending, missing_images):
+        target = Path(item["filename"]).with_suffix(".JPG").name
+        image_plan.append({
+            "source": src.name,
+            "target": target,
+            "episode": item["episode"],
+            "title": item["title"],
+        })
+
+    return {
+        "actor_dir": str(actor_dir),
+        "actor_name": actor_dir.name,
+        "season_dir": str(season),
+        "tvshow_exists": (actor_dir / "tvshow.nfo").exists(),
+        "poster_exists": (actor_dir / "poster.jpg").exists(),
+        "fanart_exists": (actor_dir / "fanart.jpg").exists(),
+        "logo_exists": (actor_dir / "logo.png").exists(),
+        "counts": {
+            "strm": len(strms),
+            "images": existing_images,
+            "nfo": existing_nfo,
+            "pending_images": len(pending),
+        },
+        "episodes": episodes,
+        "missing_images": missing_images,
+        "missing_nfo": missing_nfo,
+        "pending_images": [p.name for p in pending],
+        "image_plan": image_plan,
+    }
+
+
+def _backup(path: Path):
+    if path.exists():
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup = path.with_name(f"{path.name}.bak.{stamp}")
+        shutil.copy2(path, backup)
+        return backup.name
+    return ""
+
+
+def _tvshow_xml(req: TvshowRequest) -> str:
+    title = req.title.strip()
+    sorttitle = (req.sorttitle or title).strip()
+    outline = req.outline if req.outline else req.plot
+    dateadded = req.dateadded or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    actor_lines = ["  <actor>", f"    <name>{escape(title)}</name>", "    <type>Actor</type>"]
+    if req.tmdb_id.strip():
+        actor_lines.append(f"    <tmdbid>{escape(req.tmdb_id.strip())}</tmdbid>")
+    actor_lines.append("  </actor>")
+    actor = "\n".join(actor_lines)
+    return (
+        '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n'
+        '<tvshow>\n'
+        f'  <plot><![CDATA[{req.plot}]]></plot>\n'
+        f'  <outline><![CDATA[{outline}]]></outline>\n'
+        f'  <lockdata>{str(req.lockdata).lower()}</lockdata>\n'
+        f'  <dateadded>{escape(dateadded)}</dateadded>\n'
+        f'  <title>{escape(title)}</title>\n'
+        f'{actor}\n'
+        f'  <sorttitle>{escape(sorttitle)}</sorttitle>\n'
+        '  <season>-1</season>\n'
+        '  <episode>-1</episode>\n'
+        f'  <displayorder>{escape(req.displayorder or "aired")}</displayorder>\n'
+        '</tvshow>\n'
+    )
+
+
+@router.get("/automation/browse")
+async def browse_automation(path: str | None = Query(default=None)):
+    root = _media_root()
+    current = _safe_browse_dir(path)
+    dirs = []
+    for child in current.iterdir():
+        if not child.is_dir():
+            continue
+        dirs.append({
+            "name": child.name,
+            "path": str(child),
+            "is_actor_dir": (child / "Season 1").is_dir(),
+            "has_tvshow": (child / "tvshow.nfo").exists(),
+        })
+    dirs.sort(key=lambda item: item["name"].lower())
+    parent = ""
+    if current != root:
+        parent_path = current.parent.resolve()
+        try:
+            parent_path.relative_to(root)
+            parent = str(parent_path)
+        except ValueError:
+            parent = ""
+    return {
+        "media_root": str(root),
+        "path": str(current),
+        "parent": parent,
+        "dirs": dirs,
+    }
+
+
+@router.post("/automation/scan")
+async def scan_automation(req: ActorDirRequest):
+    return _build_scan(_safe_actor_dir(req.actor_dir))
+
+
+@router.post("/automation/execute")
+async def execute_automation(req: ExecuteRequest):
+    actor_dir = _safe_actor_dir(req.actor_dir)
+    season = _season_dir(actor_dir)
+    before = _build_scan(actor_dir)
+    logs = []
+
+    missing_by_episode = {item["episode"]: item for item in before["missing_images"]}
+    strms = {item["episode"]: item for item in _parse_strms(season)}
+    pending = _pending_images(season)
+    for src, plan in zip(pending, before["image_plan"]):
+        item = missing_by_episode.get(plan["episode"])
+        if not item:
+            continue
+        strm = strms[item["episode"]]["path"]
+        target = strm.with_suffix(".JPG")
+        if target.exists():
+            logs.append(f"跳过已存在图片: {target.name}")
+            continue
+        src.rename(target)
+        logs.append(f"重命名图片: {src.name} -> {target.name}")
+
+    for item in _parse_strms(season):
+        nfo = item["path"].with_suffix(".nfo")
+        if nfo.exists() and nfo.stat().st_size > 0:
+            continue
+        nfo.write_text(_episode_nfo(item["title"], item["season"], item["episode"]), encoding="utf-8")
+        logs.append(f"生成NFO: {nfo.name}")
+
+    return {"ok": True, "logs": logs, "scan": _build_scan(actor_dir)}
+
+
+@router.post("/automation/tvshow")
+async def save_tvshow(req: TvshowRequest):
+    actor_dir = _safe_actor_dir(req.actor_dir)
+    if not req.title.strip():
+        raise HTTPException(status_code=400, detail="演员名不能为空")
+    path = actor_dir / "tvshow.nfo"
+    if path.exists() and not req.overwrite:
+        raise HTTPException(status_code=409, detail="tvshow.nfo 已存在，请确认覆盖")
+    backup = _backup(path)
+    path.write_text(_tvshow_xml(req), encoding="utf-8")
+    return {"ok": True, "path": str(path), "backup": backup}
+
+
+@router.post("/automation/upload-artwork")
+async def upload_artwork(
+    actor_dir: str = Form(...),
+    kind: str = Form(...),
+    overwrite: bool = Form(False),
+    image: UploadFile = File(...),
+):
+    actor = _safe_actor_dir(actor_dir)
+    targets = {"poster": "poster.jpg", "fanart": "fanart.jpg", "logo": "logo.png"}
+    if kind not in targets:
+        raise HTTPException(status_code=400, detail="图片类型必须是 poster/fanart/logo")
+    suffix = Path(image.filename or "").suffix.lower()
+    if suffix not in IMAGE_SUFFIXES:
+        raise HTTPException(status_code=400, detail="仅支持 jpg/jpeg/png/webp 图片")
+    target = actor / targets[kind]
+    if target.exists() and not overwrite:
+        raise HTTPException(status_code=409, detail=f"{target.name} 已存在，请确认替换")
+    backup = _backup(target)
+    content = await image.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="上传图片为空")
+    target.write_bytes(content)
+    return {"ok": True, "filename": target.name, "backup": backup}
+
+
+@router.post("/automation/upload-episode-images")
+async def upload_episode_images(actor_dir: str = Form(...), images: list[UploadFile] = File(...)):
+    actor = _safe_actor_dir(actor_dir)
+    season = _season_dir(actor)
+    saved = []
+    for image in images:
+        suffix = Path(image.filename or "").suffix.lower()
+        if suffix not in IMAGE_SUFFIXES:
+            raise HTTPException(status_code=400, detail=f"不支持的图片格式: {image.filename}")
+        target = season / Path(image.filename or "upload.jpg").name
+        if target.exists():
+            stem = target.stem
+            target = season / f"{stem}.upload.{datetime.now().strftime('%Y%m%d%H%M%S%f')}{target.suffix}"
+        content = await image.read()
+        if content:
+            target.write_bytes(content)
+            saved.append(target.name)
+    return {"ok": True, "saved": saved, "scan": _build_scan(actor)}

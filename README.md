@@ -1,13 +1,13 @@
 # Emby Manager
 
-Emby 媒体服务器 Web 管理面板，提供仪表盘、用户管理、媒体库浏览、完结监控、NFO 生成等常用 NAS/Emby 管理能力。
+Emby 媒体服务器 Web 管理面板，提供仪表盘、用户管理、媒体库浏览、完结监控、NFO 自动化等常用 NAS/Emby 管理能力。
 
 ## 功能特性
 
 - 📊 **仪表盘** — 服务器状态、媒体统计、活跃会话、最近添加内容
 - 👥 **用户管理** — 新建/删除用户、修改密码、启用/禁用
 - 📂 **媒体库** — 海报墙浏览、搜索、分页跳转、TMDB 信息查看
-- 📝 **NFO 生成** — 自定义文件名 + TMDB ID 生成演员 `.nfo` 与封面压缩包
+- 🗂️ **NFO 自动化** — 可视化填写 `tvshow.nfo`、上传 `poster/fanart/logo`、上传剧集图并自动重命名、按 `.strm` 批量生成每集 `.nfo`
 - 🖼️ **图片代理** — 通过后端代理访问 Emby/TMDB 图片，减少跨网络加载失败
 - 🔍 **全局搜索** — 跨媒体库搜索内容
 - 🔔 **完结监控** — 剧集状态检测、更新提醒、完结提醒、Telegram 通知；更新通知可包含单集标题、简介、评分、片长、剧照与北京时间播出时间
@@ -99,40 +99,31 @@ DockerHub 镜像：
 
 填写配置后即可开始使用。
 
-## NFO 生成功能
+## NFO 自动化功能
 
 入口：
 
 ```text
-📝 NFO 生成
+🗂️ NFO 自动化
 ```
 
 使用方式：
 
-1. 输入自定义文件名
-2. 输入 TMDB ID
-3. 可选上传自定义封面
-4. 生成并下载 zip 压缩包
+1. 从媒体根目录浏览目录并选择演员目录，例如 `已整理/PornHub/Sienna Moore`
+2. 选择后自动扫描 `Season 1`，预览 `.strm/.JPG/.nfo` 数量、缺图集数、缺 NFO 集数
+3. 可视化填写并保存 `tvshow.nfo`
+4. 上传/替换 `poster.jpg`、`fanart.jpg`、`logo.png`
+5. 上传剧集图片，系统按 `IMG_*` 与 mtime 匹配缺图集数
+6. 执行图片重命名并批量生成每集同名 `.nfo`
 
-压缩包内容：
+Docker 部署需要挂载媒体目录，例如：
 
-```text
-自定义文件名.nfo
-自定义文件名.jpg/png/webp
+```yaml
+volumes:
+  - /vol1/1000/docker/strm:/vol1/1000/docker/strm
 ```
 
-NFO 示例：
-
-```xml
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<actor>
-  <name>从 TMDB 抓取</name>
-  <tmdbid>输入的 TMDB ID</tmdbid>
-  <thumb>自定义文件名.jpg</thumb>
-</actor>
-```
-
-如果未上传封面，会默认使用 TMDB 头像。
+后端默认只允许操作 `NFO_MEDIA_ROOT` 内的目录，默认值为 `/vol1/1000/docker/strm`。
 
 ## 常见问题
 
@@ -212,7 +203,7 @@ static/index.html
 
 ### v1.14 及更早
 
-- 📝 新增 NFO 生成功能
+- 🗂️ 将旧 NFO 生成替换为 NFO 自动化功能
 - 🔔 新增剧集完结监控模块
 - ⚙️ 新增 Web 配置系统
 - 🎨 UI 全面优化：暗色主题、毛玻璃卡片、移动端适配

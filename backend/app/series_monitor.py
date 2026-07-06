@@ -222,8 +222,22 @@ def _build_trigger():
     return CronTrigger.from_crontab(_get_cron_expression(), timezone=MONITOR_TIMEZONE)
 
 def start_monitor():
-    """启动定时任务"""
+    """启动定时任务；重复调用时只更新触发器，测试/重载后事件循环关闭则重建调度器。"""
+    global scheduler
     trigger = _build_trigger()
+
+    if scheduler.running:
+        try:
+            scheduler.reschedule_job("series_monitor", trigger=trigger)
+            return
+        except RuntimeError as exc:
+            if "Event loop is closed" not in str(exc):
+                raise
+            try:
+                scheduler.shutdown(wait=False)
+            except Exception:
+                pass
+            scheduler = AsyncIOScheduler(timezone=MONITOR_TIMEZONE)
 
     scheduler.add_job(
         _run_async_check,

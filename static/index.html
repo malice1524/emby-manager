@@ -194,6 +194,9 @@ body {
   .monitor-list-item { align-items: flex-start; }
 }
 
+.nfo-input { padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:8px; color:var(--text); outline:none; min-width:0; }
+.nfo-textarea { width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:8px; color:var(--text); outline:none; resize:vertical; }
+
 /* ============ DASHBOARD — Gallery Style ============ */
 
 /* Hero banner */
@@ -595,10 +598,10 @@ body {
       <a href="#/" onclick="navClose()"><span class="nav-icon">📊</span> 仪表盘</a>
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
-      <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 生成</a>
+      <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.21</div>
+    <div class="sidebar-version">v1.22</div>
   </aside>
 
   <!-- Main -->
@@ -1179,156 +1182,191 @@ const NfoGenerator = {
     <div>
       <div class="hero" style="padding:28px 24px;margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">
-          <div class="hero-avatar" style="background:linear-gradient(135deg,var(--pink),var(--orange))">🎭</div>
-          <div><h2 style="font-size:18px;font-weight:600">NFO 生成</h2><div style="font-size:12px;color:var(--text-dim)">生成完整视频 NFO，放入视频目录即可显示演员</div></div>
+          <div class="hero-avatar" style="background:linear-gradient(135deg,var(--pink),var(--orange))">🗂️</div>
+          <div><h2 style="font-size:18px;font-weight:600">NFO 自动化</h2><div style="font-size:12px;color:var(--text-dim)">浏览挂载目录，选择演员目录后处理 tvshow.nfo、图片和每集 NFO</div></div>
         </div>
       </div>
 
-      <div class="glass-card" style="max-width:560px">
-        <!-- 步骤 1: 文件名称 -->
-        <div style="margin-bottom:20px">
-          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)">① 文件名称</div>
-          <input v-model="form.filename" placeholder="例: Robert Downey Jr."
-                 style="width:100%;padding:10px 14px;font-size:14px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none;transition:border-color 0.2s"
-                 @focus="$event.target.style.borderColor='var(--accent)'"
-                 @blur="$event.target.style.borderColor='var(--glass-border)'" />
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">用于 NFO 和封面图的文件名</div>
-        </div>
-
-        <!-- 步骤 2: TMDB ID -->
-        <div style="margin-bottom:20px">
-          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)">② TMDB ID</div>
-          <div style="display:flex;gap:8px">
-            <input v-model="form.tmdbId" placeholder="输入演员 TMDB ID"
-                   style="flex:1;padding:10px 14px;font-size:14px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none;transition:border-color 0.2s"
-                   @focus="$event.target.style.borderColor='var(--accent)'"
-                   @blur="$event.target.style.borderColor='var(--glass-border)'" />
-            <el-button @click="lookupPerson" :loading="lookingUp" type="primary"
-                       :style="'background:var(--accent);border-color:var(--accent);font-weight:500'">
-              🔍 查询
-            </el-button>
-          </div>
-        </div>
-
-        <!-- 演员信息卡片 -->
-        <div v-if="person" style="margin-bottom:20px;padding:16px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);display:flex;align-items:center;gap:16px">
-          <div v-if="person.profile_url" :style="'width:64px;height:64px;border-radius:50%;background-image:url('+person.profile_url+');background-size:cover;background-position:center;flex-shrink:0;border:2px solid var(--glass-border)'"></div>
-          <div v-else :style="'width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#4834d4);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0'">👤</div>
+      <div class="glass-card" style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
           <div>
-            <div style="font-size:16px;font-weight:600;color:var(--text)">{{person.name}}</div>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:2px">🆔 TMDB: {{form.tmdbId}}</div>
-            <div v-if="person.known_for_department" style="font-size:11px;color:var(--text-muted);margin-top:1px">{{person.known_for_department}}</div>
+            <div style="font-size:14px;font-weight:600">① 浏览选择演员目录</div>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:3px">从媒体根目录开始浏览；选择包含 Season 1 的演员目录后自动扫描</div>
+          </div>
+          <el-button @click="browseRoot" :loading="browsing" size="small" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text)">回到根目录</el-button>
+        </div>
+        <div v-if="browseData" style="font-size:12px;color:var(--text-dim);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          当前：{{browseData.path}}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <el-button v-if="browseData && browseData.parent" @click="browse(browseData.parent)" size="small">⬆ 上级</el-button>
+          <span v-if="selectedDir" class="filter-chip active">已选：{{selectedDir}}</span>
+        </div>
+        <div v-if="browseError" style="padding:10px;border-radius:8px;background:rgba(255,118,117,0.1);border:1px solid rgba(255,118,117,0.2);color:var(--red);font-size:13px;margin-bottom:10px">{{browseError}}</div>
+        <div v-if="browseData" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
+          <div v-for="dir in browseData.dirs" :key="dir.path" class="glass-card" style="padding:12px;display:flex;justify-content:space-between;gap:8px;align-items:center">
+            <div style="min-width:0;cursor:pointer;flex:1" @click="browse(dir.path)">
+              <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📁 {{dir.name}}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">{{dir.is_actor_dir ? '演员目录 · 可选择' : '目录'}}</div>
+            </div>
+            <el-button v-if="dir.is_actor_dir" @click.stop="selectDir(dir.path)" size="small" type="primary" style="background:var(--accent);border-color:var(--accent);flex-shrink:0">选择</el-button>
           </div>
         </div>
-        <div v-if="lookupError" style="margin-bottom:16px;padding:10px 14px;border-radius:8px;background:rgba(255,118,117,0.1);border:1px solid rgba(255,118,117,0.2);color:var(--red);font-size:13px">
-          ❌ {{lookupError}}
-        </div>
+        <div v-if="browseData && !browseData.dirs.length" style="font-size:13px;color:var(--text-muted);padding:10px">当前目录没有子目录</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:10px">Docker 需挂载媒体目录，后端从 NFO_MEDIA_ROOT 开始浏览。</div>
+      </div>
 
-        <!-- 步骤 3: 上传封面 -->
-        <div style="margin-bottom:24px">
-          <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)">③ 封面图（可选）</div>
-          <el-upload
-            ref="uploadRef"
-            :auto-upload="false"
-            :show-file-list="false"
-            @change="handleFileChange"
-            accept="image/jpeg,image/png,image/webp"
-            :style="'display:block'">
-            <div v-if="!thumbPreview" class="glass-card" style="padding:32px 20px;text-align:center;cursor:pointer;border:2px dashed var(--glass-border);max-width:320px">
-              <div style="font-size:36px;margin-bottom:8px">📷</div>
-              <div style="font-size:13px;color:var(--text-dim)">点击上传封面图</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">支持 jpg / png / webp</div>
-              <div style="font-size:11px;color:var(--text-muted)">不上传则使用 TMDB 头像</div>
-            </div>
-            <div v-else style="position:relative;display:inline-block;max-width:200px">
-              <img :src="thumbPreview" style="width:100%;border-radius:10px;border:1px solid var(--glass-border);display:block">
-              <div @click="clearThumb" style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.7);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;border:2px solid var(--bg)">✕</div>
-            </div>
-          </el-upload>
+      <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+          <div>
+            <div style="font-size:16px;font-weight:600">{{scanData.actor_name}}</div>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">{{scanData.season_dir}}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-dim)">
+            <span class="filter-chip active">STRM {{scanData.counts.strm}}</span>
+            <span class="filter-chip active">JPG {{scanData.counts.images}}</span>
+            <span class="filter-chip active">NFO {{scanData.counts.nfo}}</span>
+            <span class="filter-chip">待图 {{scanData.counts.pending_images}}</span>
+          </div>
         </div>
-
-        <!-- 生成按钮 -->
-        <el-button @click="generateNfo" :loading="generating" :disabled="!person || !form.filename.trim()" type="primary" size="large"
-                   :style="'width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;font-size:15px;font-weight:600;height:46px;border-radius:12px'">
-          🚀 生成 NFO
-        </el-button>
-
-        <!-- 成功提示 -->
-        <div v-if="generated" style="margin-top:16px;padding:12px 16px;border-radius:10px;background:rgba(0,206,201,0.1);border:1px solid rgba(0,206,201,0.25);color:var(--green);font-size:13px;display:flex;align-items:center;gap:8px">
-          ✅ NFO 已生成，下载已开始
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+          <div class="glass-card" style="padding:12px">tvshow.nfo：<b :style="scanData.tvshow_exists?'color:var(--green)':'color:var(--orange)'">{{scanData.tvshow_exists?'已存在':'缺失'}}</b></div>
+          <div class="glass-card" style="padding:12px">poster.jpg：<b :style="scanData.poster_exists?'color:var(--green)':'color:var(--orange)'">{{scanData.poster_exists?'已存在':'缺失'}}</b></div>
+          <div class="glass-card" style="padding:12px">fanart.jpg：<b :style="scanData.fanart_exists?'color:var(--green)':'color:var(--orange)'">{{scanData.fanart_exists?'已存在':'缺失'}}</b></div>
+          <div class="glass-card" style="padding:12px">logo.png：<b :style="scanData.logo_exists?'color:var(--green)':'color:var(--orange)'">{{scanData.logo_exists?'已存在':'缺失'}}</b></div>
         </div>
+      </div>
+
+      <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px">② tvshow.nfo 可视化填写</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
+          <input v-model="tv.title" placeholder="演员名" class="nfo-input" />
+          <input v-model="tv.tmdb_id" placeholder="TMDB ID（可选）" class="nfo-input" />
+          <input v-model="tv.dateadded" placeholder="添加时间，例如 2026-07-06 18:00:00" class="nfo-input" />
+          <input v-model="tv.sorttitle" placeholder="排序标题（可空）" class="nfo-input" />
+        </div>
+        <textarea v-model="tv.plot" placeholder="plot 简介" rows="3" class="nfo-textarea"></textarea>
+        <textarea v-model="tv.outline" placeholder="outline 简介（可空，默认等于 plot）" rows="3" class="nfo-textarea" style="margin-top:8px"></textarea>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <el-checkbox v-model="tv.overwrite">覆盖已有 tvshow.nfo（会自动备份）</el-checkbox>
+          <el-button @click="saveTvshow" :loading="savingTvshow" type="primary" style="background:var(--accent);border-color:var(--accent)">保存 tvshow.nfo</el-button>
+        </div>
+      </div>
+
+      <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px">③ poster / fanart / logo 上传</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div v-for="kind in artworkKinds" :key="kind.key" class="glass-card" style="padding:12px;min-width:170px;flex:1">
+            <div style="font-weight:600;margin-bottom:8px">{{kind.label}}</div>
+            <input type="file" accept="image/jpeg,image/png,image/webp" @change="uploadArtwork(kind.key,$event)" style="font-size:12px;color:var(--text-dim);max-width:100%" />
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px">保存为 {{kind.file}}，已存在会备份替换</div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          <div><div style="font-size:14px;font-weight:600">④ 剧集图片与每集 NFO</div><div style="font-size:12px;color:var(--text-dim)">上传 IMG_*.JPG 后扫描，按图片时间顺序匹配缺图集数</div></div>
+          <div>
+            <input type="file" multiple accept="image/jpeg,image/png,image/webp" @change="uploadEpisodeImages" style="font-size:12px;color:var(--text-dim);max-width:220px" />
+          </div>
+        </div>
+        <div v-if="scanData.image_plan.length" style="display:grid;gap:8px;margin-bottom:12px">
+          <div v-for="item in scanData.image_plan" :key="item.source" style="display:flex;justify-content:space-between;gap:8px;padding:10px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.03);font-size:13px">
+            <span>{{item.source}}</span><span style="color:var(--text-dim)">→</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{item.target}}</span>
+          </div>
+        </div>
+        <div v-else style="font-size:13px;color:var(--green);margin-bottom:12px">暂无待重命名图片计划</div>
+        <el-button @click="executeAutomation" :loading="executing" type="primary" size="large" style="width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;font-weight:600;border-radius:12px">执行图片重命名 + 生成每集 NFO</el-button>
+      </div>
+
+      <div v-if="logs.length" class="glass-card">
+        <div style="font-size:14px;font-weight:600;margin-bottom:10px">执行日志</div>
+        <div v-for="(line,i) in logs" :key="i" style="font-family:monospace;font-size:12px;color:var(--text-dim);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">{{line}}</div>
       </div>
     </div>
   `,
   data(){
     return {
-      form: { filename: '', tmdbId: '' },
-      person: null,
-      lookingUp: false,
-      lookupError: '',
-      thumbFile: null,
-      thumbPreview: '',
-      generating: false,
-      generated: false
+      selectedDir: '', browseData: null, browseError: '', browsing:false, scanData: null, scanning:false, executing:false, savingTvshow:false, logs: [],
+      tv: { title:'', tmdb_id:'', dateadded:'', sorttitle:'', plot:'', outline:'', overwrite:false },
+      artworkKinds: [
+        {key:'poster', label:'poster.jpg', file:'poster.jpg'},
+        {key:'fanart', label:'fanart.jpg', file:'fanart.jpg'},
+        {key:'logo', label:'logo.png', file:'logo.png'},
+      ]
     }
   },
-  methods: {
-    async lookupPerson(){
-      const id = parseInt(this.form.tmdbId);
-      if(!id || id < 1){ this.lookupError='请输入有效的 TMDB ID'; return }
-      this.lookingUp=true; this.lookupError=''; this.person=null;
-      try {
-        const res = await fetch(`/api/nfo/person/${id}`);
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'查询失败') }
-        this.person = await res.json();
-      } catch(e){
-        this.lookupError = e.message;
-      } finally {
-        this.lookingUp=false;
-      }
+  mounted(){ this.browseRoot() },
+  methods:{
+    async browseRoot(){ await this.browse('') },
+    async browse(path){
+      this.browsing=true; this.browseError='';
+      try{
+        const url = path ? `/api/nfo/automation/browse?path=${encodeURIComponent(path)}` : '/api/nfo/automation/browse';
+        const res = await fetch(url);
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'浏览失败') }
+        this.browseData = await res.json();
+      }catch(e){ this.browseError=e.message||'浏览失败' }
+      finally{ this.browsing=false }
     },
-    handleFileChange(uploadFile){
-      this.thumbFile = uploadFile.raw;
-      const reader = new FileReader();
-      reader.onload = e => { this.thumbPreview = e.target.result };
-      reader.readAsDataURL(uploadFile.raw);
+    async selectDir(path){
+      this.selectedDir = path;
+      await this.scan();
     },
-    clearThumb(){
-      this.thumbFile = null;
-      this.thumbPreview = '';
+    async scan(){
+      if(!this.selectedDir){ ElementPlus.ElMessage.warning('请先选择演员目录'); return }
+      this.scanning=true;
+      try{
+        const res = await fetch('/api/nfo/automation/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir})});
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'扫描失败') }
+        this.scanData = await res.json();
+        if(!this.tv.title) this.tv.title = this.scanData.actor_name;
+        ElementPlus.ElMessage.success('扫描完成');
+      }catch(e){ ElementPlus.ElMessage.error(e.message||'扫描失败') }
+      finally{ this.scanning=false }
     },
-    async generateNfo(){
-      if(!this.form.filename.trim() || !this.person) return;
-      this.generating=true; this.generated=false;
-      try {
-        // 过滤文件名中不允许的字符
-        const safeFilename = this.form.filename.trim().replace(/[/\\:*?"<>|]/g, '_');
-        const formData = new FormData();
-        formData.append('filename', safeFilename);
-        formData.append('tmdb_id', this.person.tmdb_id);
-        if(this.thumbFile) formData.append('thumb', this.thumbFile);
-
-        const res = await fetch('/api/nfo/generate', { method:'POST', body: formData });
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'生成失败') }
-
-        // 下载 zip
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${safeFilename}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        this.generated = true;
-        setTimeout(() => { this.generated = false }, 4000);
-      } catch(e){
-        ElementPlus.ElMessage.error(e.message || '生成失败');
-      } finally {
-        this.generating = false;
-      }
+    async saveTvshow(){
+      if(!this.scanData){ return }
+      this.savingTvshow=true;
+      try{
+        const payload = Object.assign({}, this.tv, {actor_dir:this.selectedDir});
+        const res = await fetch('/api/nfo/automation/tvshow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'保存失败') }
+        const data = await res.json();
+        ElementPlus.ElMessage.success(data.backup ? '已备份并保存 tvshow.nfo' : '已保存 tvshow.nfo');
+        await this.scan();
+      }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') }
+      finally{ this.savingTvshow=false }
+    },
+    async uploadArtwork(kind, ev){
+      const file = ev.target.files && ev.target.files[0];
+      if(!file) return;
+      const fd = new FormData(); fd.append('actor_dir', this.selectedDir); fd.append('kind', kind); fd.append('overwrite', 'true'); fd.append('image', file);
+      try{
+        const res = await fetch('/api/nfo/automation/upload-artwork',{method:'POST',body:fd});
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'上传失败') }
+        ElementPlus.ElMessage.success('上传成功'); ev.target.value=''; await this.scan();
+      }catch(e){ ElementPlus.ElMessage.error(e.message||'上传失败') }
+    },
+    async uploadEpisodeImages(ev){
+      const files = Array.from(ev.target.files||[]); if(!files.length) return;
+      const fd = new FormData(); fd.append('actor_dir', this.selectedDir); files.forEach(f=>fd.append('images',f));
+      try{
+        const res = await fetch('/api/nfo/automation/upload-episode-images',{method:'POST',body:fd});
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'上传失败') }
+        const data = await res.json(); this.scanData = data.scan; ev.target.value=''; ElementPlus.ElMessage.success(`已上传 ${data.saved.length} 张图片`);
+      }catch(e){ ElementPlus.ElMessage.error(e.message||'上传失败') }
+    },
+    async executeAutomation(){
+      if(!this.scanData){ return }
+      this.executing=true; this.logs=[];
+      try{
+        const res = await fetch('/api/nfo/automation/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir})});
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'执行失败') }
+        const data = await res.json(); this.logs = data.logs; this.scanData = data.scan; ElementPlus.ElMessage.success('执行完成');
+      }catch(e){ ElementPlus.ElMessage.error(e.message||'执行失败') }
+      finally{ this.executing=false }
     }
   }
 }

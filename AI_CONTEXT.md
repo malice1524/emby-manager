@@ -4,7 +4,7 @@
 
 ## 项目定位
 
-Emby Manager 是一个 Emby 媒体服务器 Web 管理面板，提供仪表盘、用户管理、媒体库浏览、完结监控、NFO 生成等能力。
+Emby Manager 是一个 Emby 媒体服务器 Web 管理面板，提供仪表盘、用户管理、媒体库浏览、完结监控、NFO 自动化等能力。
 
 - 仓库：`malice1524/emby-manager`
 - 本地常用路径：`/var/minis/workspace/emby-manager`
@@ -191,7 +191,7 @@ Cache-Control: no-cache, no-store, must-revalidate
 - 媒体库：列表、数量统计、海报墙、搜索、分页、跳页、详情弹窗
 - 完结监控：TMDB 搜索/详情/验证、TMDB 单集详情、TVmaze 播出时间补充、监控列表、定时检测、TG 通知、日志
 - 配置：TMDB Key、TG Bot、代理、Cron 检查规则
-- NFO 生成：自定义文件名 + TMDB 人物 ID + 可选封面 → zip 下载
+- NFO 自动化：演员目录扫描、tvshow.nfo 表单、poster/fanart/logo 上传、剧集图片重命名、每集 nfo 批量生成
 
 ## 环境变量
 
