@@ -619,7 +619,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.34</div>
+    <div class="sidebar-version">v1.35</div>
   </aside>
 
   <!-- Main -->
@@ -1279,7 +1279,7 @@ const NfoGenerator = {
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
               <el-button @click="selectAllTvTags" size="small">全选中文标签</el-button>
               <el-button @click="clearTvTags" size="small">清空标签</el-button>
-              <span style="font-size:12px;color:var(--text-dim)">{{tagTool.preview ? `中文 ${tagTool.preview.chinese_tag_count} 个，默认勾选前 ${Math.min(6, tagTool.preview.tags.length)} 个` : `已选标签 ${tv.tags.length} 个`}}</span>
+              <span style="font-size:12px;color:var(--text-dim)">{{tagTool.preview ? ('中文 ' + tagTool.preview.chinese_tag_count + ' 个，默认勾选前 ' + Math.min(6, tagTool.preview.tags.length) + ' 个') : ('已选标签 ' + tv.tags.length + ' 个')}}</span>
             </div>
             <div v-if="displayTvTags().length" style="display:flex;gap:8px;flex-wrap:wrap">
               <el-checkbox v-for="tag in displayTvTags()" :key="tag" v-model="tv.tags" :label="tag" border>{{tag}}</el-checkbox>

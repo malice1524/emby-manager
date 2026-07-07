@@ -97,6 +97,7 @@ def assert_monitor_frontend(html: str):
     assert '缺图片 {{scanData.missing_images.length}}' in html
     assert '缺 NFO {{scanData.missing_nfo.length}}' in html
     assert '.nfo-missing-scroll { max-height:180px; overflow-y:auto;' in html
+    assert 'tagTool.preview ? `' not in html
     assert 'const NfoGenerator = {' in html
     assert "{path:'/nfo',component:NfoGenerator}" in html
 
