@@ -9,7 +9,7 @@ from html import unescape as html_unescape
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs, unquote
 from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape
 
@@ -175,6 +175,25 @@ def _chinese_tags(tags: list[str]) -> list[str]:
     return filtered
 
 
+def _extract_anchor_text(html: str, href_keyword: str) -> list[str]:
+    found = []
+    for attrs, text in re.findall(r'<a\b([^>]*href=["\'][^"\']*' + href_keyword + r'[^"\']*["\'][^>]*)>(.*?)</a>', html, flags=re.I | re.S):
+        clean = re.sub(r"<[^>]+>", "", text)
+        clean = html_unescape(clean).strip()
+        if clean:
+            found.append(clean)
+        href_match = re.search(r'href=["\']([^"\']+)["\']', attrs, flags=re.I)
+        if href_match:
+            parsed = urlparse(html_unescape(href_match.group(1)))
+            query = parse_qs(parsed.query)
+            for key in ("search", "q"):
+                for value in query.get(key, []):
+                    decoded = unquote(value).strip()
+                    if decoded:
+                        found.append(decoded)
+    return found
+
+
 def _extract_pornhub_metadata(html: str) -> dict:
     tags = []
     published_at = ""
@@ -201,6 +220,7 @@ def _extract_pornhub_metadata(html: str) -> dict:
             if match:
                 published_at = _normalize_date(match.group(1))
                 break
+    tags.extend(_extract_anchor_text(html, r"(?:/video/search|search=|/categories|/pornstar|/model|/channels)"))
     if not tags:
         for match in re.findall(r'"(?:tags|keywords)"\s*:\s*"([^"]+)"', html, flags=re.I):
             tags.extend(_split_tags(match))

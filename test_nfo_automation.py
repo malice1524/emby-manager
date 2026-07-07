@@ -279,7 +279,45 @@ def test_pornhub_metadata_preview_returns_only_chinese_tags(monkeypatch):
         assert data['chinese_tag_count'] == 3
 
 
-def test_pornhub_metadata_preview_returns_json_error_when_fetch_fails(monkeypatch):
+def test_pornhub_metadata_preview_extracts_chinese_search_link_tags(monkeypatch):
+    html = """
+    <html><head>
+      <script type="application/ld+json">
+      {"uploadDate":"2024-06-01T12:34:56+00:00","keywords":"Chinese,Asian"}
+      </script>
+    </head><body>
+      <a href="/video/search?search=%E5%9B%BD%E4%BA%A7">国产</a>
+      <a href="/video/search?search=%E5%B7%A8%E4%B9%B3">巨乳</a>
+      <a href="/video/search?search=Asian">Asian</a>
+    </body></html>
+    """
+
+    class FakeResponse:
+        status_code = 200
+        text = html
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+        async def get(self, url, **kwargs):
+            return FakeResponse()
+
+    from backend.app.routers import nfo
+    monkeypatch.setattr(nfo, "get_http_client", lambda: FakeClient())
+
+    with TestClient(app) as client:
+        res = client.post('/api/nfo/automation/pornhub-metadata/preview', json={
+            'url': 'https://cn.pornhub.com/view_video.php?viewkey=test'
+        })
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert data['published_at'] == '2024-06-01'
+        assert data['tags'] == ['国产', '巨乳']
+        assert data['chinese_tag_count'] == 2
+
+
     class FakeClient:
         def __init__(self, timeout=20, follow_redirects=True, headers=None):
             self.timeout = timeout
