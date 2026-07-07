@@ -3,6 +3,8 @@ import re
 import shutil
 import json
 import httpx
+
+from ..config import get_http_client
 from html import unescape as html_unescape
 from datetime import datetime
 from pathlib import Path
@@ -489,8 +491,16 @@ async def preview_pornhub_metadata(req: PornhubPreviewRequest):
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
     }
-    async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers=headers) as client:
-        resp = await client.get(url)
+    async with get_http_client() as client:
+        try:
+            resp = await client.get(url, headers=headers, follow_redirects=True)
+        except TypeError:
+            try:
+                resp = await client.get(url)
+            except Exception as exc:
+                raise HTTPException(status_code=502, detail=f"PornHub 页面抓取失败，请检查 NAS 网络或在设置中配置代理 URL: {exc}")
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"PornHub 页面抓取失败，请检查 NAS 网络或在设置中配置代理 URL: {exc}")
     if resp.status_code >= 400:
         raise HTTPException(status_code=502, detail=f"PornHub 页面抓取失败: HTTP {resp.status_code}")
     meta = _extract_pornhub_metadata(resp.text)

@@ -265,7 +265,7 @@ def test_pornhub_metadata_preview_returns_only_chinese_tags(monkeypatch):
             return FakeResponse()
 
     from backend.app.routers import nfo
-    monkeypatch.setattr(nfo.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(nfo, "get_http_client", lambda: FakeClient())
 
     with TestClient(app) as client:
         res = client.post('/api/nfo/automation/pornhub-metadata/preview', json={
@@ -277,6 +277,28 @@ def test_pornhub_metadata_preview_returns_only_chinese_tags(monkeypatch):
         assert data['tags'] == ['国产', '巨乳', '4K中文']
         assert data['all_tag_count'] == 5
         assert data['chinese_tag_count'] == 3
+
+
+def test_pornhub_metadata_preview_returns_json_error_when_fetch_fails(monkeypatch):
+    class FakeClient:
+        def __init__(self, timeout=20, follow_redirects=True, headers=None):
+            self.timeout = timeout
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+        async def get(self, url):
+            raise Exception('connect failed')
+
+    from backend.app.routers import nfo
+    monkeypatch.setattr(nfo, "get_http_client", lambda: FakeClient())
+
+    with TestClient(app) as client:
+        res = client.post('/api/nfo/automation/pornhub-metadata/preview', json={
+            'url': 'https://cn.pornhub.com/view_video.php?viewkey=test'
+        })
+        assert res.status_code == 502, res.text
+        assert 'PornHub 页面抓取失败' in res.json()['detail']
 
 
 def test_pornhub_metadata_write_merges_selected_chinese_tags(tmp_path, monkeypatch):
