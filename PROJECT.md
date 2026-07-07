@@ -224,7 +224,7 @@ static/index.html
   → 可视化填写 tvshow.nfo（保存后如需立即生效，手动刷新 Emby）
   → 上传/替换 poster.jpg、fanart.jpg、logo.png（上传后如需立即生效，手动刷新 Emby）
   → 选择单集 .strm 并粘贴 PornHub 视频页，抓取发布时间和中文标签
-  → 勾选中文标签后写入该集同名 .nfo（写入前备份旧 nfo）
+  → 勾选中文标签后，将发布时间写入单集 .nfo、标签写入 tvshow.nfo
   → 上传剧集图片
   → 按 mtime 匹配缺图集数并重命名为同名 .JPG
   → 为缺失剧集批量生成同名 .nfo
@@ -241,7 +241,7 @@ static/index.html
 
 - 只允许操作 `NFO_MEDIA_ROOT` 下的演员目录，默认 `/vol1/1000/docker/strm`
 - 不覆盖已有剧集图片和每集 nfo
-- 保存/替换 `tvshow.nfo`、`poster/fanart/logo` 前自动备份
+- 保存/替换 `tvshow.nfo`、`poster/fanart/logo` 时直接覆盖原文件
 - Docker 部署需挂载媒体目录，例如 `/vol1/1000/docker/strm:/vol1/1000/docker/strm`
 
 ### 7.1 前端修改

@@ -429,6 +429,15 @@ def test_pornhub_metadata_preview_returns_json_error_when_fetch_fails(monkeypatc
 def test_pornhub_metadata_write_merges_selected_chinese_tags(tmp_path, monkeypatch):
     root, actor, season = _make_actor_tree(tmp_path)
     monkeypatch.setenv('NFO_MEDIA_ROOT', str(root))
+    tvshow_path = actor / 'tvshow.nfo'
+    tvshow_path.write_text(
+        '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n'
+        '<tvshow>\n'
+        '  <title>Sienna Moore</title>\n'
+        '  <tag>旧剧标签</tag>\n'
+        '</tvshow>\n',
+        encoding='utf-8'
+    )
     nfo_path = season / 'Sienna Moore.S01E02.新增剧集A.nfo'
     nfo_path.write_text(
         '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n'
@@ -451,7 +460,7 @@ def test_pornhub_metadata_write_merges_selected_chinese_tags(tmp_path, monkeypat
         assert res.status_code == 200, res.text
         data = res.json()
         assert data['tags'] == ['国产', '巨乳', '4K中文']
-        assert data['backup'].startswith('Sienna Moore.S01E02.新增剧集A.nfo.bak.')
+        assert data['backup'] == ''
 
     written = nfo_path.read_text(encoding='utf-8')
     assert '<title>新增剧集A</title>' in written
@@ -459,11 +468,19 @@ def test_pornhub_metadata_write_merges_selected_chinese_tags(tmp_path, monkeypat
     assert '<episode>2</episode>' in written
     assert '<aired>2024-06-01</aired>' in written
     assert '<premiered>2024-06-01</premiered>' in written
-    assert '<tag>国产</tag>' in written
-    assert '<tag>巨乳</tag>' in written
-    assert '<genre>国产</genre>' in written
-    assert '<genre>巨乳</genre>' in written
-    assert '<tag>Asian</tag>' not in written
+    assert '<tag>国产</tag>' not in written
+    assert '<genre>国产</genre>' not in written
     assert '<tag>旧标签</tag>' not in written
+    tvshow = tvshow_path.read_text(encoding='utf-8')
+    assert '<tag>国产</tag>' in tvshow
+    assert '<tag>巨乳</tag>' in tvshow
+    assert '<tag>4K中文</tag>' in tvshow
+    assert '<genre>国产</genre>' in tvshow
+    assert '<genre>巨乳</genre>' in tvshow
+    assert '<genre>4K中文</genre>' in tvshow
+    assert '<tag>Asian</tag>' not in tvshow
+    assert '<tag>旧剧标签</tag>' not in tvshow
     backups = list(season.glob('Sienna Moore.S01E02.新增剧集A.nfo.bak.*'))
-    assert backups
+    assert not backups
+    tvshow_backups = list(actor.glob('tvshow.nfo.bak.*'))
+    assert not tvshow_backups

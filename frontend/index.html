@@ -608,7 +608,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.31</div>
+    <div class="sidebar-version">v1.32</div>
   </aside>
 
   <!-- Main -->
@@ -1255,14 +1255,14 @@ const NfoGenerator = {
         <textarea v-model="tv.plot" placeholder="plot 简介" rows="3" class="nfo-textarea"></textarea>
         <textarea v-model="tv.outline" placeholder="outline 简介（可空，默认等于 plot）" rows="3" class="nfo-textarea" style="margin-top:8px"></textarea>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
-          <el-checkbox v-model="tv.overwrite">覆盖已有 tvshow.nfo（会自动备份）</el-checkbox>
+          <el-checkbox v-model="tv.overwrite">覆盖已有 tvshow.nfo</el-checkbox>
           <el-button @click="saveTvshow" :loading="savingTvshow" type="primary" style="background:var(--accent);border-color:var(--accent)">保存 tvshow.nfo</el-button>
         </div>
       </div>
 
       <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
         <div style="font-size:14px;font-weight:600;margin-bottom:12px">③ PornHub 单集标签与发布时间</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">选择一个 .strm，粘贴 PornHub 视频页；抓取后只展示中文标签，勾选后写入同名 .nfo。</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">选择一个 .strm，粘贴 PornHub 视频页；抓取后只展示中文标签。发布时间写入单集 .nfo，标签写入演员目录 tvshow.nfo。</div>
         <div class="nfo-pornhub-fields">
           <select v-model="pornhub.strm_filename" class="nfo-input">
             <option value="">请选择 .strm 文件</option>
@@ -1292,7 +1292,7 @@ const NfoGenerator = {
           <div v-for="kind in artworkKinds" :key="kind.key" class="glass-card" style="padding:12px;min-width:170px;flex:1">
             <div style="font-weight:600;margin-bottom:8px">{{kind.label}}</div>
             <input type="file" accept="image/jpeg,image/png,image/webp" @change="uploadArtwork(kind.key,$event)" style="font-size:12px;color:var(--text-dim);max-width:100%" />
-            <div style="font-size:11px;color:var(--text-muted);margin-top:6px">保存为 {{kind.file}}，已存在会备份替换</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px">保存为 {{kind.file}}，已存在会直接替换</div>
           </div>
         </div>
       </div>
@@ -1373,7 +1373,7 @@ const NfoGenerator = {
         const res = await fetch('/api/nfo/automation/tvshow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'保存失败') }
         const data = await res.json();
-        ElementPlus.ElMessage.success(data.backup ? '已备份并保存 tvshow.nfo' : '已保存 tvshow.nfo');
+        ElementPlus.ElMessage.success('已保存 tvshow.nfo');
         await this.scan();
       }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') }
       finally{ this.savingTvshow=false }

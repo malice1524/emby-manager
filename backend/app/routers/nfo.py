@@ -1,6 +1,5 @@
 import os
 import re
-import shutil
 import json
 import httpx
 
@@ -270,13 +269,36 @@ def _write_episode_metadata_nfo(strm_path: Path, published_at: str, tags: list[s
     if date:
         ET.SubElement(root, "aired").text = date
         ET.SubElement(root, "premiered").text = date
+    ET.indent(root, space="  ")
+    xml = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n' + ET.tostring(root, encoding="unicode") + "\n"
+    nfo_path.write_text(xml, encoding="utf-8")
+    return backup, chinese
+
+
+def _write_tvshow_tags(actor_dir: Path, tags: list[str]) -> str:
+    chinese = _chinese_tags(tags)
+    path = actor_dir / "tvshow.nfo"
+    backup = _backup(path)
+    root = ET.Element("tvshow")
+    if path.exists() and path.stat().st_size > 0:
+        try:
+            root = ET.fromstring(path.read_text(encoding="utf-8"))
+        except ET.ParseError:
+            root = ET.Element("tvshow")
+    title = root.find("title")
+    if title is None:
+        title = ET.SubElement(root, "title")
+        title.text = actor_dir.name
+    for child in list(root):
+        if child.tag in {"tag", "genre"}:
+            root.remove(child)
     for tag in chinese:
         ET.SubElement(root, "tag").text = tag
         ET.SubElement(root, "genre").text = tag
     ET.indent(root, space="  ")
     xml = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n' + ET.tostring(root, encoding="unicode") + "\n"
-    nfo_path.write_text(xml, encoding="utf-8")
-    return backup, chinese
+    path.write_text(xml, encoding="utf-8")
+    return backup
 
 
 
@@ -349,11 +371,6 @@ def _build_scan(actor_dir: Path):
 
 
 def _backup(path: Path):
-    if path.exists():
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup = path.with_name(f"{path.name}.bak.{stamp}")
-        shutil.copy2(path, backup)
-        return backup.name
     return ""
 
 
@@ -544,14 +561,13 @@ async def write_pornhub_metadata(req: PornhubWriteRequest):
     actor_dir = _safe_actor_dir(req.actor_dir)
     strm_path = _safe_strm_path(actor_dir, req.strm_filename)
     backup, tags = _write_episode_metadata_nfo(strm_path, req.published_at, req.tags)
+    tvshow_backup = _write_tvshow_tags(actor_dir, tags)
     nfo_name = strm_path.with_suffix(".nfo").name
     logs = []
-    if backup:
-        logs.append(f"已备份旧 NFO: {backup}")
     if _normalize_date(req.published_at):
-        logs.append(f"已写入发布时间: {_normalize_date(req.published_at)}")
-    logs.append(f"已写入中文标签: {len(tags)} 个")
-    return {"ok": True, "nfo": nfo_name, "backup": backup, "published_at": _normalize_date(req.published_at), "tags": tags, "logs": logs}
+        logs.append(f"已写入单集发布时间: {_normalize_date(req.published_at)}")
+    logs.append(f"已写入 tvshow.nfo 中文标签: {len(tags)} 个")
+    return {"ok": True, "nfo": nfo_name, "backup": backup, "tvshow_backup": tvshow_backup, "published_at": _normalize_date(req.published_at), "tags": tags, "logs": logs}
 
 
 @router.post("/automation/execute")

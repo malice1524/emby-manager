@@ -507,7 +507,7 @@ Content-Type: application/json
 }
 ```
 
-字段顺序：`plot → outline → lockdata → dateadded → title → actor → sorttitle → season → episode → displayorder`。覆盖已有文件前会自动备份。
+字段顺序：`plot → outline → lockdata → dateadded → title → actor → sorttitle → season → episode → displayorder`。覆盖已有文件时直接替换。
 
 ### 7.4 上传演员图片
 
@@ -520,7 +520,7 @@ multipart/form-data:
   image=<file>
 ```
 
-保存为固定文件名：`poster.jpg`、`fanart.jpg`、`logo.png`，替换前自动备份。
+保存为固定文件名：`poster.jpg`、`fanart.jpg`、`logo.png`，已存在时直接替换。
 
 ### 7.5 上传剧集图片
 
@@ -571,7 +571,7 @@ Content-Type: application/json
 }
 ```
 
-只允许写入当前演员目录 `Season 1` 下的 `.strm` 同名 `.nfo`。写入前自动备份旧 nfo；保留/补齐 `title/season/episode`，更新 `aired/premiered`，删除旧 `<tag>` 后写入本次选择的中文 `<tag>`。后端会再次过滤非中文标签。
+只允许选择当前演员目录 `Season 1` 下的 `.strm`。写入时会直接更新同名单集 `.nfo` 的 `aired/premiered` 发布时间；中文标签写入演员目录 `tvshow.nfo` 的 `<tag>/<genre>`，旧标签以本次选择为准。后端会再次过滤非中文标签。
 
 ### 7.8 刷新 Emby 元数据
 
