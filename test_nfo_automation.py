@@ -559,3 +559,23 @@ def test_pornhub_published_batch_writes_episode_dates(tmp_path, monkeypatch):
         episodes = {item['episode']: item for item in scan.json()['episodes']}
         assert episodes[2]['has_published_date'] is True
         assert episodes[3]['has_published_date'] is True
+
+
+def test_nfo_scan_counts_existing_jpeg_episode_images(tmp_path, monkeypatch):
+    root = tmp_path / 'strm'
+    actor = root / '已整理' / 'PornHub' / 'Sienna Moore'
+    season = actor / 'Season 1'
+    season.mkdir(parents=True)
+    strm = season / 'Sienna Moore.S01E01.jpeg测试.strm'
+    strm.write_text('http://example/video', encoding='utf-8')
+    (season / 'Sienna Moore.S01E01.jpeg测试.jpeg').write_bytes(b'jpeg')
+    monkeypatch.setenv('NFO_MEDIA_ROOT', str(root))
+
+    with TestClient(app) as client:
+        res = client.post('/api/nfo/automation/scan', json={'actor_dir': str(actor)})
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert data['counts']['images'] == 1
+        assert data['missing_images'] == []
+        assert data['episodes'][0]['has_image'] is True
+        assert data['episodes'][0]['image_name'] == 'Sienna Moore.S01E01.jpeg测试.jpeg'

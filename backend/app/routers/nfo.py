@@ -135,6 +135,14 @@ def _pending_images(season: Path):
     return images
 
 
+def _episode_image_path(strm_path: Path) -> Path | None:
+    for suffix in [".JPG", ".jpg", ".jpeg", ".JPEG", ".png", ".PNG", ".webp", ".WEBP"]:
+        candidate = strm_path.with_suffix(suffix)
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    return None
+
+
 def _episode_nfo(title: str, season: int, episode: int) -> str:
     return (
         '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n'
@@ -374,9 +382,9 @@ def _build_scan(actor_dir: Path):
     existing_nfo = 0
     for item in strms:
         strm_path = item["path"]
-        image_path = strm_path.with_suffix(".JPG")
+        image_path = _episode_image_path(strm_path)
         nfo_path = strm_path.with_suffix(".nfo")
-        has_image = image_path.exists()
+        has_image = image_path is not None
         has_nfo = nfo_path.exists() and nfo_path.stat().st_size > 0
         has_published_date = _episode_has_published_date(nfo_path)
         if has_image:
@@ -396,7 +404,7 @@ def _build_scan(actor_dir: Path):
             "has_image": has_image,
             "has_nfo": has_nfo,
             "has_published_date": has_published_date,
-            "image_name": image_path.name if has_image else "",
+            "image_name": image_path.name if image_path else "",
             "nfo_name": nfo_path.name if has_nfo else "",
         })
 
