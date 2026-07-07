@@ -318,6 +318,48 @@ def test_pornhub_metadata_preview_extracts_chinese_search_link_tags(monkeypatch)
         assert data['chinese_tag_count'] == 2
 
 
+def test_pornhub_metadata_prefers_underplayer_tags_over_trending_searches(monkeypatch):
+    html = """
+    <html><body>
+      <div id="trendingWrapperInner">
+        <a href="/video/search?search=%E4%B8%AD%E5%9B%BD%E6%83%85%E4%BE%A3" class="js-trendSearch searchItem">中国情侣</a>
+        <a href="/video/search?search=%E5%9C%B0%E9%9B%B7" class="js-trendSearch searchItem">地雷</a>
+      </div>
+      <div id="videoShow">
+        <div class="abovePlayerButtons clearfix ctasActionMenu">
+          <a data-event="video_underplayer" data-label="tag" class="gtm-event-video-underplayer item isTag" href="/video/search?search=%E7%B4%A0%E4%BA%BA%E6%83%85%E4%BE%A3"><span>素人情侣</span></a>
+          <a data-event="video_underplayer" data-label="tag" class="gtm-event-video-underplayer item isTag" href="/video/search?search=%E5%90%83%E9%B8%A1"><span>吃鸡</span></a>
+        </div>
+      </div>
+    </body></html>
+    """
+
+    class FakeResponse:
+        status_code = 200
+        text = html
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+        async def get(self, url, **kwargs):
+            return FakeResponse()
+
+    from backend.app.routers import nfo
+    monkeypatch.setattr(nfo, "get_http_client", lambda: FakeClient())
+
+    with TestClient(app) as client:
+        res = client.post('/api/nfo/automation/pornhub-metadata/preview', json={
+            'url': 'https://cn.pornhub.com/view_video.php?viewkey=678ddb6bf1a1f'
+        })
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert data['tags'] == ['素人情侣', '吃鸡']
+        assert '中国情侣' not in data['tags']
+        assert '地雷' not in data['tags']
+
+
 def test_pornhub_metadata_preview_ignores_non_video_search_chinese_links(monkeypatch):
     html = """
     <html><head>

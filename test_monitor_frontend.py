@@ -73,6 +73,11 @@ def assert_monitor_frontend(html: str):
     assert '.nfo-image-plan-source, .nfo-image-plan-target { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' in html
     assert '.nfo-image-plan-source { flex:0 1 42%; }' in html
     assert '.nfo-image-plan-target { flex:1 1 0; }' in html
+    assert 'this.pornhub.selectedTags = (data.tags || []).slice(0, 6);' in html
+    assert 'class="nfo-pornhub-fields"' in html
+    assert '.nfo-input { width:100%; max-width:100%; padding:10px 14px;' in html
+    assert '.nfo-pornhub-fields { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr); gap:10px; margin-bottom:10px; min-width:0; max-width:100%; overflow:hidden; }' in html
+    assert '@media (max-width: 640px) { .nfo-pornhub-fields { grid-template-columns:1fr; } }' in html
     assert 'const NfoGenerator = {' in html
     assert "{path:'/nfo',component:NfoGenerator}" in html
 

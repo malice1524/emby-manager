@@ -194,8 +194,10 @@ body {
   .monitor-list-item { align-items: flex-start; }
 }
 
-.nfo-input { padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:8px; color:var(--text); outline:none; min-width:0; }
+.nfo-input { width:100%; max-width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:8px; color:var(--text); outline:none; min-width:0; }
 .nfo-textarea { width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:8px; color:var(--text); outline:none; resize:vertical; }
+.nfo-pornhub-fields { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr); gap:10px; margin-bottom:10px; min-width:0; max-width:100%; overflow:hidden; }
+@media (max-width: 640px) { .nfo-pornhub-fields { grid-template-columns:1fr; } }
 .nfo-image-plan-row { display:flex; align-items:center; gap:8px; padding:10px; border:1px solid var(--glass-border); border-radius:10px; background:rgba(255,255,255,0.03); font-size:13px; min-width:0; max-width:100%; overflow:hidden; }
 .nfo-image-plan-source, .nfo-image-plan-target { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .nfo-image-plan-source { flex:0 1 42%; }
@@ -606,7 +608,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.29</div>
+    <div class="sidebar-version">v1.30</div>
   </aside>
 
   <!-- Main -->
@@ -1261,7 +1263,7 @@ const NfoGenerator = {
       <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
         <div style="font-size:14px;font-weight:600;margin-bottom:12px">③ PornHub 单集标签与发布时间</div>
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">选择一个 .strm，粘贴 PornHub 视频页；抓取后只展示中文标签，勾选后写入同名 .nfo。</div>
-        <div style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,2fr);gap:10px;margin-bottom:10px">
+        <div class="nfo-pornhub-fields">
           <select v-model="pornhub.strm_filename" class="nfo-input">
             <option value="">请选择 .strm 文件</option>
             <option v-for="ep in scanData.episodes" :key="ep.filename" :value="ep.filename">{{ep.episode_code}} - {{ep.title}}</option>
@@ -1384,8 +1386,8 @@ const NfoGenerator = {
         if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'抓取失败') }
         const data = await res.json();
         this.pornhub.preview = data;
-        this.pornhub.selectedTags = (data.tags || []).slice();
-        ElementPlus.ElMessage.success(`已抓取中文标签 ${data.chinese_tag_count} 个`);
+        this.pornhub.selectedTags = (data.tags || []).slice(0, 6);
+        ElementPlus.ElMessage.success(`已抓取中文标签 ${data.chinese_tag_count} 个，默认勾选前 ${this.pornhub.selectedTags.length} 个`);
       }catch(e){ ElementPlus.ElMessage.error(e.message||'抓取失败') }
       finally{ this.pornhub.previewing = false }
     },

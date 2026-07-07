@@ -175,9 +175,12 @@ def _chinese_tags(tags: list[str]) -> list[str]:
     return filtered
 
 
-def _extract_anchor_text(html: str, href_keyword: str) -> list[str]:
+def _extract_anchor_text(html: str, href_keyword: str, required_keywords: list[str] | None = None) -> list[str]:
     found = []
+    required_keywords = required_keywords or []
     for attrs, text in re.findall(r'<a\b([^>]*href=["\'][^"\']*' + href_keyword + r'[^"\']*["\'][^>]*)>(.*?)</a>', html, flags=re.I | re.S):
+        if any(keyword.lower() not in attrs.lower() for keyword in required_keywords):
+            continue
         clean = re.sub(r"<[^>]+>", "", text)
         clean = html_unescape(clean).strip()
         if clean:
@@ -220,7 +223,8 @@ def _extract_pornhub_metadata(html: str) -> dict:
             if match:
                 published_at = _normalize_date(match.group(1))
                 break
-    tags.extend(_extract_anchor_text(html, r"/video/search"))
+    underplayer_tags = _extract_anchor_text(html, r"/video/search", ["video_underplayer", "data-label=\"tag\"", "isTag"])
+    tags = underplayer_tags or _extract_anchor_text(html, r"/video/search")
     if not tags:
         for match in re.findall(r'"(?:tags|keywords)"\s*:\s*"([^"]+)"', html, flags=re.I):
             tags.extend(_split_tags(match))
