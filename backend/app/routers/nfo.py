@@ -220,7 +220,7 @@ def _extract_pornhub_metadata(html: str) -> dict:
             if match:
                 published_at = _normalize_date(match.group(1))
                 break
-    tags.extend(_extract_anchor_text(html, r"(?:/video/search|search=|/categories|/pornstar|/model|/channels)"))
+    tags.extend(_extract_anchor_text(html, r"/video/search"))
     if not tags:
         for match in re.findall(r'"(?:tags|keywords)"\s*:\s*"([^"]+)"', html, flags=re.I):
             tags.extend(_split_tags(match))
