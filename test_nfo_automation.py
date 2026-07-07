@@ -238,3 +238,84 @@ def test_uploaded_episode_images_take_priority_over_old_pending_images(tmp_path,
         assert ex.status_code == 200, ex.text
         assert (season / "Sienna Moore.S01E37.重新上传测试.JPG").read_bytes() == b"new-cover"
         assert old.exists()
+
+
+
+def test_pornhub_metadata_preview_returns_only_chinese_tags(monkeypatch):
+    html = """
+    <html><head>
+      <script type="application/ld+json">
+      {"uploadDate":"2024-06-01T12:34:56+00:00","keywords":"Chinese,国产,巨乳,Asian,4K中文"}
+      </script>
+    </head></html>
+    """
+
+    class FakeResponse:
+        status_code = 200
+        text = html
+
+    class FakeClient:
+        def __init__(self, timeout=20, follow_redirects=True, headers=None):
+            self.timeout = timeout
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+        async def get(self, url):
+            return FakeResponse()
+
+    from backend.app.routers import nfo
+    monkeypatch.setattr(nfo.httpx, "AsyncClient", FakeClient)
+
+    with TestClient(app) as client:
+        res = client.post('/api/nfo/automation/pornhub-metadata/preview', json={
+            'url': 'https://cn.pornhub.com/view_video.php?viewkey=test'
+        })
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert data['published_at'] == '2024-06-01'
+        assert data['tags'] == ['国产', '巨乳', '4K中文']
+        assert data['all_tag_count'] == 5
+        assert data['chinese_tag_count'] == 3
+
+
+def test_pornhub_metadata_write_merges_selected_chinese_tags(tmp_path, monkeypatch):
+    root, actor, season = _make_actor_tree(tmp_path)
+    monkeypatch.setenv('NFO_MEDIA_ROOT', str(root))
+    nfo_path = season / 'Sienna Moore.S01E02.新增剧集A.nfo'
+    nfo_path.write_text(
+        '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n'
+        '<episodedetails>\n'
+        '  <title>新增剧集A</title>\n'
+        '  <season>1</season>\n'
+        '  <episode>2</episode>\n'
+        '  <tag>旧标签</tag>\n'
+        '</episodedetails>\n',
+        encoding='utf-8'
+    )
+
+    with TestClient(app) as client:
+        res = client.post('/api/nfo/automation/pornhub-metadata/write', json={
+            'actor_dir': str(actor),
+            'strm_filename': 'Sienna Moore.S01E02.新增剧集A.strm',
+            'published_at': '2024-06-01',
+            'tags': ['国产', '巨乳', 'Asian', '4K中文'],
+        })
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert data['tags'] == ['国产', '巨乳', '4K中文']
+        assert data['backup'].startswith('Sienna Moore.S01E02.新增剧集A.nfo.bak.')
+
+    written = nfo_path.read_text(encoding='utf-8')
+    assert '<title>新增剧集A</title>' in written
+    assert '<season>1</season>' in written
+    assert '<episode>2</episode>' in written
+    assert '<aired>2024-06-01</aired>' in written
+    assert '<premiered>2024-06-01</premiered>' in written
+    assert '<tag>国产</tag>' in written
+    assert '<tag>巨乳</tag>' in written
+    assert '<tag>4K中文</tag>' in written
+    assert '<tag>Asian</tag>' not in written
+    assert '<tag>旧标签</tag>' not in written
+    backups = list(season.glob('Sienna Moore.S01E02.新增剧集A.nfo.bak.*'))
+    assert backups

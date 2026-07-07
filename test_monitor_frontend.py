@@ -66,6 +66,13 @@ def assert_monitor_frontend(html: str):
     assert 'translateX(calc(-50% + 120px))' not in html
     assert '个路径' not in html
     assert "ElementPlus.ElMessage.error(e.message||'删除失败')" in html
+    assert 'class="nfo-image-plan-row"' in html
+    assert 'class="nfo-image-plan-source"' in html
+    assert 'class="nfo-image-plan-target"' in html
+    assert '.nfo-image-plan-row { display:flex; align-items:center; gap:8px; padding:10px; border:1px solid var(--glass-border); border-radius:10px; background:rgba(255,255,255,0.03); font-size:13px; min-width:0; max-width:100%; overflow:hidden; }' in html
+    assert '.nfo-image-plan-source, .nfo-image-plan-target { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }' in html
+    assert '.nfo-image-plan-source { flex:0 1 42%; }' in html
+    assert '.nfo-image-plan-target { flex:1 1 0; }' in html
     assert 'const NfoGenerator = {' in html
     assert "{path:'/nfo',component:NfoGenerator}" in html
 

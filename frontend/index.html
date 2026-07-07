@@ -196,6 +196,11 @@ body {
 
 .nfo-input { padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:8px; color:var(--text); outline:none; min-width:0; }
 .nfo-textarea { width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:8px; color:var(--text); outline:none; resize:vertical; }
+.nfo-image-plan-row { display:flex; align-items:center; gap:8px; padding:10px; border:1px solid var(--glass-border); border-radius:10px; background:rgba(255,255,255,0.03); font-size:13px; min-width:0; max-width:100%; overflow:hidden; }
+.nfo-image-plan-source, .nfo-image-plan-target { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nfo-image-plan-source { flex:0 1 42%; }
+.nfo-image-plan-arrow { flex:0 0 auto; color:var(--text-dim); }
+.nfo-image-plan-target { flex:1 1 0; }
 
 /* ============ DASHBOARD — Gallery Style ============ */
 
@@ -601,7 +606,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.25</div>
+    <div class="sidebar-version">v1.26</div>
   </aside>
 
   <!-- Main -->
@@ -1254,7 +1259,33 @@ const NfoGenerator = {
       </div>
 
       <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
-        <div style="font-size:14px;font-weight:600;margin-bottom:12px">③ poster / fanart / logo 上传</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px">③ PornHub 单集标签与发布时间</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">选择一个 .strm，粘贴 PornHub 视频页；抓取后只展示中文标签，勾选后写入同名 .nfo。</div>
+        <div style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,2fr);gap:10px;margin-bottom:10px">
+          <select v-model="pornhub.strm_filename" class="nfo-input">
+            <option value="">请选择 .strm 文件</option>
+            <option v-for="ep in scanData.episodes" :key="ep.filename" :value="ep.filename">{{ep.episode_code}} - {{ep.title}}</option>
+          </select>
+          <input v-model="pornhub.url" placeholder="粘贴 PornHub 视频页面地址" class="nfo-input" />
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+          <el-button @click="previewPornhubMetadata" :loading="pornhub.previewing" type="primary" style="background:var(--accent);border-color:var(--accent)">抓取标签和发布时间</el-button>
+          <el-button v-if="pornhub.preview" @click="selectAllPornhubTags" size="small">全选中文标签</el-button>
+          <el-button v-if="pornhub.preview" @click="clearPornhubTags" size="small">清空标签</el-button>
+          <span v-if="pornhub.preview" style="font-size:12px;color:var(--text-dim)">全部标签 {{pornhub.preview.all_tag_count}} 个，中文 {{pornhub.preview.chinese_tag_count}} 个</span>
+        </div>
+        <div v-if="pornhub.preview" style="border:1px solid var(--glass-border);border-radius:12px;padding:12px;background:rgba(255,255,255,0.03)">
+          <div style="font-size:13px;margin-bottom:8px">发布时间：<b>{{pornhub.preview.published_at || '未解析到'}}</b></div>
+          <div v-if="pornhub.preview.tags.length" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <el-checkbox v-for="tag in pornhub.preview.tags" :key="tag" v-model="pornhub.selectedTags" :label="tag" border>{{tag}}</el-checkbox>
+          </div>
+          <div v-else style="font-size:13px;color:var(--orange);margin-bottom:10px">{{pornhub.preview.message || '没有解析到中文标签，可只写入发布时间'}}</div>
+          <el-button @click="writePornhubMetadata" :loading="pornhub.writing" type="primary" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none">写入选中标签和发布时间到 NFO</el-button>
+        </div>
+      </div>
+
+      <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px">④ poster / fanart / logo 上传</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <div v-for="kind in artworkKinds" :key="kind.key" class="glass-card" style="padding:12px;min-width:170px;flex:1">
             <div style="font-weight:600;margin-bottom:8px">{{kind.label}}</div>
@@ -1266,14 +1297,14 @@ const NfoGenerator = {
 
       <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-          <div><div style="font-size:14px;font-weight:600">④ 剧集图片与每集 NFO</div><div style="font-size:12px;color:var(--text-dim)">上传 IMG_*.JPG 后扫描，按图片时间顺序匹配缺图集数</div></div>
+          <div><div style="font-size:14px;font-weight:600">⑤ 剧集图片与每集 NFO</div><div style="font-size:12px;color:var(--text-dim)">上传 IMG_*.JPG 后扫描，按图片时间顺序匹配缺图集数</div></div>
           <div>
             <input type="file" multiple accept="image/jpeg,image/png,image/webp" @change="uploadEpisodeImages" style="font-size:12px;color:var(--text-dim);max-width:220px" />
           </div>
         </div>
-        <div v-if="scanData.image_plan.length" style="display:grid;gap:8px;margin-bottom:12px">
-          <div v-for="item in scanData.image_plan" :key="item.source" style="display:flex;justify-content:space-between;gap:8px;padding:10px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.03);font-size:13px">
-            <span>{{item.source}}</span><span style="color:var(--text-dim)">→</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{item.target}}</span>
+        <div v-if="scanData.image_plan.length" style="display:grid;gap:8px;margin-bottom:12px;min-width:0;max-width:100%;overflow:hidden">
+          <div v-for="item in scanData.image_plan" :key="item.source" class="nfo-image-plan-row">
+            <span class="nfo-image-plan-source" :title="item.source">{{item.source}}</span><span class="nfo-image-plan-arrow">→</span><span class="nfo-image-plan-target" :title="item.target">{{item.target}}</span>
           </div>
         </div>
         <div v-else style="font-size:13px;color:var(--green);margin-bottom:12px">暂无待重命名图片计划</div>
@@ -1294,6 +1325,7 @@ const NfoGenerator = {
     return {
       selectedDir: '', browseData: null, browseError: '', browsing:false, scanData: null, scanning:false, executing:false, savingTvshow:false, refreshEmby:true, refreshingEmby:false, logs: [],
       tv: { title:'', tmdb_id:'', dateadded:'', sorttitle:'', plot:'', outline:'', overwrite:false },
+      pornhub: { strm_filename:'', url:'', preview:null, selectedTags:[], previewing:false, writing:false },
       artworkKinds: [
         {key:'poster', label:'poster.jpg', file:'poster.jpg'},
         {key:'fanart', label:'fanart.jpg', file:'fanart.jpg'},
@@ -1326,6 +1358,7 @@ const NfoGenerator = {
         if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'扫描失败') }
         this.scanData = await res.json();
         if(!this.tv.title) this.tv.title = this.scanData.actor_name;
+        if(this.scanData.episodes && this.scanData.episodes.length && !this.pornhub.strm_filename) this.pornhub.strm_filename = this.scanData.episodes[0].filename;
         ElementPlus.ElMessage.success('扫描完成');
       }catch(e){ ElementPlus.ElMessage.error(e.message||'扫描失败') }
       finally{ this.scanning=false }
@@ -1342,6 +1375,38 @@ const NfoGenerator = {
         await this.scan();
       }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') }
       finally{ this.savingTvshow=false }
+    },
+    async previewPornhubMetadata(){
+      if(!this.pornhub.url){ ElementPlus.ElMessage.warning('请先粘贴 PornHub 地址'); return }
+      this.pornhub.previewing = true;
+      try{
+        const res = await fetch('/api/nfo/automation/pornhub-metadata/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:this.pornhub.url})});
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'抓取失败') }
+        const data = await res.json();
+        this.pornhub.preview = data;
+        this.pornhub.selectedTags = (data.tags || []).slice();
+        ElementPlus.ElMessage.success(`已抓取中文标签 ${data.chinese_tag_count} 个`);
+      }catch(e){ ElementPlus.ElMessage.error(e.message||'抓取失败') }
+      finally{ this.pornhub.previewing = false }
+    },
+    selectAllPornhubTags(){
+      if(this.pornhub.preview) this.pornhub.selectedTags = (this.pornhub.preview.tags || []).slice();
+    },
+    clearPornhubTags(){ this.pornhub.selectedTags = [] },
+    async writePornhubMetadata(){
+      if(!this.pornhub.strm_filename){ ElementPlus.ElMessage.warning('请选择 .strm 文件'); return }
+      if(!this.pornhub.preview){ ElementPlus.ElMessage.warning('请先抓取标签和发布时间'); return }
+      this.pornhub.writing = true;
+      try{
+        const payload = {actor_dir:this.selectedDir, strm_filename:this.pornhub.strm_filename, published_at:this.pornhub.preview.published_at || '', tags:this.pornhub.selectedTags || []};
+        const res = await fetch('/api/nfo/automation/pornhub-metadata/write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'写入失败') }
+        const data = await res.json();
+        this.logs = (data.logs || []).concat(this.logs || []);
+        ElementPlus.ElMessage.success(`已写入 ${data.tags.length} 个中文标签`);
+        await this.scan();
+      }catch(e){ ElementPlus.ElMessage.error(e.message||'写入失败') }
+      finally{ this.pornhub.writing = false }
     },
     async uploadArtwork(kind, ev){
       const file = ev.target.files && ev.target.files[0];

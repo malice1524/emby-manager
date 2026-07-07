@@ -223,6 +223,8 @@ static/index.html
   → 扫描 Season 1 内 .strm/.JPG/.nfo
   → 可视化填写 tvshow.nfo（保存后如需立即生效，手动刷新 Emby）
   → 上传/替换 poster.jpg、fanart.jpg、logo.png（上传后如需立即生效，手动刷新 Emby）
+  → 选择单集 .strm 并粘贴 PornHub 视频页，抓取发布时间和中文标签
+  → 勾选中文标签后写入该集同名 .nfo（写入前备份旧 nfo）
   → 上传剧集图片
   → 按 mtime 匹配缺图集数并重命名为同名 .JPG
   → 为缺失剧集批量生成同名 .nfo

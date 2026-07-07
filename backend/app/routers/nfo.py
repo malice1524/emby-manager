@@ -1,10 +1,14 @@
 import os
 import re
 import shutil
+import json
 import httpx
+from html import unescape as html_unescape
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
+from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
@@ -15,6 +19,8 @@ router = APIRouter(prefix="/api/nfo", tags=["nfo"])
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 PENDING_IMAGE_RE = re.compile(r"^IMG_(?:\d+|UPLOAD_)", re.I)
 STRM_RE = re.compile(r"^(?P<actor>.+)\.S(?P<season>\d+)E(?P<episode>\d+)\.(?P<title>.+)\.strm$", re.I)
+CHINESE_RE = re.compile(r"[\u4e00-\u9fff]")
+TAG_SPLIT_RE = re.compile(r"[,，;；|]")
 
 
 class ActorDirRequest(BaseModel):
@@ -28,6 +34,17 @@ class RefreshEmbyRequest(BaseModel):
 class ExecuteRequest(BaseModel):
     actor_dir: str
     refresh_emby: bool = True
+
+
+class PornhubPreviewRequest(BaseModel):
+    url: str
+
+
+class PornhubWriteRequest(BaseModel):
+    actor_dir: str
+    strm_filename: str
+    published_at: str = ""
+    tags: list[str] = []
 
 
 class TvshowRequest(BaseModel):
@@ -115,6 +132,125 @@ def _episode_nfo(title: str, season: int, episode: int) -> str:
         f'  <episode>{episode}</episode>\n'
         '</episodedetails>\n'
     )
+
+
+def _is_pornhub_url(url: str) -> bool:
+    parsed = urlparse(url.strip())
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme in {"http", "https"} and (host == "pornhub.com" or host.endswith(".pornhub.com")) and "view_video.php" in parsed.path
+
+
+def _normalize_date(value: str) -> str:
+    text = (value or "").strip()
+    match = re.search(r"(\d{4}-\d{2}-\d{2})", text)
+    return match.group(1) if match else ""
+
+
+def _split_tags(value) -> list[str]:
+    raw = []
+    if isinstance(value, str):
+        raw = TAG_SPLIT_RE.split(value)
+    elif isinstance(value, list):
+        raw = [str(item) for item in value]
+    tags = []
+    seen = set()
+    for item in raw:
+        tag = html_unescape(str(item)).strip().strip('"\'')
+        tag = re.sub(r"\s+", " ", tag)
+        if tag and tag.lower() not in seen:
+            seen.add(tag.lower())
+            tags.append(tag)
+    return tags
+
+
+def _chinese_tags(tags: list[str]) -> list[str]:
+    filtered = []
+    seen = set()
+    for tag in tags:
+        if CHINESE_RE.search(tag) and tag not in seen:
+            seen.add(tag)
+            filtered.append(tag)
+    return filtered
+
+
+def _extract_pornhub_metadata(html: str) -> dict:
+    tags = []
+    published_at = ""
+    for script in re.findall(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, flags=re.I | re.S):
+        try:
+            data = json.loads(html_unescape(script.strip()))
+        except Exception:
+            continue
+        items = data if isinstance(data, list) else [data]
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if not published_at:
+                published_at = _normalize_date(str(item.get("uploadDate") or item.get("datePublished") or ""))
+            tags.extend(_split_tags(item.get("keywords") or item.get("genre") or []))
+    for content in re.findall(r'<meta[^>]+(?:property|name|itemprop)=["\'](?:video:tag|keywords|uploadDate|datePublished)["\'][^>]+content=["\']([^"\']+)["\']', html, flags=re.I):
+        if re.search(r"\d{4}-\d{2}-\d{2}", content) and not published_at:
+            published_at = _normalize_date(content)
+        else:
+            tags.extend(_split_tags(content))
+    if not published_at:
+        for pattern in [r'"uploadDate"\s*:\s*"([^"]+)"', r'"datePublished"\s*:\s*"([^"]+)"']:
+            match = re.search(pattern, html, flags=re.I)
+            if match:
+                published_at = _normalize_date(match.group(1))
+                break
+    if not tags:
+        for match in re.findall(r'"(?:tags|keywords)"\s*:\s*"([^"]+)"', html, flags=re.I):
+            tags.extend(_split_tags(match))
+    tags = _split_tags(tags)
+    return {"published_at": published_at, "all_tags": tags, "tags": _chinese_tags(tags)}
+
+
+def _safe_strm_path(actor_dir: Path, strm_filename: str) -> Path:
+    if Path(strm_filename).name != strm_filename or not strm_filename.lower().endswith(".strm"):
+        raise HTTPException(status_code=400, detail="只能选择 Season 1 下的 .strm 文件")
+    path = _season_dir(actor_dir) / strm_filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail=".strm 文件不存在")
+    if not STRM_RE.match(path.name):
+        raise HTTPException(status_code=400, detail=".strm 文件名不符合 SxxExx 格式")
+    return path
+
+
+def _write_episode_metadata_nfo(strm_path: Path, published_at: str, tags: list[str]) -> tuple[str, list[str]]:
+    match = STRM_RE.match(strm_path.name)
+    title = match.group("title")
+    season = int(match.group("season"))
+    episode = int(match.group("episode"))
+    nfo_path = strm_path.with_suffix(".nfo")
+    date = _normalize_date(published_at)
+    chinese = _chinese_tags(tags)
+    backup = _backup(nfo_path)
+    root = ET.Element("episodedetails")
+    if nfo_path.exists() and nfo_path.stat().st_size > 0:
+        try:
+            root = ET.fromstring(nfo_path.read_text(encoding="utf-8"))
+        except ET.ParseError:
+            root = ET.Element("episodedetails")
+    for child in list(root):
+        if child.tag in {"aired", "premiered", "tag"}:
+            root.remove(child)
+    values = {"title": title, "season": str(season), "episode": str(episode)}
+    for tag_name, value in values.items():
+        elem = root.find(tag_name)
+        if elem is None:
+            elem = ET.SubElement(root, tag_name)
+        elem.text = value
+    if date:
+        ET.SubElement(root, "aired").text = date
+        ET.SubElement(root, "premiered").text = date
+    for tag in chinese:
+        ET.SubElement(root, "tag").text = tag
+    ET.indent(root, space="  ")
+    xml = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n' + ET.tostring(root, encoding="unicode") + "\n"
+    nfo_path.write_text(xml, encoding="utf-8")
+    return backup, chinese
+
 
 
 def _build_scan(actor_dir: Path):
@@ -342,6 +478,45 @@ async def refresh_emby_automation(req: RefreshEmbyRequest | None = None):
     if req and req.actor_dir:
         return await _refresh_emby_for_actor(_safe_actor_dir(req.actor_dir))
     return await _refresh_emby_library()
+
+
+@router.post("/automation/pornhub-metadata/preview")
+async def preview_pornhub_metadata(req: PornhubPreviewRequest):
+    url = req.url.strip()
+    if not _is_pornhub_url(url):
+        raise HTTPException(status_code=400, detail="只支持 PornHub 视频页面地址")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    }
+    async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers=headers) as client:
+        resp = await client.get(url)
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"PornHub 页面抓取失败: HTTP {resp.status_code}")
+    meta = _extract_pornhub_metadata(resp.text)
+    return {
+        "ok": True,
+        "published_at": meta["published_at"],
+        "tags": meta["tags"],
+        "all_tag_count": len(meta["all_tags"]),
+        "chinese_tag_count": len(meta["tags"]),
+        "message": "已抓到标签，但没有中文标签" if meta["all_tags"] and not meta["tags"] else "",
+    }
+
+
+@router.post("/automation/pornhub-metadata/write")
+async def write_pornhub_metadata(req: PornhubWriteRequest):
+    actor_dir = _safe_actor_dir(req.actor_dir)
+    strm_path = _safe_strm_path(actor_dir, req.strm_filename)
+    backup, tags = _write_episode_metadata_nfo(strm_path, req.published_at, req.tags)
+    nfo_name = strm_path.with_suffix(".nfo").name
+    logs = []
+    if backup:
+        logs.append(f"已备份旧 NFO: {backup}")
+    if _normalize_date(req.published_at):
+        logs.append(f"已写入发布时间: {_normalize_date(req.published_at)}")
+    logs.append(f"已写入中文标签: {len(tags)} 个")
+    return {"ok": True, "nfo": nfo_name, "backup": backup, "published_at": _normalize_date(req.published_at), "tags": tags, "logs": logs}
 
 
 @router.post("/automation/execute")

@@ -533,7 +533,47 @@ multipart/form-data:
 
 图片保存到 `Season 1`，再通过扫描/执行流程按 `IMG_*` 与 mtime 生成重命名计划。
 
-### 7.6 刷新 Emby 元数据
+### 7.6 PornHub 单集元数据预览
+
+```http
+POST /api/nfo/automation/pornhub-metadata/preview
+Content-Type: application/json
+
+{"url":"https://cn.pornhub.com/view_video.php?viewkey=..."}
+```
+
+只支持 `pornhub.com` / `*.pornhub.com` 的 `view_video.php` 视频页。后端抓取页面后优先解析 JSON-LD，其次解析 meta/HTML 兜底字段，返回发布时间与中文标签；英文标签会被过滤，不返回给前端勾选。
+
+返回示例：
+
+```json
+{
+  "ok": true,
+  "published_at": "2024-06-01",
+  "tags": ["国产", "巨乳", "4K中文"],
+  "all_tag_count": 12,
+  "chinese_tag_count": 3,
+  "message": ""
+}
+```
+
+### 7.7 写入 PornHub 单集元数据
+
+```http
+POST /api/nfo/automation/pornhub-metadata/write
+Content-Type: application/json
+
+{
+  "actor_dir":".../Sienna Moore",
+  "strm_filename":"Sienna Moore.S01E37.标题.strm",
+  "published_at":"2024-06-01",
+  "tags":["国产", "巨乳"]
+}
+```
+
+只允许写入当前演员目录 `Season 1` 下的 `.strm` 同名 `.nfo`。写入前自动备份旧 nfo；保留/补齐 `title/season/episode`，更新 `aired/premiered`，删除旧 `<tag>` 后写入本次选择的中文 `<tag>`。后端会再次过滤非中文标签。
+
+### 7.8 刷新 Emby 元数据
 
 ```http
 POST /api/nfo/automation/refresh-emby
@@ -543,7 +583,7 @@ POST /api/nfo/automation/refresh-emby
 
 注意：单独保存 `tvshow.nfo`、上传 `poster/fanart/logo`、上传剧集图片接口本身不会自动刷新 Emby。需要立即生效时，前端会让用户点击“刷新 Emby 元数据”；批量处理建议在所有上传/保存完成后统一刷新。
 
-### 7.7 执行自动化
+### 7.9 执行自动化
 
 ```http
 POST /api/nfo/automation/execute
