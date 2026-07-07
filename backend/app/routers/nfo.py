@@ -48,6 +48,16 @@ class PornhubWriteRequest(BaseModel):
     tags: list[str] = []
 
 
+class PornhubPublishedItem(BaseModel):
+    strm_filename: str
+    url: str
+
+
+class PornhubPublishedBatchRequest(BaseModel):
+    actor_dir: str
+    items: list[PornhubPublishedItem]
+
+
 class TvshowRequest(BaseModel):
     actor_dir: str
     title: str
@@ -59,6 +69,7 @@ class TvshowRequest(BaseModel):
     sorttitle: str = ""
     displayorder: str = "aired"
     overwrite: bool = False
+    tags: list[str] = []
 
 
 def _media_root() -> Path:
@@ -302,6 +313,45 @@ def _write_tvshow_tags(actor_dir: Path, tags: list[str]) -> str:
 
 
 
+def _xml_text(root: ET.Element, name: str) -> str:
+    elem = root.find(name)
+    return (elem.text or "").strip() if elem is not None else ""
+
+
+def _read_tvshow_nfo(actor_dir: Path) -> dict:
+    data = {"title": "", "plot": "", "outline": "", "tmdb_id": "", "dateadded": "", "sorttitle": "", "displayorder": "aired", "lockdata": False, "tags": []}
+    path = actor_dir / "tvshow.nfo"
+    if not path.exists() or path.stat().st_size <= 0:
+        return data
+    try:
+        root = ET.fromstring(path.read_text(encoding="utf-8"))
+    except ET.ParseError:
+        return data
+    data["title"] = _xml_text(root, "title")
+    data["plot"] = _xml_text(root, "plot")
+    data["outline"] = _xml_text(root, "outline")
+    data["dateadded"] = _xml_text(root, "dateadded")
+    data["sorttitle"] = _xml_text(root, "sorttitle")
+    data["displayorder"] = _xml_text(root, "displayorder") or "aired"
+    data["lockdata"] = _xml_text(root, "lockdata").lower() == "true"
+    actor = root.find("actor")
+    if actor is not None:
+        tmdb = actor.find("tmdbid")
+        data["tmdb_id"] = (tmdb.text or "").strip() if tmdb is not None else ""
+    tags = []
+    for elem in root.findall("tag"):
+        value = (elem.text or "").strip()
+        if value:
+            tags.append(value)
+    if not tags:
+        for elem in root.findall("genre"):
+            value = (elem.text or "").strip()
+            if value:
+                tags.append(value)
+    data["tags"] = _chinese_tags(tags)
+    return data
+
+
 def _build_scan(actor_dir: Path):
     season = _season_dir(actor_dir)
     strms = _parse_strms(season)
@@ -363,6 +413,7 @@ def _build_scan(actor_dir: Path):
             "pending_images": len(pending),
         },
         "episodes": episodes,
+        "tvshow": _read_tvshow_nfo(actor_dir),
         "missing_images": missing_images,
         "missing_nfo": missing_nfo,
         "pending_images": [p.name for p in pending],
@@ -384,6 +435,13 @@ def _tvshow_xml(req: TvshowRequest) -> str:
         actor_lines.append(f"    <tmdbid>{escape(req.tmdb_id.strip())}</tmdbid>")
     actor_lines.append("  </actor>")
     actor = "\n".join(actor_lines)
+    tag_lines = []
+    for tag in _chinese_tags(req.tags):
+        tag_lines.append(f"  <tag>{escape(tag)}</tag>")
+        tag_lines.append(f"  <genre>{escape(tag)}</genre>")
+    tags_xml = "\n".join(tag_lines)
+    if tags_xml:
+        tags_xml += "\n"
     return (
         '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n'
         '<tvshow>\n'
@@ -394,6 +452,7 @@ def _tvshow_xml(req: TvshowRequest) -> str:
         f'  <title>{escape(title)}</title>\n'
         f'{actor}\n'
         f'  <sorttitle>{escape(sorttitle)}</sorttitle>\n'
+        f'{tags_xml}'
         '  <season>-1</season>\n'
         '  <episode>-1</episode>\n'
         f'  <displayorder>{escape(req.displayorder or "aired")}</displayorder>\n'
@@ -524,9 +583,8 @@ async def refresh_emby_automation(req: RefreshEmbyRequest | None = None):
     return await _refresh_emby_library()
 
 
-@router.post("/automation/pornhub-metadata/preview")
-async def preview_pornhub_metadata(req: PornhubPreviewRequest):
-    url = req.url.strip()
+async def _fetch_pornhub_metadata(url: str) -> dict:
+    url = url.strip()
     if not _is_pornhub_url(url):
         raise HTTPException(status_code=400, detail="只支持 PornHub 视频页面地址")
     headers = {
@@ -545,7 +603,12 @@ async def preview_pornhub_metadata(req: PornhubPreviewRequest):
             raise HTTPException(status_code=502, detail=f"PornHub 页面抓取失败，请检查 NAS 网络或在设置中配置代理 URL: {exc}")
     if resp.status_code >= 400:
         raise HTTPException(status_code=502, detail=f"PornHub 页面抓取失败: HTTP {resp.status_code}")
-    meta = _extract_pornhub_metadata(resp.text)
+    return _extract_pornhub_metadata(resp.text)
+
+
+@router.post("/automation/pornhub-metadata/preview")
+async def preview_pornhub_metadata(req: PornhubPreviewRequest):
+    meta = await _fetch_pornhub_metadata(req.url)
     return {
         "ok": True,
         "published_at": meta["published_at"],
@@ -568,6 +631,28 @@ async def write_pornhub_metadata(req: PornhubWriteRequest):
         logs.append(f"已写入单集发布时间: {_normalize_date(req.published_at)}")
     logs.append(f"已写入 tvshow.nfo 中文标签: {len(tags)} 个")
     return {"ok": True, "nfo": nfo_name, "backup": backup, "tvshow_backup": tvshow_backup, "published_at": _normalize_date(req.published_at), "tags": tags, "logs": logs}
+
+
+@router.post("/automation/pornhub-published/batch-write")
+async def batch_write_pornhub_published(req: PornhubPublishedBatchRequest):
+    actor_dir = _safe_actor_dir(req.actor_dir)
+    results = []
+    for item in req.items:
+        row = {"strm_filename": item.strm_filename, "ok": False, "published_at": "", "nfo": "", "error": ""}
+        try:
+            strm_path = _safe_strm_path(actor_dir, item.strm_filename)
+            meta = await _fetch_pornhub_metadata(item.url)
+            published_at = meta.get("published_at") or ""
+            if not published_at:
+                raise HTTPException(status_code=422, detail="未解析到发布时间")
+            _write_episode_metadata_nfo(strm_path, published_at, [])
+            row.update({"ok": True, "published_at": published_at, "nfo": strm_path.with_suffix(".nfo").name})
+        except HTTPException as exc:
+            row["error"] = str(exc.detail)
+        except Exception as exc:
+            row["error"] = str(exc)
+        results.append(row)
+    return {"ok": True, "results": results}
 
 
 @router.post("/automation/execute")

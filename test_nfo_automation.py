@@ -57,6 +57,15 @@ def test_nfo_automation_scans_executes_and_writes_tvshow(tmp_path, monkeypatch):
         assert "<tmdbid>6329873</tmdbid>" in tvshow
         assert tvshow.index("<plot>") < tvshow.index("<outline>") < tvshow.index("<lockdata>")
 
+        res2 = client.post("/api/nfo/automation/scan", json={"actor_dir": str(actor)})
+        assert res2.status_code == 200, res2.text
+        tv_data = res2.json()["tvshow"]
+        assert tv_data["title"] == "Sienna Moore"
+        assert tv_data["plot"] == "简介内容"
+        assert tv_data["outline"] == "简介内容"
+        assert tv_data["tmdb_id"] == "6329873"
+        assert tv_data["dateadded"] == "2026-07-06 18:00:00"
+
         ex = client.post("/api/nfo/automation/execute", json={"actor_dir": str(actor)})
         assert ex.status_code == 200, ex.text
         assert (season / "Sienna Moore.S01E02.新增剧集A.JPG").read_bytes() == b"img1"
@@ -484,3 +493,61 @@ def test_pornhub_metadata_write_merges_selected_chinese_tags(tmp_path, monkeypat
     assert not backups
     tvshow_backups = list(actor.glob('tvshow.nfo.bak.*'))
     assert not tvshow_backups
+
+
+def test_tvshow_save_writes_selected_tags(tmp_path, monkeypatch):
+    root, actor, _season = _make_actor_tree(tmp_path)
+    monkeypatch.setenv('NFO_MEDIA_ROOT', str(root))
+    with TestClient(app) as client:
+        res = client.post('/api/nfo/automation/tvshow', json={
+            'actor_dir': str(actor),
+            'title': 'Sienna Moore',
+            'plot': '简介内容',
+            'overwrite': True,
+            'tags': ['国产', 'Asian', '巨乳'],
+        })
+        assert res.status_code == 200, res.text
+    tvshow = (actor / 'tvshow.nfo').read_text(encoding='utf-8')
+    assert '<tag>国产</tag>' in tvshow
+    assert '<genre>国产</genre>' in tvshow
+    assert '<tag>巨乳</tag>' in tvshow
+    assert '<tag>Asian</tag>' not in tvshow
+
+
+def test_pornhub_published_batch_writes_episode_dates(tmp_path, monkeypatch):
+    root, actor, season = _make_actor_tree(tmp_path)
+    monkeypatch.setenv('NFO_MEDIA_ROOT', str(root))
+
+    class FakeResponse:
+        status_code = 200
+        text = '<script type="application/ld+json">{"uploadDate":"2024-06-01T12:34:56+00:00","keywords":"国产"}</script>'
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+        async def get(self, url, **kwargs):
+            return FakeResponse()
+
+    from backend.app.routers import nfo
+    monkeypatch.setattr(nfo, 'get_http_client', lambda: FakeClient())
+
+    with TestClient(app) as client:
+        res = client.post('/api/nfo/automation/pornhub-published/batch-write', json={
+            'actor_dir': str(actor),
+            'items': [
+                {'strm_filename': 'Sienna Moore.S01E02.新增剧集A.strm', 'url': 'https://cn.pornhub.com/view_video.php?viewkey=a'},
+                {'strm_filename': 'Sienna Moore.S01E03.新增剧集B.strm', 'url': 'https://cn.pornhub.com/view_video.php?viewkey=b'},
+            ],
+        })
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert [item['ok'] for item in data['results']] == [True, True]
+        assert [item['published_at'] for item in data['results']] == ['2024-06-01', '2024-06-01']
+
+    e2 = (season / 'Sienna Moore.S01E02.新增剧集A.nfo').read_text(encoding='utf-8')
+    e3 = (season / 'Sienna Moore.S01E03.新增剧集B.nfo').read_text(encoding='utf-8')
+    assert '<aired>2024-06-01</aired>' in e2
+    assert '<premiered>2024-06-01</premiered>' in e3
+    assert '<tag>国产</tag>' not in e2

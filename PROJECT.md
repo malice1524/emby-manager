@@ -221,10 +221,9 @@ static/index.html
 ```text
 浏览选择演员目录
   → 扫描 Season 1 内 .strm/.JPG/.nfo
-  → 可视化填写 tvshow.nfo（保存后如需立即生效，手动刷新 Emby）
+  → 可视化填写 tvshow.nfo；可粘贴 PornHub 视频页抓取主视频中文标签并写入 tvshow.nfo（保存后如需立即生效，手动刷新 Emby）
+  → 在独立“PornHub 发布时间”卡片中勾选多集 .strm，逐行填写 URL，批量抓取发布时间写入每集 .nfo
   → 上传/替换 poster.jpg、fanart.jpg、logo.png（上传后如需立即生效，手动刷新 Emby）
-  → 选择单集 .strm 并粘贴 PornHub 视频页，抓取发布时间和中文标签
-  → 勾选中文标签后，将发布时间写入单集 .nfo、标签写入 tvshow.nfo
   → 上传剧集图片
   → 按 mtime 匹配缺图集数并重命名为同名 .JPG
   → 为缺失剧集批量生成同名 .nfo

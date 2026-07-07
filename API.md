@@ -503,11 +503,12 @@ Content-Type: application/json
   "outline":"简介",
   "tmdb_id":"6329873",
   "dateadded":"2026-07-06 18:00:00",
-  "overwrite":true
+  "overwrite":true,
+  "tags":["素人情侣", "吃鸡"]
 }
 ```
 
-字段顺序：`plot → outline → lockdata → dateadded → title → actor → sorttitle → season → episode → displayorder`。覆盖已有文件时直接替换。
+字段顺序：`plot → outline → lockdata → dateadded → title → actor → sorttitle → tag/genre → season → episode → displayorder`。覆盖已有文件时直接替换；`tags` 只写入包含中文的标签，并同时输出 `<tag>` 与 `<genre>`。
 
 ### 7.4 上传演员图片
 
@@ -557,21 +558,34 @@ Content-Type: application/json
 }
 ```
 
-### 7.7 写入 PornHub 单集元数据
+### 7.7 批量写入 PornHub 发布时间
 
 ```http
-POST /api/nfo/automation/pornhub-metadata/write
+POST /api/nfo/automation/pornhub-published/batch-write
 Content-Type: application/json
 
 {
   "actor_dir":".../Sienna Moore",
-  "strm_filename":"Sienna Moore.S01E37.标题.strm",
-  "published_at":"2024-06-01",
-  "tags":["国产", "巨乳"]
+  "items":[
+    {"strm_filename":"Sienna Moore.S01E01.标题.strm", "url":"https://cn.pornhub.com/view_video.php?viewkey=..."},
+    {"strm_filename":"Sienna Moore.S01E02.标题.strm", "url":"https://cn.pornhub.com/view_video.php?viewkey=..."}
+  ]
 }
 ```
 
-只允许选择当前演员目录 `Season 1` 下的 `.strm`。写入时会直接更新同名单集 `.nfo` 的 `aired/premiered` 发布时间；中文标签写入演员目录 `tvshow.nfo` 的 `<tag>/<genre>`，旧标签以本次选择为准。后端会再次过滤非中文标签。
+只允许选择当前演员目录 `Season 1` 下的 `.strm`。后端逐条抓取 PornHub 页面发布时间，并写入对应同名单集 `.nfo` 的 `aired/premiered`；某一行失败不影响其他行。标签不在此接口写入，中文标签通过保存 `tvshow.nfo` 写入 `<tag>/<genre>`。
+
+返回示例：
+
+```json
+{
+  "ok": true,
+  "results": [
+    {"strm_filename":"...E01...strm", "ok":true, "published_at":"2024-06-01", "nfo":"...E01...nfo", "error":""},
+    {"strm_filename":"...E02...strm", "ok":false, "published_at":"", "nfo":"", "error":"未解析到发布时间"}
+  ]
+}
+```
 
 ### 7.8 刷新 Emby 元数据
 

@@ -196,8 +196,14 @@ body {
 
 .nfo-input { width:100%; max-width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:8px; color:var(--text); outline:none; min-width:0; }
 .nfo-textarea { width:100%; padding:10px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:8px; color:var(--text); outline:none; resize:vertical; }
-.nfo-pornhub-fields { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr); gap:10px; margin-bottom:10px; min-width:0; max-width:100%; overflow:hidden; }
+.nfo-pornhub-fields { display:grid; grid-template-columns:minmax(0,2fr) minmax(120px,auto); gap:10px; margin-bottom:10px; min-width:0; max-width:100%; overflow:hidden; }
 @media (max-width: 640px) { .nfo-pornhub-fields { grid-template-columns:1fr; } }
+.nfo-published-scroll { max-height:360px; overflow-y:auto; display:grid; gap:8px; padding-right:4px; margin-right:-4px; }
+.nfo-published-row { display:grid; grid-template-columns:auto minmax(150px,1fr) minmax(220px,1.4fr) minmax(90px,auto); gap:8px; align-items:center; padding:10px; border:1px solid var(--glass-border); border-radius:10px; background:rgba(255,255,255,0.03); min-width:0; }
+.nfo-published-title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:var(--text); }
+.nfo-published-url { height:38px; }
+.nfo-published-status { min-width:0; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-width: 700px) { .nfo-published-row { grid-template-columns:auto minmax(0,1fr); } .nfo-published-url, .nfo-published-status { grid-column:2 / -1; } }
 .nfo-image-plan-row { display:flex; align-items:center; gap:8px; padding:10px; border:1px solid var(--glass-border); border-radius:10px; background:rgba(255,255,255,0.03); font-size:13px; min-width:0; max-width:100%; overflow:hidden; }
 .nfo-image-plan-source, .nfo-image-plan-target { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .nfo-image-plan-source { flex:0 1 42%; }
@@ -608,7 +614,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.32</div>
+    <div class="sidebar-version">v1.33</div>
   </aside>
 
   <!-- Main -->
@@ -1254,6 +1260,24 @@ const NfoGenerator = {
         </div>
         <textarea v-model="tv.plot" placeholder="plot 简介" rows="3" class="nfo-textarea"></textarea>
         <textarea v-model="tv.outline" placeholder="outline 简介（可空，默认等于 plot）" rows="3" class="nfo-textarea" style="margin-top:8px"></textarea>
+        <div style="border:1px solid var(--glass-border);border-radius:12px;padding:12px;background:rgba(255,255,255,0.03);margin-top:10px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px">PornHub 中文标签</div>
+          <div class="nfo-pornhub-fields">
+            <input v-model="tagTool.url" placeholder="粘贴 PornHub 视频页面地址，用于抓取主视频中文标签" class="nfo-input" />
+            <el-button @click="previewPornhubTags" :loading="tagTool.previewing" type="primary" style="background:var(--accent);border-color:var(--accent)">抓取中文标签</el-button>
+          </div>
+          <div v-if="tagTool.preview" style="margin-top:10px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+              <el-button @click="selectAllTvTags" size="small">全选中文标签</el-button>
+              <el-button @click="clearTvTags" size="small">清空标签</el-button>
+              <span style="font-size:12px;color:var(--text-dim)">中文 {{tagTool.preview.chinese_tag_count}} 个，默认勾选前 {{Math.min(6, tagTool.preview.tags.length)}} 个</span>
+            </div>
+            <div v-if="tagTool.preview.tags.length" style="display:flex;gap:8px;flex-wrap:wrap">
+              <el-checkbox v-for="tag in tagTool.preview.tags" :key="tag" v-model="tv.tags" :label="tag" border>{{tag}}</el-checkbox>
+            </div>
+            <div v-else style="font-size:13px;color:var(--orange)">{{tagTool.preview.message || '没有解析到中文标签'}}</div>
+          </div>
+        </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
           <el-checkbox v-model="tv.overwrite">覆盖已有 tvshow.nfo</el-checkbox>
           <el-button @click="saveTvshow" :loading="savingTvshow" type="primary" style="background:var(--accent);border-color:var(--accent)">保存 tvshow.nfo</el-button>
@@ -1261,28 +1285,21 @@ const NfoGenerator = {
       </div>
 
       <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
-        <div style="font-size:14px;font-weight:600;margin-bottom:12px">③ PornHub 单集标签与发布时间</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">选择一个 .strm，粘贴 PornHub 视频页；抓取后只展示中文标签。发布时间写入单集 .nfo，标签写入演员目录 tvshow.nfo。</div>
-        <div class="nfo-pornhub-fields">
-          <select v-model="pornhub.strm_filename" class="nfo-input">
-            <option value="">请选择 .strm 文件</option>
-            <option v-for="ep in scanData.episodes" :key="ep.filename" :value="ep.filename">{{ep.episode_code}} - {{ep.title}}</option>
-          </select>
-          <input v-model="pornhub.url" placeholder="粘贴 PornHub 视频页面地址" class="nfo-input" />
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-          <el-button @click="previewPornhubMetadata" :loading="pornhub.previewing" type="primary" style="background:var(--accent);border-color:var(--accent)">抓取标签和发布时间</el-button>
-          <el-button v-if="pornhub.preview" @click="selectAllPornhubTags" size="small">全选中文标签</el-button>
-          <el-button v-if="pornhub.preview" @click="clearPornhubTags" size="small">清空标签</el-button>
-          <span v-if="pornhub.preview" style="font-size:12px;color:var(--text-dim)">全部标签 {{pornhub.preview.all_tag_count}} 个，中文 {{pornhub.preview.chinese_tag_count}} 个</span>
-        </div>
-        <div v-if="pornhub.preview" style="border:1px solid var(--glass-border);border-radius:12px;padding:12px;background:rgba(255,255,255,0.03)">
-          <div style="font-size:13px;margin-bottom:8px">发布时间：<b>{{pornhub.preview.published_at || '未解析到'}}</b></div>
-          <div v-if="pornhub.preview.tags.length" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-            <el-checkbox v-for="tag in pornhub.preview.tags" :key="tag" v-model="pornhub.selectedTags" :label="tag" border>{{tag}}</el-checkbox>
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px">③ PornHub 发布时间</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">选择多集 .strm 并填写对应 PornHub 视频页，批量抓取发布时间并写入每集同名 .nfo。</div>
+        <div class="nfo-published-scroll">
+          <div v-for="row in publishedRows" :key="row.strm_filename" class="nfo-published-row">
+            <el-checkbox v-model="row.selected" style="flex:0 0 auto"></el-checkbox>
+            <div class="nfo-published-title" :title="row.label">{{row.label}}</div>
+            <input v-model="row.url" placeholder="PornHub URL" class="nfo-input nfo-published-url" />
+            <div class="nfo-published-status" :style="row.ok?'color:var(--green)':(row.error?'color:var(--red)':'color:var(--text-muted)')">{{row.ok ? row.published_at : (row.error || '')}}</div>
           </div>
-          <div v-else style="font-size:13px;color:var(--orange);margin-bottom:10px">{{pornhub.preview.message || '没有解析到中文标签，可只写入发布时间'}}</div>
-          <el-button @click="writePornhubMetadata" :loading="pornhub.writing" type="primary" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none">写入选中标签和发布时间到 NFO</el-button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <el-button @click="selectAllPublishedRows" size="small">全选</el-button>
+          <el-button @click="clearPublishedRows" size="small">清空选择</el-button>
+          <el-button @click="batchWritePublished" :loading="publishedTool.writing" type="primary" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none">批量抓取并写入发布时间</el-button>
+          <span style="font-size:12px;color:var(--text-dim)">仅处理已勾选且填写 URL 的行</span>
         </div>
       </div>
 
@@ -1326,8 +1343,9 @@ const NfoGenerator = {
   data(){
     return {
       selectedDir: '', browseData: null, browseError: '', browsing:false, scanData: null, scanning:false, executing:false, savingTvshow:false, refreshEmby:true, refreshingEmby:false, logs: [],
-      tv: { title:'', tmdb_id:'', dateadded:'', sorttitle:'', plot:'', outline:'', overwrite:false },
-      pornhub: { strm_filename:'', url:'', preview:null, selectedTags:[], previewing:false, writing:false },
+      tv: { title:'', tmdb_id:'', dateadded:'', sorttitle:'', plot:'', outline:'', overwrite:false, tags:[] },
+      tagTool: { url:'', preview:null, previewing:false },
+      publishedRows: [], publishedTool: { writing:false },
       artworkKinds: [
         {key:'poster', label:'poster.jpg', file:'poster.jpg'},
         {key:'fanart', label:'fanart.jpg', file:'fanart.jpg'},
@@ -1359,11 +1377,22 @@ const NfoGenerator = {
         const res = await fetch('/api/nfo/automation/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir})});
         if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'扫描失败') }
         this.scanData = await res.json();
+        this.applyTvshowData(this.scanData.tvshow);
         if(!this.tv.title) this.tv.title = this.scanData.actor_name;
-        if(this.scanData.episodes && this.scanData.episodes.length && !this.pornhub.strm_filename) this.pornhub.strm_filename = this.scanData.episodes[0].filename;
+        this.resetPublishedRows();
         ElementPlus.ElMessage.success('扫描完成');
       }catch(e){ ElementPlus.ElMessage.error(e.message||'扫描失败') }
       finally{ this.scanning=false }
+    },
+    applyTvshowData(data){
+      if(!data){ this.tv = Object.assign({}, this.tv, {title:'', tmdb_id:'', dateadded:'', sorttitle:'', plot:'', outline:'', tags:[]}); return }
+      this.tv.title = data.title || this.scanData.actor_name || '';
+      this.tv.tmdb_id = data.tmdb_id || '';
+      this.tv.dateadded = data.dateadded || '';
+      this.tv.sorttitle = data.sorttitle || '';
+      this.tv.plot = data.plot || '';
+      this.tv.outline = data.outline || '';
+      this.tv.tags = Array.isArray(data.tags) ? data.tags.slice() : [];
     },
     async saveTvshow(){
       if(!this.scanData){ return }
@@ -1378,37 +1407,52 @@ const NfoGenerator = {
       }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') }
       finally{ this.savingTvshow=false }
     },
-    async previewPornhubMetadata(){
-      if(!this.pornhub.url){ ElementPlus.ElMessage.warning('请先粘贴 PornHub 地址'); return }
-      this.pornhub.previewing = true;
+    async previewPornhubTags(){
+      if(!this.tagTool.url){ ElementPlus.ElMessage.warning('请先粘贴 PornHub 地址'); return }
+      this.tagTool.previewing = true;
       try{
-        const res = await fetch('/api/nfo/automation/pornhub-metadata/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:this.pornhub.url})});
+        const res = await fetch('/api/nfo/automation/pornhub-metadata/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:this.tagTool.url})});
         if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'抓取失败') }
         const data = await res.json();
-        this.pornhub.preview = data;
-        this.pornhub.selectedTags = (data.tags || []).slice(0, 6);
-        ElementPlus.ElMessage.success(`已抓取中文标签 ${data.chinese_tag_count} 个，默认勾选前 ${this.pornhub.selectedTags.length} 个`);
+        this.tagTool.preview = data;
+        this.tv.tags = (data.tags || []).slice(0, 6);
+        ElementPlus.ElMessage.success(`已抓取中文标签 ${data.chinese_tag_count} 个，默认勾选前 ${this.tv.tags.length} 个`);
       }catch(e){ ElementPlus.ElMessage.error(e.message||'抓取失败') }
-      finally{ this.pornhub.previewing = false }
+      finally{ this.tagTool.previewing = false }
     },
-    selectAllPornhubTags(){
-      if(this.pornhub.preview) this.pornhub.selectedTags = (this.pornhub.preview.tags || []).slice();
+    selectAllTvTags(){
+      if(this.tagTool.preview) this.tv.tags = (this.tagTool.preview.tags || []).slice();
     },
-    clearPornhubTags(){ this.pornhub.selectedTags = [] },
-    async writePornhubMetadata(){
-      if(!this.pornhub.strm_filename){ ElementPlus.ElMessage.warning('请选择 .strm 文件'); return }
-      if(!this.pornhub.preview){ ElementPlus.ElMessage.warning('请先抓取标签和发布时间'); return }
-      this.pornhub.writing = true;
+    clearTvTags(){ this.tv.tags = [] },
+    resetPublishedRows(){
+      const existing = new Map((this.publishedRows || []).map(row => [row.strm_filename, row]));
+      this.publishedRows = ((this.scanData && this.scanData.episodes) || []).map(ep => {
+        const old = existing.get(ep.filename) || {};
+        return {strm_filename:ep.filename, label:`${ep.episode_code} - ${ep.title}`, url:old.url || '', selected:!!old.selected, ok:false, error:'', published_at:''};
+      });
+    },
+    selectAllPublishedRows(){ this.publishedRows.forEach(row => { row.selected = true }) },
+    clearPublishedRows(){ this.publishedRows.forEach(row => { row.selected = false }) },
+    async batchWritePublished(){
+      const items = this.publishedRows.filter(row => row.selected && row.url.trim()).map(row => ({strm_filename:row.strm_filename, url:row.url.trim()}));
+      if(!items.length){ ElementPlus.ElMessage.warning('请勾选至少一行并填写 PornHub URL'); return }
+      this.publishedTool.writing = true;
       try{
-        const payload = {actor_dir:this.selectedDir, strm_filename:this.pornhub.strm_filename, published_at:this.pornhub.preview.published_at || '', tags:this.pornhub.selectedTags || []};
-        const res = await fetch('/api/nfo/automation/pornhub-metadata/write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'写入失败') }
+        this.publishedRows.forEach(row => { row.ok=false; row.error=''; row.published_at='' });
+        const res = await fetch('/api/nfo/automation/pornhub-published/batch-write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir, items})});
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'批量写入失败') }
         const data = await res.json();
-        this.logs = (data.logs || []).concat(this.logs || []);
-        ElementPlus.ElMessage.success(`已写入 ${data.tags.length} 个中文标签`);
+        const byName = new Map((data.results || []).map(item => [item.strm_filename, item]));
+        this.publishedRows.forEach(row => {
+          const result = byName.get(row.strm_filename);
+          if(result){ row.ok=!!result.ok; row.error=result.error || ''; row.published_at=result.published_at || ''; }
+        });
+        const okCount = (data.results || []).filter(item => item.ok).length;
+        this.logs = (data.results || []).map(item => item.ok ? `${item.strm_filename}: 已写入发布时间 ${item.published_at}` : `${item.strm_filename}: ${item.error}`);
+        ElementPlus.ElMessage.success(`批量完成，成功 ${okCount}/${data.results.length}`);
         await this.scan();
-      }catch(e){ ElementPlus.ElMessage.error(e.message||'写入失败') }
-      finally{ this.pornhub.writing = false }
+      }catch(e){ ElementPlus.ElMessage.error(e.message||'批量写入失败') }
+      finally{ this.publishedTool.writing = false }
     },
     async uploadArtwork(kind, ev){
       const file = ev.target.files && ev.target.files[0];
