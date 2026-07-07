@@ -461,7 +461,8 @@ def test_pornhub_metadata_write_merges_selected_chinese_tags(tmp_path, monkeypat
     assert '<premiered>2024-06-01</premiered>' in written
     assert '<tag>国产</tag>' in written
     assert '<tag>巨乳</tag>' in written
-    assert '<tag>4K中文</tag>' in written
+    assert '<genre>国产</genre>' in written
+    assert '<genre>巨乳</genre>' in written
     assert '<tag>Asian</tag>' not in written
     assert '<tag>旧标签</tag>' not in written
     backups = list(season.glob('Sienna Moore.S01E02.新增剧集A.nfo.bak.*'))

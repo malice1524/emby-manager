@@ -259,7 +259,7 @@ def _write_episode_metadata_nfo(strm_path: Path, published_at: str, tags: list[s
         except ET.ParseError:
             root = ET.Element("episodedetails")
     for child in list(root):
-        if child.tag in {"aired", "premiered", "tag"}:
+        if child.tag in {"aired", "premiered", "tag", "genre"}:
             root.remove(child)
     values = {"title": title, "season": str(season), "episode": str(episode)}
     for tag_name, value in values.items():
@@ -272,6 +272,7 @@ def _write_episode_metadata_nfo(strm_path: Path, published_at: str, tags: list[s
         ET.SubElement(root, "premiered").text = date
     for tag in chinese:
         ET.SubElement(root, "tag").text = tag
+        ET.SubElement(root, "genre").text = tag
     ET.indent(root, space="  ")
     xml = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n' + ET.tostring(root, encoding="unicode") + "\n"
     nfo_path.write_text(xml, encoding="utf-8")
