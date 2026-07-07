@@ -191,7 +191,7 @@ Cache-Control: no-cache, no-store, must-revalidate
 - 媒体库：列表、数量统计、海报墙、搜索、分页、跳页、详情弹窗
 - 完结监控：TMDB 搜索/详情/验证、TMDB 单集详情、TVmaze 播出时间补充、监控列表、定时检测、TG 通知、日志
 - 配置：TMDB Key、TG Bot、代理、Cron 检查规则
-- NFO 自动化：浏览选择演员目录、tvshow.nfo 表单（可抓取 PornHub 主视频中文标签并写入 tvshow.nfo，已有 tvshow.nfo 自动回填并展示标签，可手动添加自定义中文标签）、PornHub 发布时间卡片（卡片内滚动表格仅展示未写入发布时间的 `.strm`，批量填 URL 写入每集 `aired/premiered`）、poster/fanart/logo 上传、剧集图片重命名、每集 nfo 批量生成；保存 tvshow.nfo、上传 poster/fanart/logo、批量写入发布时间后自动扫描并刷新当前 Emby 演员目录；执行自动化后也按 `NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT` 精准刷新（失败/找不到时兜底全库刷新）
+- NFO 自动化：浏览选择演员目录、演员目录扫描概览（统计 `.strm/图片/.nfo`，同名图片支持 `.jpg/.jpeg/.png/.webp`，提供重新扫描当前目录和刷新 Emby 元数据按钮）、tvshow.nfo 表单（可抓取 PornHub 主视频中文标签并写入 tvshow.nfo，已有 tvshow.nfo 自动回填并展示标签，可手动添加自定义中文标签）、PornHub 发布时间卡片（卡片内滚动表格仅展示未写入发布时间的 `.strm`，批量填 URL 写入每集 `aired/premiered`）、poster/fanart/logo 上传、剧集图片重命名、每集 nfo 批量生成；保存 tvshow.nfo、上传 poster/fanart/logo、批量写入发布时间后自动扫描并刷新当前 Emby 演员目录；执行自动化后也按 `NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT` 精准刷新（失败/找不到时兜底全库刷新）
 
 ## 环境变量
 

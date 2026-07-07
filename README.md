@@ -110,7 +110,7 @@ DockerHub 镜像：
 使用方式：
 
 1. 从媒体根目录浏览目录并选择演员目录，例如 `已整理/PornHub/Sienna Moore`
-2. 选择后自动扫描 `Season 1`，预览 `.strm/.JPG/.nfo` 数量、缺图集数、缺 NFO 集数
+2. 选择后自动扫描 `Season 1`，预览 `.strm/图片/.nfo` 数量、缺图集数、缺 NFO 集数；演员目录扫描概览可手动重新扫描当前目录或刷新 Emby 元数据
 3. 可视化填写 `tvshow.nfo`，可粘贴 PornHub 视频页抓取主视频中文标签，默认勾选前 6 个，保存时写入 `tvshow.nfo`
 4. 在“PornHub 发布时间”卡片中勾选多集 `.strm`，逐行填写对应 PornHub URL，批量抓取发布时间并写入每集同名 `.nfo`
 5. 上传/替换 `poster.jpg`、`fanart.jpg`、`logo.png`

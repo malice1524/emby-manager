@@ -281,15 +281,16 @@ APScheduler
 ```text
 前端浏览选择演员目录
   → GET /api/nfo/automation/browse 读取 NFO_MEDIA_ROOT 下目录
-  → POST /api/nfo/automation/scan 统计 Season 1 内 .strm/.JPG/.nfo
+  → POST /api/nfo/automation/scan 统计 Season 1 内 .strm/同名图片(.jpg/.jpeg/.png/.webp)/.nfo，并返回缺图、缺 nfo、单集发布时间状态
   → POST /api/nfo/automation/tvshow 保存 tvshow.nfo（写媒体目录，不写 /data）
   → POST /api/nfo/automation/upload-artwork 上传 poster/fanart/logo（写媒体目录，不写 /data）
   → POST /api/nfo/automation/upload-episode-images 上传剧集图片为 IMG_UPLOAD_*.JPG
+  → POST /api/nfo/automation/pornhub-published/batch-write 批量抓取 PornHub 发布时间并写入每集 aired/premiered
   → POST /api/nfo/automation/execute 重命名剧集图片、生成每集 nfo
   → 默认按 NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT 映射精准刷新当前 Emby 演员目录，找不到则全库刷新
 ```
 
-NFO 自动化不写入 `/data`。单独保存 `tvshow.nfo` 或上传图片后不会自动刷新 Emby；需要立即生效时由前端点击“刷新 Emby 元数据”调用 `POST /api/nfo/automation/refresh-emby`。
+NFO 自动化不写入 `/data`。保存 `tvshow.nfo`、上传 `poster/fanart/logo`、批量写入 PornHub 发布时间后，前端会自动重新扫描当前演员目录并调用 `POST /api/nfo/automation/refresh-emby` 精准刷新当前 Emby 演员目录；演员目录扫描概览也提供手动重新扫描和刷新按钮。
 
 ## 8. 备份与迁移
 

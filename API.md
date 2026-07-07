@@ -488,7 +488,7 @@ Content-Type: application/json
 {"actor_dir":"/vol1/1000/docker/strm/已整理/PornHub/Sienna Moore"}
 ```
 
-返回：演员名、Season 1 路径、`tvshow/poster/fanart/logo` 存在状态、`.strm/.JPG/.nfo` 计数、缺图/缺 nfo 集数、`IMG_*` 图片重命名预览。
+返回：演员名、Season 1 路径、`tvshow/poster/fanart/logo` 存在状态、`.strm/同名图片(.jpg/.jpeg/.png/.webp)/.nfo` 计数、缺图/缺 nfo 集数、是否已有单集发布时间、`IMG_*` 图片重命名预览。
 
 ### 7.3 保存 tvshow.nfo
 
@@ -593,7 +593,7 @@ Content-Type: application/json
 POST /api/nfo/automation/refresh-emby
 ```
 
-调用 Emby 刷新任务。带 `actor_dir` 时优先按 `NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT` 映射精准刷新当前演员目录；不带 `actor_dir` 时调用 `/Library/Refresh` 全库刷新。NFO 自动化执行接口默认会在完成后自动刷新。
+调用 Emby 刷新任务。带 `actor_dir` 时优先按 `NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT` 映射精准刷新当前演员目录；不带 `actor_dir` 时调用 `/Library/Refresh` 全库刷新。NFO 自动化执行接口默认会在完成后自动刷新；演员目录扫描概览也提供手动“刷新 Emby 元数据”按钮。
 
 注意：前端在保存 `tvshow.nfo`、上传 `poster/fanart/logo`、批量写入 PornHub 发布时间后，会自动重新扫描当前演员目录并调用本接口精准刷新当前 Emby 演员目录。上传剧集图片本身只是暂存，仍需执行自动化重命名后刷新。
 
