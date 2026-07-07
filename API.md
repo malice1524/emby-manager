@@ -593,9 +593,9 @@ Content-Type: application/json
 POST /api/nfo/automation/refresh-emby
 ```
 
-调用 Emby 刷新任务。带 `actor_dir` 时优先按 `NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT` 映射精准刷新当前演员目录；不带 `actor_dir` 时调用 `/Library/Refresh` 全库刷新。NFO 自动化执行接口默认会在完成后自动刷新，也可以通过页面按钮手动刷新。
+调用 Emby 刷新任务。带 `actor_dir` 时优先按 `NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT` 映射精准刷新当前演员目录；不带 `actor_dir` 时调用 `/Library/Refresh` 全库刷新。NFO 自动化执行接口默认会在完成后自动刷新。
 
-注意：单独保存 `tvshow.nfo`、上传 `poster/fanart/logo`、上传剧集图片接口本身不会自动刷新 Emby。需要立即生效时，前端会让用户点击“刷新 Emby 元数据”；批量处理建议在所有上传/保存完成后统一刷新。
+注意：前端在保存 `tvshow.nfo`、上传 `poster/fanart/logo`、批量写入 PornHub 发布时间后，会自动重新扫描当前演员目录并调用本接口精准刷新当前 Emby 演员目录。上传剧集图片本身只是暂存，仍需执行自动化重命名后刷新。
 
 ### 7.9 执行自动化
 

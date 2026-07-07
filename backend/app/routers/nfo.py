@@ -352,6 +352,16 @@ def _read_tvshow_nfo(actor_dir: Path) -> dict:
     return data
 
 
+def _episode_has_published_date(nfo_path: Path) -> bool:
+    if not nfo_path.exists() or nfo_path.stat().st_size <= 0:
+        return False
+    try:
+        root = ET.fromstring(nfo_path.read_text(encoding="utf-8"))
+    except ET.ParseError:
+        return False
+    return bool(_xml_text(root, "aired") or _xml_text(root, "premiered"))
+
+
 def _build_scan(actor_dir: Path):
     season = _season_dir(actor_dir)
     strms = _parse_strms(season)
@@ -368,6 +378,7 @@ def _build_scan(actor_dir: Path):
         nfo_path = strm_path.with_suffix(".nfo")
         has_image = image_path.exists()
         has_nfo = nfo_path.exists() and nfo_path.stat().st_size > 0
+        has_published_date = _episode_has_published_date(nfo_path)
         if has_image:
             existing_images += 1
         else:
@@ -384,6 +395,7 @@ def _build_scan(actor_dir: Path):
             "filename": item["filename"],
             "has_image": has_image,
             "has_nfo": has_nfo,
+            "has_published_date": has_published_date,
             "image_name": image_path.name if has_image else "",
             "nfo_name": nfo_path.name if has_nfo else "",
         })

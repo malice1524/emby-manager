@@ -205,6 +205,11 @@ body {
 .nfo-published-status { min-width:0; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 @media (max-width: 700px) { .nfo-published-row { grid-template-columns:auto minmax(0,1fr); } .nfo-published-url, .nfo-published-status { grid-column:2 / -1; } }
 .nfo-image-plan-row { display:flex; align-items:center; gap:8px; padding:10px; border:1px solid var(--glass-border); border-radius:10px; background:rgba(255,255,255,0.03); font-size:13px; min-width:0; max-width:100%; overflow:hidden; }
+.nfo-missing-lists { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:12px; }
+.nfo-missing-box { min-width:0; border:1px solid var(--glass-border); border-radius:12px; background:rgba(255,255,255,0.03); padding:10px; }
+.nfo-missing-scroll { max-height:180px; overflow-y:auto; display:grid; gap:6px; }
+.nfo-missing-item { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-dim); padding:6px 8px; border-radius:8px; background:rgba(255,255,255,0.03); }
+@media (max-width: 700px) { .nfo-missing-lists { grid-template-columns:1fr; } }
 .nfo-image-plan-source, .nfo-image-plan-target { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .nfo-image-plan-source { flex:0 1 42%; }
 .nfo-image-plan-arrow { flex:0 0 auto; color:var(--text-dim); }
@@ -614,7 +619,7 @@ body {
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
     </nav>
-    <div class="sidebar-version">v1.33</div>
+    <div class="sidebar-version">v1.34</div>
   </aside>
 
   <!-- Main -->
@@ -1266,16 +1271,20 @@ const NfoGenerator = {
             <input v-model="tagTool.url" placeholder="粘贴 PornHub 视频页面地址，用于抓取主视频中文标签" class="nfo-input" />
             <el-button @click="previewPornhubTags" :loading="tagTool.previewing" type="primary" style="background:var(--accent);border-color:var(--accent)">抓取中文标签</el-button>
           </div>
-          <div v-if="tagTool.preview" style="margin-top:10px">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-top:10px">
+            <input v-model="tagTool.custom" placeholder="手动填写中文标签，多个用逗号/顿号分隔" class="nfo-input" @keyup.enter="addCustomTvTags" />
+            <el-button @click="addCustomTvTags">添加自定义标签</el-button>
+          </div>
+          <div v-if="tagTool.preview || tv.tags.length" style="margin-top:10px">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
               <el-button @click="selectAllTvTags" size="small">全选中文标签</el-button>
               <el-button @click="clearTvTags" size="small">清空标签</el-button>
-              <span style="font-size:12px;color:var(--text-dim)">中文 {{tagTool.preview.chinese_tag_count}} 个，默认勾选前 {{Math.min(6, tagTool.preview.tags.length)}} 个</span>
+              <span style="font-size:12px;color:var(--text-dim)">{{tagTool.preview ? `中文 ${tagTool.preview.chinese_tag_count} 个，默认勾选前 ${Math.min(6, tagTool.preview.tags.length)} 个` : `已选标签 ${tv.tags.length} 个`}}</span>
             </div>
-            <div v-if="tagTool.preview.tags.length" style="display:flex;gap:8px;flex-wrap:wrap">
-              <el-checkbox v-for="tag in tagTool.preview.tags" :key="tag" v-model="tv.tags" :label="tag" border>{{tag}}</el-checkbox>
+            <div v-if="displayTvTags().length" style="display:flex;gap:8px;flex-wrap:wrap">
+              <el-checkbox v-for="tag in displayTvTags()" :key="tag" v-model="tv.tags" :label="tag" border>{{tag}}</el-checkbox>
             </div>
-            <div v-else style="font-size:13px;color:var(--orange)">{{tagTool.preview.message || '没有解析到中文标签'}}</div>
+            <div v-else style="font-size:13px;color:var(--orange)">{{tagTool.preview && tagTool.preview.message || '没有解析到中文标签'}}</div>
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
@@ -1287,7 +1296,7 @@ const NfoGenerator = {
       <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
         <div style="font-size:14px;font-weight:600;margin-bottom:12px">③ PornHub 发布时间</div>
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">选择多集 .strm 并填写对应 PornHub 视频页，批量抓取发布时间并写入每集同名 .nfo。</div>
-        <div class="nfo-published-scroll">
+        <div v-if="publishedRows.length" class="nfo-published-scroll">
           <div v-for="row in publishedRows" :key="row.strm_filename" class="nfo-published-row">
             <el-checkbox v-model="row.selected" style="flex:0 0 auto"></el-checkbox>
             <div class="nfo-published-title" :title="row.label">{{row.label}}</div>
@@ -1295,6 +1304,7 @@ const NfoGenerator = {
             <div class="nfo-published-status" :style="row.ok?'color:var(--green)':(row.error?'color:var(--red)':'color:var(--text-muted)')">{{row.ok ? row.published_at : (row.error || '')}}</div>
           </div>
         </div>
+        <div v-else style="font-size:13px;color:var(--green);padding:10px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.03)">所有剧集都已写入发布时间</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
           <el-button @click="selectAllPublishedRows" size="small">全选</el-button>
           <el-button @click="clearPublishedRows" size="small">清空选择</el-button>
@@ -1321,6 +1331,22 @@ const NfoGenerator = {
             <input type="file" multiple accept="image/jpeg,image/png,image/webp" @change="uploadEpisodeImages" style="font-size:12px;color:var(--text-dim);max-width:220px" />
           </div>
         </div>
+        <div class="nfo-missing-lists">
+          <div class="nfo-missing-box">
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--orange)">缺图片 {{scanData.missing_images.length}}</div>
+            <div v-if="scanData.missing_images.length" class="nfo-missing-scroll">
+              <div v-for="item in scanData.missing_images" :key="'img-'+item.filename" class="nfo-missing-item" :title="item.filename">{{item.episode_code}} - {{item.title}}</div>
+            </div>
+            <div v-else style="font-size:12px;color:var(--green)">图片完整</div>
+          </div>
+          <div class="nfo-missing-box">
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--orange)">缺 NFO {{scanData.missing_nfo.length}}</div>
+            <div v-if="scanData.missing_nfo.length" class="nfo-missing-scroll">
+              <div v-for="item in scanData.missing_nfo" :key="'nfo-'+item.filename" class="nfo-missing-item" :title="item.filename">{{item.episode_code}} - {{item.title}}</div>
+            </div>
+            <div v-else style="font-size:12px;color:var(--green)">NFO 完整</div>
+          </div>
+        </div>
         <div v-if="scanData.image_plan.length" style="display:grid;gap:8px;margin-bottom:12px;min-width:0;max-width:100%;overflow:hidden">
           <div v-for="item in scanData.image_plan" :key="item.source" class="nfo-image-plan-row">
             <span class="nfo-image-plan-source" :title="item.source">{{item.source}}</span><span class="nfo-image-plan-arrow">→</span><span class="nfo-image-plan-target" :title="item.target">{{item.target}}</span>
@@ -1329,7 +1355,6 @@ const NfoGenerator = {
         <div v-else style="font-size:13px;color:var(--green);margin-bottom:12px">暂无待重命名图片计划</div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
           <el-checkbox v-model="refreshEmby">执行后刷新 Emby 元数据</el-checkbox>
-          <el-button @click="refreshEmbyNow" :loading="refreshingEmby" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text)">刷新 Emby 元数据</el-button>
         </div>
         <el-button @click="executeAutomation" :loading="executing" type="primary" size="large" style="width:100%;margin-top:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;font-weight:600;border-radius:12px">执行图片重命名 + 生成每集 NFO</el-button>
       </div>
@@ -1344,7 +1369,7 @@ const NfoGenerator = {
     return {
       selectedDir: '', browseData: null, browseError: '', browsing:false, scanData: null, scanning:false, executing:false, savingTvshow:false, refreshEmby:true, refreshingEmby:false, logs: [],
       tv: { title:'', tmdb_id:'', dateadded:'', sorttitle:'', plot:'', outline:'', overwrite:false, tags:[] },
-      tagTool: { url:'', preview:null, previewing:false },
+      tagTool: { url:'', custom:'', preview:null, previewing:false },
       publishedRows: [], publishedTool: { writing:false },
       artworkKinds: [
         {key:'poster', label:'poster.jpg', file:'poster.jpg'},
@@ -1404,6 +1429,7 @@ const NfoGenerator = {
         const data = await res.json();
         ElementPlus.ElMessage.success('已保存 tvshow.nfo');
         await this.scan();
+        await this.refreshActorMetadataAfterChange();
       }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') }
       finally{ this.savingTvshow=false }
     },
@@ -1424,9 +1450,27 @@ const NfoGenerator = {
       if(this.tagTool.preview) this.tv.tags = (this.tagTool.preview.tags || []).slice();
     },
     clearTvTags(){ this.tv.tags = [] },
+    displayTvTags(){
+      const tags = [];
+      const add = value => { if(value && !tags.includes(value)) tags.push(value) };
+      ((this.tagTool.preview && this.tagTool.preview.tags) || []).forEach(add);
+      (this.tv.tags || []).forEach(add);
+      return tags;
+    },
+    addCustomTvTags(){
+      const input = (this.tagTool.custom || '').trim();
+      if(!input){ return }
+      const tags = input.split(/[，,、;；|]+/).map(t=>t.trim()).filter(t=>t && /[\u4e00-\u9fff]/.test(t));
+      if(!tags.length){ ElementPlus.ElMessage.warning('请输入包含中文的标签'); return }
+      const current = new Set(this.tv.tags || []);
+      tags.forEach(tag => current.add(tag));
+      this.tv.tags = Array.from(current);
+      this.tagTool.custom = '';
+      ElementPlus.ElMessage.success(`已添加 ${tags.length} 个自定义标签`);
+    },
     resetPublishedRows(){
       const existing = new Map((this.publishedRows || []).map(row => [row.strm_filename, row]));
-      this.publishedRows = ((this.scanData && this.scanData.episodes) || []).map(ep => {
+      this.publishedRows = ((this.scanData && this.scanData.episodes) || []).filter(ep => !ep.has_published_date).map(ep => {
         const old = existing.get(ep.filename) || {};
         return {strm_filename:ep.filename, label:`${ep.episode_code} - ${ep.title}`, url:old.url || '', selected:!!old.selected, ok:false, error:'', published_at:''};
       });
@@ -1451,6 +1495,7 @@ const NfoGenerator = {
         this.logs = (data.results || []).map(item => item.ok ? `${item.strm_filename}: 已写入发布时间 ${item.published_at}` : `${item.strm_filename}: ${item.error}`);
         ElementPlus.ElMessage.success(`批量完成，成功 ${okCount}/${data.results.length}`);
         await this.scan();
+        if(okCount > 0) await this.refreshActorMetadataAfterChange();
       }catch(e){ ElementPlus.ElMessage.error(e.message||'批量写入失败') }
       finally{ this.publishedTool.writing = false }
     },
@@ -1461,7 +1506,7 @@ const NfoGenerator = {
       try{
         const res = await fetch('/api/nfo/automation/upload-artwork',{method:'POST',body:fd});
         if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'上传失败') }
-        ElementPlus.ElMessage.success('上传成功'); ev.target.value=''; await this.scan();
+        ElementPlus.ElMessage.success('上传成功'); ev.target.value=''; await this.scan(); await this.refreshActorMetadataAfterChange();
       }catch(e){ ElementPlus.ElMessage.error(e.message||'上传失败') }
     },
     async uploadEpisodeImages(ev){
@@ -1472,6 +1517,16 @@ const NfoGenerator = {
         if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'上传失败') }
         const data = await res.json(); this.scanData = data.scan; ev.target.value=''; ElementPlus.ElMessage.success(`已上传 ${data.saved.length} 张图片`);
       }catch(e){ ElementPlus.ElMessage.error(e.message||'上传失败') }
+    },
+    async refreshActorMetadataAfterChange(){
+      if(!this.selectedDir){ return }
+      try{
+        const res = await fetch('/api/nfo/automation/refresh-emby',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir})});
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'刷新失败') }
+        this.logs = ['元数据已改动，已自动刷新当前 Emby 演员目录'].concat(this.logs || []);
+      }catch(e){
+        this.logs = [`自动刷新 Emby 元数据失败: ${e.message || '刷新失败'}`].concat(this.logs || []);
+      }
     },
     async refreshEmbyNow(){
       this.refreshingEmby=true;

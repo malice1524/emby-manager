@@ -221,9 +221,9 @@ static/index.html
 ```text
 浏览选择演员目录
   → 扫描 Season 1 内 .strm/.JPG/.nfo
-  → 可视化填写 tvshow.nfo；可粘贴 PornHub 视频页抓取主视频中文标签并写入 tvshow.nfo（保存后如需立即生效，手动刷新 Emby）
-  → 在独立“PornHub 发布时间”卡片中勾选多集 .strm，逐行填写 URL，批量抓取发布时间写入每集 .nfo
-  → 上传/替换 poster.jpg、fanart.jpg、logo.png（上传后如需立即生效，手动刷新 Emby）
+  → 可视化填写 tvshow.nfo；可粘贴 PornHub 视频页抓取主视频中文标签并写入 tvshow.nfo（保存后自动扫描并刷新当前 Emby 演员目录）
+  → 在独立“PornHub 发布时间”卡片中勾选多集 .strm，逐行填写 URL，批量抓取发布时间写入每集 .nfo（成功写入后自动扫描并刷新）
+  → 上传/替换 poster.jpg、fanart.jpg、logo.png（上传后自动扫描并刷新）
   → 上传剧集图片
   → 按 mtime 匹配缺图集数并重命名为同名 .JPG
   → 为缺失剧集批量生成同名 .nfo
@@ -232,9 +232,9 @@ static/index.html
 
 刷新规则：
 
+- 保存 `tvshow.nfo`、上传 `poster/fanart/logo`、批量写入 PornHub 发布时间后，前端会自动重新扫描当前演员目录并刷新当前 Emby 演员目录
+- 上传剧集图片只暂存为 `IMG_UPLOAD_*`，不自动刷新；执行自动化重命名和基础 NFO 生成后再刷新
 - 执行自动化后默认刷新当前选择的 Emby 演员目录
-- 单独保存 `tvshow.nfo`、上传 `poster/fanart/logo`、上传剧集图片不自动刷新，避免频繁扫描；需要立即生效时点击“刷新 Emby 元数据”
-- 手动刷新按钮会传当前选择目录；未选择目录时才全库刷新
 
 安全规则：
 

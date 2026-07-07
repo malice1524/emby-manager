@@ -76,6 +76,8 @@ def assert_monitor_frontend(html: str):
     assert 'this.tv.tags = (data.tags || []).slice(0, 6);' in html
     assert 'class="nfo-pornhub-fields"' in html
     assert 'class="nfo-published-scroll"' in html
+    assert 'filter(ep => !ep.has_published_date)' in html
+    assert '所有剧集都已写入发布时间' in html
     assert 'class="nfo-published-row"' in html
     assert 'batchWritePublished' in html
     assert '/api/nfo/automation/pornhub-published/batch-write' in html
@@ -85,6 +87,16 @@ def assert_monitor_frontend(html: str):
     assert 'applyTvshowData(this.scanData.tvshow)' in html
     assert 'applyTvshowData(data)' in html
     assert 'this.tv.tags = Array.isArray(data.tags) ? data.tags.slice() : [];' in html
+    assert 'displayTvTags()' in html
+    assert 'addCustomTvTags' in html
+    assert 'tagTool: { url:\'\', custom:\'\', preview:null, previewing:false }' in html
+    assert '手动填写中文标签' in html
+    assert 'refreshActorMetadataAfterChange' in html
+    assert '元数据已改动，已自动刷新当前 Emby 演员目录' in html
+    assert 'class="nfo-missing-lists"' in html
+    assert '缺图片 {{scanData.missing_images.length}}' in html
+    assert '缺 NFO {{scanData.missing_nfo.length}}' in html
+    assert '.nfo-missing-scroll { max-height:180px; overflow-y:auto;' in html
     assert 'const NfoGenerator = {' in html
     assert "{path:'/nfo',component:NfoGenerator}" in html
 

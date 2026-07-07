@@ -38,6 +38,7 @@ def test_nfo_automation_scans_executes_and_writes_tvshow(tmp_path, monkeypatch):
         assert res.status_code == 200, res.text
         data = res.json()
         assert data["actor_name"] == "Sienna Moore"
+        assert all(item["has_published_date"] is False for item in data["episodes"])
         assert data["counts"] == {"strm": 3, "images": 1, "nfo": 1, "pending_images": 2}
         assert [item["episode"] for item in data["missing_images"]] == [2, 3]
         assert [item["source"] for item in data["image_plan"]] == ["IMG_1001.JPG", "IMG_1002.JPG"]
@@ -551,3 +552,10 @@ def test_pornhub_published_batch_writes_episode_dates(tmp_path, monkeypatch):
     assert '<aired>2024-06-01</aired>' in e2
     assert '<premiered>2024-06-01</premiered>' in e3
     assert '<tag>国产</tag>' not in e2
+
+    with TestClient(app) as client:
+        scan = client.post('/api/nfo/automation/scan', json={'actor_dir': str(actor)})
+        assert scan.status_code == 200, scan.text
+        episodes = {item['episode']: item for item in scan.json()['episodes']}
+        assert episodes[2]['has_published_date'] is True
+        assert episodes[3]['has_published_date'] is True
