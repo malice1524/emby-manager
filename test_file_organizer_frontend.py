@@ -35,6 +35,8 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert '/file-organizer/suggest-next-episode' in html
         assert 'suggestNextEpisode' in html
         assert 'episodeHint' in html
+        assert 'actorNameFromPath' in html
+        assert 'Season 1' in html
         assert 'browsePicker' in html
         assert 'fo-path-row' in html
         assert 'fo-episode-grid' in html
