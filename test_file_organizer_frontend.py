@@ -27,6 +27,12 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert '#/file-organizer' in html
         assert '文件整理' in html
         assert '选择 115 源文件夹' in html
+        assert '选择源文件夹' in html
+        assert '选择目标文件夹' in html
+        assert '选择元数据源目录' in html
+        assert '选择元数据目标目录' in html
+        assert '/file-organizer/browse' in html
+        assert 'browsePicker' in html
         assert '扫描视频' in html
         assert 'DeepSeek 翻译标题' in html
         assert '预检查' in html
