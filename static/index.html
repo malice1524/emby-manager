@@ -596,7 +596,20 @@ body {
 .file-organizer-page .fo-path-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
 .file-organizer-page .fo-episode-grid { display:grid; grid-template-columns:minmax(0,1fr) 120px 160px; gap:10px; }
 .file-organizer-page .fo-action-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-.file-organizer-page .fo-action-row .el-button { min-height:40px; }
+.file-organizer-page .el-button { min-height:40px; background:rgba(255,255,255,0.06); border-color:var(--glass-border); color:var(--text); box-shadow:none; }
+.file-organizer-page .el-button:hover,
+.file-organizer-page .el-button:focus { background:rgba(255,255,255,0.10); border-color:var(--glass-border-hover); color:#fff; }
+.file-organizer-page .el-button.el-button--primary { background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; color:#fff; }
+.file-organizer-page .el-button.is-disabled,
+.file-organizer-page .el-button.is-disabled:hover { background:rgba(255,255,255,0.035); border-color:var(--glass-border); color:var(--text-muted); opacity:0.75; }
+.file-organizer-page .el-select { min-width:180px; }
+.file-organizer-page .el-select .el-input__wrapper { background:rgba(255,255,255,0.06); box-shadow:0 0 0 1px var(--glass-border) inset; }
+.file-organizer-page .el-select .el-input__inner { color:var(--text); }
+.file-organizer-page .el-checkbox__label,
+.file-organizer-page .el-switch__label { color:var(--text-dim); }
+.file-organizer-page .el-checkbox__input.is-checked + .el-checkbox__label,
+.file-organizer-page .el-switch__label.is-active { color:var(--text); }
+.file-organizer-page .el-tag { background:rgba(108,92,231,0.18); border-color:rgba(108,92,231,0.35); color:var(--accent2); }
 @media (max-width: 640px) {
   .file-organizer-page .glass-card { padding: 14px !important; }
   .file-organizer-page .fo-path-row,
@@ -650,7 +663,7 @@ body {
       <a href="#/file-organizer" onclick="navClose()"><span class="nav-icon">🗂️</span> 文件整理</a>
       <a href="#/settings" onclick="navClose()"><span class="nav-icon">⚙️</span> 设置</a>
     </nav>
-    <div class="sidebar-version">v1.40</div>
+    <div class="sidebar-version">v1.41</div>
   </aside>
 
   <!-- Main -->
