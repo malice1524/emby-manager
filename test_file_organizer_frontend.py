@@ -48,6 +48,9 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert '@media (max-width: 640px)' in html
         assert '扫描视频' in html
         assert 'DeepSeek 翻译标题' in html
+        assert '调整顺序' in html
+        assert 'moveItem' in html
+        assert '集数预览' in html
         assert '预检查' in html
         assert '执行移动' in html
         assert '元数据复制到 115' in html
