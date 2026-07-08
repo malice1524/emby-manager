@@ -10,6 +10,7 @@ from ..file_organizer import (
     precheck_metadata_copy,
     precheck_video_moves,
     scan_videos,
+    suggest_next_episode,
 )
 from ..settings_store import load_deepseek_settings
 
@@ -51,6 +52,14 @@ async def translate(payload: dict[str, Any]):
         raise HTTPException(status_code=400, detail="翻译项目必须是列表")
     settings = load_deepseek_settings()
     return {"items": await translate_titles(rows, settings)}
+
+
+@router.post("/suggest-next-episode")
+def suggest_next(payload: dict[str, Any]):
+    try:
+        return suggest_next_episode(str(payload.get("target_dir") or ""), int(payload.get("season") or 1))
+    except Exception as exc:
+        _handle_error(exc)
 
 
 @router.post("/precheck")

@@ -75,6 +75,20 @@ def test_scan_and_video_precheck(monkeypatch, tmp_path):
     assert "已存在" in conflict.json()["items"][0]["error"]
 
 
+def test_suggest_next_episode_api(monkeypatch, tmp_path):
+    cloud, _, _ = setup_roots(monkeypatch, tmp_path)
+    target = cloud / "Actor"
+    touch(target / "Actor.S01E01.Title.mp4")
+    touch(target / "Actor.S01E02.Title.mkv")
+    client = TestClient(app)
+
+    res = client.post("/api/file-organizer/suggest-next-episode", json={"target_dir": str(target), "season": 1})
+
+    assert res.status_code == 200
+    assert res.json()["next_episode"] == 3
+    assert res.json()["matched_count"] == 2
+
+
 def test_metadata_precheck_reports_overwrite(monkeypatch, tmp_path):
     cloud, strm, _ = setup_roots(monkeypatch, tmp_path)
     source = strm / "Actor"

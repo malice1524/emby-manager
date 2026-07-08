@@ -9,6 +9,7 @@ from typing import Any
 VIDEO_SUFFIXES = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".ts", ".m2ts", ".webm"}
 METADATA_SUFFIXES = {".nfo", ".jpg", ".jpeg", ".png", ".webp"}
 ORGANIZED_RE = re.compile(r"^.+\.S\d{2}E\d{2,}\..+\.[^.]+$", re.I)
+EPISODE_RE = re.compile(r"\.S(?P<season>\d{2})E(?P<episode>\d{2,})\.", re.I)
 INVALID_FILENAME_CHARS_RE = re.compile(r"[/\\:*?\"<>|]+")
 
 ROOTS = {
@@ -93,6 +94,30 @@ def sanitize_filename_part(text: str) -> str:
 def build_final_filename(actor: str, season: int, episode: int, title: str, suffix: str) -> str:
     suffix = suffix if suffix.startswith(".") else f".{suffix}"
     return f"{sanitize_filename_part(actor)}.S{int(season):02d}E{int(episode):02d}.{sanitize_filename_part(title)}{suffix}"
+
+
+def suggest_next_episode(target_dir: str, season: int) -> dict[str, Any]:
+    target = safe_path("cloud115", target_dir)
+    if not target.exists() or not target.is_dir():
+        raise FileNotFoundError("目标目录不存在")
+    season_num = int(season or 1)
+    episodes = []
+    for path in target.iterdir():
+        if not path.is_file() or path.suffix.lower() not in VIDEO_SUFFIXES:
+            continue
+        match = EPISODE_RE.search(path.name)
+        if not match:
+            continue
+        if int(match.group("season")) == season_num:
+            episodes.append(int(match.group("episode")))
+    max_episode = max(episodes) if episodes else 0
+    return {
+        "target_dir": str(target),
+        "season": season_num,
+        "max_episode": max_episode,
+        "next_episode": max_episode + 1,
+        "matched_count": len(episodes),
+    }
 
 
 def _validate_video_item(item: dict[str, Any], seen_targets: dict[str, int]) -> dict[str, Any]:

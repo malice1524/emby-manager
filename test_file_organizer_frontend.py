@@ -32,6 +32,9 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert '选择元数据源目录' in html
         assert '选择元数据目标目录' in html
         assert '/file-organizer/browse' in html
+        assert '/file-organizer/suggest-next-episode' in html
+        assert 'suggestNextEpisode' in html
+        assert 'episodeHint' in html
         assert 'browsePicker' in html
         assert 'fo-path-row' in html
         assert 'fo-episode-grid' in html

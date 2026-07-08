@@ -68,6 +68,25 @@ def test_build_final_filename_sanitizes_invalid_chars():
     assert file_organizer.build_final_filename("Actor", 1, 5, 'A/B:C*D?', ".mp4") == "Actor.S01E05.A B C D.mp4"
 
 
+def test_suggest_next_episode_from_target_dir(monkeypatch, tmp_path):
+    cloud, _, _ = setup_roots(monkeypatch, tmp_path)
+    target = cloud / "PornHub" / "Actor"
+    touch(target / "Actor.S01E01.中文标题.mp4")
+    touch(target / "Actor.S01E02.另一个标题.mkv")
+    touch(target / "Actor.S02E09.第二季.mp4")
+    touch(target / "random.mp4")
+
+    s1 = file_organizer.suggest_next_episode(str(target), 1)
+    s2 = file_organizer.suggest_next_episode(str(target), 2)
+    s3 = file_organizer.suggest_next_episode(str(target), 3)
+
+    assert s1["max_episode"] == 2
+    assert s1["next_episode"] == 3
+    assert s1["matched_count"] == 2
+    assert s2["next_episode"] == 10
+    assert s3["next_episode"] == 1
+
+
 def test_precheck_blocks_conflicts_and_duplicates(monkeypatch, tmp_path):
     cloud, _, _ = setup_roots(monkeypatch, tmp_path)
     src = touch(cloud / "src" / "a.mp4")
