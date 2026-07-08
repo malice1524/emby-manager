@@ -618,6 +618,8 @@ body {
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
+      <a href="#/file-organizer" onclick="navClose()"><span class="nav-icon">🗂️</span> 文件整理</a>
+      <a href="#/settings" onclick="navClose()"><span class="nav-icon">⚙️</span> 设置</a>
     </nav>
     <div class="sidebar-version">v1.36</div>
   </aside>
@@ -1654,6 +1656,62 @@ const Monitor = {
   }
 }
 
+// ---- File Organizer ----
+const Settings = {
+  template: `
+    <div class="fade-in">
+      <div class="glass-card" style="padding:18px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div><h2 style="font-size:18px;font-weight:600">设置</h2><div style="font-size:12px;color:var(--text-dim)">DeepSeek 翻译配置</div></div>
+          <el-tag :type="settings.api_key_configured?'success':'warning'">{{settings.api_key_configured ? 'API Key 已配置：'+settings.api_key_source : 'API Key 未配置'}}</el-tag>
+        </div>
+      </div>
+      <div class="glass-card" style="padding:18px;display:grid;gap:14px;max-width:760px">
+        <div><div style="font-size:13px;font-weight:500;margin-bottom:5px">DeepSeek API Key</div><input v-model="form.api_key" type="password" placeholder="留空保持原 Key；输入空字符串保存会清空并回落环境变量" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+        <div><div style="font-size:13px;font-weight:500;margin-bottom:5px">DeepSeek Base URL</div><input v-model="form.base_url" placeholder="https://api.deepseek.com" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+        <div style="display:grid;grid-template-columns:1fr 160px;gap:12px"><div><div style="font-size:13px;font-weight:500;margin-bottom:5px">模型</div><input v-model="form.model" placeholder="deepseek-chat" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div><div><div style="font-size:13px;font-weight:500;margin-bottom:5px">翻译批次大小</div><input v-model.number="form.batch_size" type="number" min="1" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end"><el-button @click="load">刷新</el-button><el-button type="primary" @click="save" :loading="saving">保存设置</el-button></div>
+      </div>
+      <div class="glass-card" style="padding:18px;margin-top:16px;display:grid;gap:12px;max-width:760px">
+        <div style="font-size:15px;font-weight:600">测试翻译</div>
+        <input v-model="testTitle" placeholder="Beautiful Girl At Home 1080p" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" />
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><el-button @click="testTranslate" :loading="testing">测试翻译</el-button><span v-if="testResult" style="color:var(--green);font-size:13px">{{testResult}}</span></div>
+      </div>
+    </div>
+  `,
+  data(){ return {settings:{api_key_configured:false,api_key_source:'none'},form:{api_key:undefined,base_url:'https://api.deepseek.com',model:'deepseek-chat',batch_size:10},saving:false,testing:false,testTitle:'',testResult:''} },
+  async mounted(){ await this.load() },
+  methods:{
+    async load(){ try{ const d=await fetchJSON('/settings/deepseek'); this.settings=d; this.form={api_key:undefined,base_url:d.base_url||'https://api.deepseek.com',model:d.model||'deepseek-chat',batch_size:d.batch_size||10} }catch(e){ ElementPlus.ElMessage.error(e.message||'加载设置失败') } },
+    async save(){ this.saving=true; try{ const payload={base_url:this.form.base_url,model:this.form.model,batch_size:this.form.batch_size}; if(this.form.api_key!==undefined) payload.api_key=this.form.api_key; const d=await fetchJSON('/settings/deepseek',{method:'PUT',body:JSON.stringify(payload)}); this.settings=d; this.form.api_key=undefined; ElementPlus.ElMessage.success('保存成功') }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') }finally{ this.saving=false } },
+    async testTranslate(){ if(!this.testTitle.trim()) return ElementPlus.ElMessage.warning('请输入测试标题'); this.testing=true; this.testResult=''; try{ const d=await fetchJSON('/settings/deepseek/test-translation',{method:'POST',body:JSON.stringify({title:this.testTitle.trim()})}); this.testResult=d.title; ElementPlus.ElMessage.success('测试成功') }catch(e){ ElementPlus.ElMessage.error(e.message||'测试失败') }finally{ this.testing=false } }
+  }
+}
+
+const FileOrganizer = {
+  template: `
+    <div class="fade-in">
+      <div class="glass-card" style="padding:18px;margin-bottom:16px"><h2 style="font-size:18px;font-weight:600">文件整理</h2><div style="font-size:12px;color:var(--text-dim)">115 视频翻译重命名移动，以及 /strm 元数据复制到 115</div></div>
+      <el-collapse v-model="active" style="display:grid;gap:12px">
+        <el-collapse-item name="paths" title="1. 选择 115 源文件夹和目标文件夹"><div class="glass-card" style="padding:16px;display:grid;gap:12px"><input v-model="sourceDir" placeholder="/CloudDrive115/源文件夹" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><input v-model="targetDir" placeholder="/CloudDrive115/目标文件夹" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><div style="display:flex;gap:10px;flex-wrap:wrap"><el-switch v-model="recursive" active-text="扫描子文件夹" /><el-select v-model="sort" size="small" style="width:180px"><el-option label="按文件名排序" value="name"/><el-option label="按修改时间从早到晚" value="mtime"/></el-select><el-button type="primary" @click="scan" :loading="loading">扫描视频</el-button></div></div></el-collapse-item>
+        <el-collapse-item name="scan" title="2. 扫描视频 / 3. DeepSeek 翻译标题"><div class="glass-card" style="padding:16px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px"><span style="font-size:13px;color:var(--text-dim)">共 {{items.length}} 个视频</span><el-button @click="translate" :disabled="!items.length" :loading="translating">DeepSeek 翻译标题</el-button></div><el-table :data="items" size="small" style="width:100%"><el-table-column type="selection" width="44"/><el-table-column prop="name" label="原文件名" min-width="220"/><el-table-column label="中文标题" min-width="220"><template #default="s"><input v-model="s.row.chinese_title" style="width:100%;padding:6px;background:transparent;border:1px solid var(--glass-border);border-radius:6px;color:var(--text)" /></template></el-table-column><el-table-column prop="status" label="状态" width="130"/></el-table></div></el-collapse-item>
+        <el-collapse-item name="confirm" title="4. 表格确认最终文件名 / 5. 预检查"><div class="glass-card" style="padding:16px;display:grid;gap:12px"><div style="display:grid;grid-template-columns:1fr 120px 160px;gap:10px"><input v-model="actorName" placeholder="演员名称" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><input v-model.number="season" type="number" min="1" placeholder="季" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><input v-model.number="startEpisode" type="number" min="1" placeholder="起始集数" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /></div><el-checkbox v-model="confirmed">确认无误</el-checkbox><div style="display:flex;gap:10px"><el-button @click="precheck" :disabled="!items.length">预检查</el-button><el-button type="primary" @click="execute" :disabled="!precheckOk || !confirmed" :loading="executing">执行移动</el-button></div><pre v-if="precheckResult" style="white-space:pre-wrap;color:var(--text-dim);font-size:12px">{{precheckResult}}</pre></div></el-collapse-item>
+        <el-collapse-item name="metadata" title="7. 元数据复制到 115"><div class="glass-card" style="padding:16px;display:grid;gap:12px"><input v-model="metaSource" placeholder="/strm/元数据源目录" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><input v-model="metaTarget" placeholder="/CloudDrive115/115目标目录" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><div style="display:flex;gap:10px"><el-button @click="metadataPrecheck">预检查</el-button><el-button type="primary" @click="metadataExecute" :disabled="!metadataConfirmed">复制并覆盖元数据</el-button><el-checkbox v-model="metadataConfirmed">确认覆盖同名元数据</el-checkbox></div><pre v-if="metadataResult" style="white-space:pre-wrap;color:var(--text-dim);font-size:12px">{{metadataResult}}</pre></div></el-collapse-item>
+      </el-collapse>
+    </div>
+  `,
+  data(){ return {active:['paths'],sourceDir:'',targetDir:'',recursive:false,sort:'name',items:[],loading:false,translating:false,actorName:'',season:1,startEpisode:1,confirmed:false,precheckOk:false,precheckResult:'',executing:false,metaSource:'',metaTarget:'',metadataConfirmed:false,metadataResult:''} },
+  methods:{
+    async scan(){ this.loading=true; try{ const d=await fetchJSON('/file-organizer/scan',{method:'POST',body:JSON.stringify({source_dir:this.sourceDir,recursive:this.recursive,sort:this.sort})}); this.items=(d.items||[]).map((i,idx)=>({...i,chinese_title:i.title,status:i.suspected_organized?'疑似已整理':'待翻译',episode:this.startEpisode+idx})); if(!this.actorName&&this.targetDir) this.actorName=this.targetDir.split('/').filter(Boolean).pop()||''; ElementPlus.ElMessage.success('扫描完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'扫描失败') }finally{ this.loading=false } },
+    async translate(){ this.translating=true; try{ const rows=this.items.map(i=>({id:i.id,title:i.title})); const d=await fetchJSON('/file-organizer/translate',{method:'POST',body:JSON.stringify({items:rows})}); const map={}; (d.items||[]).forEach(r=>map[r.id]=r); this.items=this.items.map(i=>map[i.id]?{...i,chinese_title:map[i.id].title||i.chinese_title,status:map[i.id].ok?(map[i.id].skipped?'已是中文':'已翻译'):'翻译失败: '+map[i.id].error}:i); ElementPlus.ElMessage.success('翻译完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'翻译失败') }finally{ this.translating=false } },
+    plannedItems(){ return this.items.map((i,idx)=>{ const ep=this.startEpisode+idx; const filename=(this.actorName||'Actor')+'.S'+String(this.season).padStart(2,'0')+'E'+String(ep).padStart(2,'0')+'.'+(i.chinese_title||i.title)+i.suffix; return {id:i.id,source_path:i.path,target_path:this.targetDir.replace(/\/$/,'')+'/'+filename} }) },
+    async precheck(){ try{ const d=await fetchJSON('/file-organizer/precheck',{method:'POST',body:JSON.stringify({confirmed:this.confirmed,items:this.plannedItems()})}); this.precheckOk=!!d.ok; this.precheckResult=JSON.stringify(d,null,2); d.ok?ElementPlus.ElMessage.success('预检查通过'):ElementPlus.ElMessage.warning('预检查未通过') }catch(e){ ElementPlus.ElMessage.error(e.message||'预检查失败') } },
+    async execute(){ this.executing=true; try{ const d=await fetchJSON('/file-organizer/execute',{method:'POST',body:JSON.stringify({confirmed:this.confirmed,items:this.plannedItems()})}); this.precheckResult=JSON.stringify(d,null,2); d.ok?ElementPlus.ElMessage.success('执行完成'):ElementPlus.ElMessage.warning('部分失败，可修改后重试') }catch(e){ ElementPlus.ElMessage.error(e.message||'执行失败') }finally{ this.executing=false } },
+    async metadataPrecheck(){ try{ const d=await fetchJSON('/file-organizer/metadata/precheck',{method:'POST',body:JSON.stringify({source_dir:this.metaSource,target_dir:this.metaTarget,confirmed:true})}); this.metadataResult=JSON.stringify(d,null,2); ElementPlus.ElMessage.success('元数据预检查完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'预检查失败') } },
+    async metadataExecute(){ try{ const d=await fetchJSON('/file-organizer/metadata/execute',{method:'POST',body:JSON.stringify({source_dir:this.metaSource,target_dir:this.metaTarget,confirmed:this.metadataConfirmed})}); this.metadataResult=JSON.stringify(d,null,2); d.ok?ElementPlus.ElMessage.success('元数据复制完成'):ElementPlus.ElMessage.warning('部分元数据复制失败') }catch(e){ ElementPlus.ElMessage.error(e.message||'复制失败') } }
+  }
+}
+
 // ---- Router ----
 const routes = [
   {path:'/',component:Dashboard},
@@ -1661,6 +1719,8 @@ const routes = [
   {path:'/libraries',component:Libraries},
   {path:'/nfo',component:NfoGenerator},
   {path:'/monitor',component:Monitor},
+  {path:'/file-organizer',component:FileOrganizer},
+  {path:'/settings',component:Settings},
 ]
 const router = VueRouter.createRouter({
   history:VueRouter.createWebHashHistory(),
