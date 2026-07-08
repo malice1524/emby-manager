@@ -615,7 +615,109 @@ Content-Type: application/json
 
 安全：只允许操作 `NFO_MEDIA_ROOT` 下目录，默认 `/vol1/1000/docker/strm`。
 
-## 8. API 开发注意事项
+## 8. DeepSeek 设置 `/api/settings`
+
+主要文件：`backend/app/routers/settings.py`、`backend/app/settings_store.py`、`backend/app/deepseek_client.py`
+
+### 8.1 获取 DeepSeek 设置
+
+```http
+GET /api/settings/deepseek
+```
+
+返回非敏感配置和 Key 状态，不返回完整 API Key：
+
+```json
+{"base_url":"https://api.deepseek.com","model":"deepseek-chat","batch_size":10,"api_key_configured":true,"api_key_source":"saved"}
+```
+
+### 8.2 保存 DeepSeek 设置
+
+```http
+PUT /api/settings/deepseek
+Content-Type: application/json
+
+{"api_key":"...","base_url":"https://api.deepseek.com","model":"deepseek-chat","batch_size":10}
+```
+
+说明：不传 `api_key` 保留已保存 Key；传空字符串清空已保存 Key，并回落 `DEEPSEEK_API_KEY` 环境变量。响应不回显 Key。
+
+### 8.3 测试翻译
+
+```http
+POST /api/settings/deepseek/test-translation
+Content-Type: application/json
+
+{"title":"Beautiful Girl At Home 1080p"}
+```
+
+返回：
+
+```json
+{"ok":true,"title":"美丽女孩在家中","skipped":false}
+```
+
+## 9. 文件整理 `/api/file-organizer`
+
+主要文件：`backend/app/routers/file_organizer.py`、`backend/app/file_organizer.py`
+
+安全边界：视频整理只允许 `/CloudDrive115` 内路径；元数据源只允许 `/strm`；元数据目标只允许 `/CloudDrive115`。
+
+### 9.1 浏览目录
+
+```http
+GET /api/file-organizer/browse?root=cloud115&path=/CloudDrive115
+```
+
+`root` 支持 `cloud115` 和 `strm`。返回当前目录、父目录和子目录列表。
+
+### 9.2 扫描视频
+
+```http
+POST /api/file-organizer/scan
+Content-Type: application/json
+
+{"source_dir":"/CloudDrive115/待整理","recursive":false,"sort":"name"}
+```
+
+`sort` 支持 `name` 和 `mtime`。只返回 `.mp4/.mkv/.avi/.mov/.wmv/.flv/.ts/.m2ts/.webm`。
+
+### 9.3 翻译标题
+
+```http
+POST /api/file-organizer/translate
+Content-Type: application/json
+
+{"items":[{"id":"1","title":"Beautiful Girl At Home"}]}
+```
+
+中文标题会跳过 DeepSeek；非中文标题按 DeepSeek 批量翻译返回行级结果。
+
+### 9.4 视频移动预检查与执行
+
+```http
+POST /api/file-organizer/precheck
+POST /api/file-organizer/execute
+```
+
+请求包含 `confirmed` 和 `items[].source_path/target_path`。执行使用挂载文件系统移动，不覆盖目标视频、不删除视频、不自动回滚；部分失败保留失败项用于重试。
+
+### 9.5 元数据复制预检查与执行
+
+```http
+POST /api/file-organizer/metadata/precheck
+POST /api/file-organizer/metadata/execute
+```
+
+请求示例：
+
+```json
+{"source_dir":"/strm/PornHub/Sienna Moore","target_dir":"/CloudDrive115/PornHub/Sienna Moore","confirmed":true}
+```
+
+只复制 `.nfo/.jpg/.jpeg/.png/.webp`，不复制 `.strm` 或视频文件；保留 `Season 1` 等目录结构；同名元数据确认后覆盖。
+
+## 10. API 开发注意事项
 
 1. 新增后端路由优先放 `backend/app/routers/`。
 2. 新路由必须在 `backend/app/main.py` include。

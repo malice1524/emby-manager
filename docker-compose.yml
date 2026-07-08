@@ -9,8 +9,12 @@ services:
       - EMBY_API_KEY=859413e6f23e4c42b2a095682ef5c068
       - NFO_MEDIA_ROOT=/vol1/1000/docker/strm/已整理/PornHub
       - EMBY_MEDIA_ROOT=/pron/PornHub
+      - DEEPSEEK_API_KEY=
     volumes:
       - /vol1/1000/docker/strm/已整理/PornHub:/vol1/1000/docker/strm/已整理/PornHub
+      - /vol1/1000/docker/CloudDrive115:/CloudDrive115
+      - /vol1/1000/docker/strm/已整理:/strm
+      - ./data:/app/data
     ports:
       - "8117:8000"
     restart: unless-stopped

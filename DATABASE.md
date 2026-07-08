@@ -199,7 +199,72 @@ backend/app/tvmaze_client.py
 - 前端按时间倒序展示。
 - 日志中不要写入真实 token/key/password。
 
-## 6. 外部数据源
+## 6. `/data/settings.json`
+
+### 6.1 用途
+
+保存新侧边栏 `设置` 页面里的 DeepSeek 翻译配置。
+
+涉及模块：
+
+```text
+backend/app/settings_store.py
+backend/app/routers/settings.py
+backend/app/deepseek_client.py
+```
+
+### 6.2 主结构
+
+```json
+{
+  "deepseek": {
+    "api_key": "不要在文档里写真实 key",
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-chat",
+    "batch_size": 10
+  }
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 说明 | 默认值/兜底 |
+|------|------|------|-------------|
+| `api_key` | string | DeepSeek API Key；GET 接口不回显完整值 | 空时回落 `DEEPSEEK_API_KEY` |
+| `base_url` | string | DeepSeek OpenAI 兼容接口地址 | `https://api.deepseek.com` |
+| `model` | string | 翻译模型 | `deepseek-chat` |
+| `batch_size` | int | 文件名批量翻译数量 | `10` |
+
+注意事项：
+
+- `api_key` 不允许写入日志或接口响应。
+- 保存设置时不传 `api_key` 表示保留旧值；传空字符串表示清空已保存 Key 并回落环境变量。
+- 配置读取优先级：`/data/settings.json` 中保存的 Key > `DEEPSEEK_API_KEY` > 未配置。
+
+## 7. 文件整理日志 `/data/file-organizer/logs/*.json`
+
+### 7.1 用途
+
+记录 `文件整理` 页的视频移动和元数据复制执行结果，便于追踪失败项和历史操作。
+
+### 7.2 日志内容
+
+每次执行写一个时间戳 JSON 文件，包含：
+
+```text
+task_type
+payload
+items[].source_path
+items[].target_path
+items[].relative_path
+items[].ok
+items[].error
+items[].will_overwrite
+```
+
+日志中不要写入 DeepSeek API Key。视频移动不覆盖目标视频、不删除视频、不自动回滚；元数据复制只复制 `.nfo/.jpg/.jpeg/.png/.webp`，保留目录结构，并在确认后覆盖同名元数据。
+
+## 8. 外部数据源
 
 ### 6.1 Emby API
 
