@@ -1,0 +1,85 @@
+from typing import Any
+
+from fastapi import APIRouter, HTTPException, Query
+
+from ..deepseek_client import translate_titles
+from ..file_organizer import (
+    browse_directory,
+    execute_metadata_copy,
+    execute_video_moves,
+    precheck_metadata_copy,
+    precheck_video_moves,
+    scan_videos,
+)
+from ..settings_store import load_deepseek_settings
+
+router = APIRouter(prefix="/api/file-organizer", tags=["file-organizer"])
+
+
+def _handle_error(exc: Exception):
+    if isinstance(exc, FileNotFoundError):
+        raise HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, ValueError):
+        raise HTTPException(status_code=400, detail=str(exc))
+    raise exc
+
+
+@router.get("/browse")
+def browse(root: str = Query("cloud115"), path: str | None = None):
+    try:
+        return browse_directory(root, path)
+    except Exception as exc:
+        _handle_error(exc)
+
+
+@router.post("/scan")
+def scan(payload: dict[str, Any]):
+    try:
+        return scan_videos(
+            str(payload.get("source_dir") or ""),
+            bool(payload.get("recursive", False)),
+            str(payload.get("sort") or "name"),
+        )
+    except Exception as exc:
+        _handle_error(exc)
+
+
+@router.post("/translate")
+async def translate(payload: dict[str, Any]):
+    rows = payload.get("items") or []
+    if not isinstance(rows, list):
+        raise HTTPException(status_code=400, detail="翻译项目必须是列表")
+    settings = load_deepseek_settings()
+    return {"items": await translate_titles(rows, settings)}
+
+
+@router.post("/precheck")
+def precheck(payload: dict[str, Any]):
+    try:
+        return precheck_video_moves(payload)
+    except Exception as exc:
+        _handle_error(exc)
+
+
+@router.post("/execute")
+def execute(payload: dict[str, Any]):
+    try:
+        return execute_video_moves(payload)
+    except Exception as exc:
+        _handle_error(exc)
+
+
+@router.post("/metadata/precheck")
+def metadata_precheck(payload: dict[str, Any]):
+    try:
+        return precheck_metadata_copy(payload)
+    except Exception as exc:
+        _handle_error(exc)
+
+
+@router.post("/metadata/execute")
+def metadata_execute(payload: dict[str, Any]):
+    try:
+        return execute_metadata_copy(payload)
+    except Exception as exc:
+        _handle_error(exc)
