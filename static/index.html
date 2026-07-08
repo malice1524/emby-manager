@@ -580,6 +580,20 @@ body {
 .monitor-page .el-collapse-item__wrap { background: rgba(255,255,255,0.03); color: var(--text); border-bottom-color: var(--glass-border); }
 .monitor-page .el-collapse-item__content { color: var(--text-dim); padding: 12px; }
 
+/* File organizer: override Element Plus default light surfaces */
+.file-organizer-page .el-collapse { border: 1px solid var(--glass-border); border-radius: var(--radius-sm); overflow: hidden; background: var(--glass); display: grid; gap: 12px; }
+.file-organizer-page .el-collapse-item { border: 1px solid var(--glass-border); border-radius: var(--radius-sm); overflow: hidden; background: rgba(255,255,255,0.03); }
+.file-organizer-page .el-collapse-item__header,
+.file-organizer-page .el-collapse-item__wrap,
+.file-organizer-page .el-collapse-item__content { background: transparent; color: var(--text); border-bottom-color: var(--glass-border); }
+.file-organizer-page .el-collapse-item__content { padding: 12px; }
+.file-organizer-page .el-table,
+.file-organizer-page .el-table tr,
+.file-organizer-page .el-table th.el-table__cell,
+.file-organizer-page .el-table td.el-table__cell { background: rgba(255,255,255,0.03); color: var(--text); border-bottom-color: var(--glass-border); }
+.file-organizer-page .el-table__inner-wrapper::before { background: var(--glass-border); }
+.file-organizer-page .el-table__empty-text { color: var(--text-muted); }
+
 /* ---- Animations ---- */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
@@ -621,7 +635,7 @@ body {
       <a href="#/file-organizer" onclick="navClose()"><span class="nav-icon">🗂️</span> 文件整理</a>
       <a href="#/settings" onclick="navClose()"><span class="nav-icon">⚙️</span> 设置</a>
     </nav>
-    <div class="sidebar-version">v1.37</div>
+    <div class="sidebar-version">v1.38</div>
   </aside>
 
   <!-- Main -->
@@ -1667,7 +1681,7 @@ const Settings = {
         </div>
       </div>
       <div class="glass-card" style="padding:18px;display:grid;gap:14px;max-width:760px">
-        <div><div style="font-size:13px;font-weight:500;margin-bottom:5px">DeepSeek API Key</div><input v-model="form.api_key" type="password" placeholder="留空保持原 Key；输入空字符串保存会清空并回落环境变量" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+        <div><div style="font-size:13px;font-weight:500;margin-bottom:5px">DeepSeek API Key <span v-if="settings.api_key_configured" style="font-size:12px;color:var(--green);font-weight:400">已保存 API Key，留空不修改</span></div><input v-model="form.api_key" type="password" :placeholder="settings.api_key_configured ? '已保存 API Key，留空不修改；输入新 Key 后保存会替换' : '请输入 DeepSeek API Key，或使用环境变量 DEEPSEEK_API_KEY'" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
         <div><div style="font-size:13px;font-weight:500;margin-bottom:5px">DeepSeek Base URL</div><input v-model="form.base_url" placeholder="https://api.deepseek.com" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
         <div style="display:grid;grid-template-columns:1fr 160px;gap:12px"><div><div style="font-size:13px;font-weight:500;margin-bottom:5px">模型</div><input v-model="form.model" placeholder="deepseek-chat" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div><div><div style="font-size:13px;font-weight:500;margin-bottom:5px">翻译批次大小</div><input v-model.number="form.batch_size" type="number" min="1" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div></div>
         <div style="display:flex;gap:10px;justify-content:flex-end"><el-button @click="load">刷新</el-button><el-button type="primary" @click="save" :loading="saving">保存设置</el-button></div>
@@ -1690,7 +1704,7 @@ const Settings = {
 
 const FileOrganizer = {
   template: `
-    <div class="fade-in">
+    <div class="fade-in file-organizer-page">
       <div class="glass-card" style="padding:18px;margin-bottom:16px"><h2 style="font-size:18px;font-weight:600">文件整理</h2><div style="font-size:12px;color:var(--text-dim)">115 视频翻译重命名移动，以及 /strm 元数据复制到 115</div></div>
       <el-collapse v-model="active" style="display:grid;gap:12px">
         <el-collapse-item name="paths" title="1. 选择 115 源文件夹和目标文件夹"><div class="glass-card" style="padding:16px;display:grid;gap:12px"><input v-model="sourceDir" placeholder="/CloudDrive115/源文件夹" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><input v-model="targetDir" placeholder="/CloudDrive115/目标文件夹" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><div style="display:flex;gap:10px;flex-wrap:wrap"><el-switch v-model="recursive" active-text="扫描子文件夹" /><el-select v-model="sort" size="small" style="width:180px"><el-option label="按文件名排序" value="name"/><el-option label="按修改时间从早到晚" value="mtime"/></el-select><el-button type="primary" @click="scan" :loading="loading">扫描视频</el-button></div></div></el-collapse-item>

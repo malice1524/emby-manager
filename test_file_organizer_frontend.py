@@ -34,6 +34,9 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert '元数据复制到 115' in html
         assert '/file-organizer/scan' in html
         assert '/file-organizer/metadata/precheck' in html
+        assert "file-organizer-page" in html
+        assert ".file-organizer-page .el-collapse" in html
+        assert "已保存 API Key，留空不修改" in html
         assert "{path:'/file-organizer',component:FileOrganizer}" in html
     assert frontend.count("#/file-organizer") == static.count("#/file-organizer")
 
