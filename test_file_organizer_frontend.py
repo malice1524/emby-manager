@@ -45,6 +45,8 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert '.file-organizer-page .el-select' in html
         assert '.file-organizer-page .el-checkbox__label' in html
         assert '.file-organizer-page .el-tag' in html
+        assert '.file-organizer-page .fo-result-pre' in html
+        assert 'class="fo-result-pre"' in html
         assert '@media (max-width: 640px)' in html
         assert '扫描视频' in html
         assert 'DeepSeek 翻译标题' in html
