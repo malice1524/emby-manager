@@ -38,6 +38,46 @@ def test_translate_titles_returns_row_errors_without_api_key():
     assert result == [{"id": "row-1", "ok": False, "title": "", "error": "DeepSeek API Key 未配置", "skipped": False}]
 
 
+def test_translate_titles_prompt_requests_natural_adult_media_titles(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"message": {"content": '{"items":[{"id":"row-1","title":"继妹的秘密邀约"}]}'}}]}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url, headers=None, json=None):
+            captured["body"] = json
+            return FakeResponse()
+
+    monkeypatch.setattr(deepseek_client.httpx, "AsyncClient", FakeClient)
+
+    asyncio.run(deepseek_client.translate_titles(
+        [{"id": "row-1", "title": "Step sister wants me to cum inside her while parents are not at home"}],
+        {"api_key": "secret", "base_url": "https://api.deepseek.com", "model": "deepseek-chat"},
+    ))
+
+    prompt = captured["body"]["messages"][1]["content"]
+    assert "完整翻译" in prompt
+    assert "不要逐词直译" in prompt
+    assert "自然中文" in prompt
+    assert "不要有 AI 味" in prompt
+    assert "保留人物关系、动作、场景" in prompt
+
+
+
 def test_translate_titles_parses_mocked_success(monkeypatch):
     class FakeResponse:
         def raise_for_status(self):

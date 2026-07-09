@@ -78,8 +78,12 @@ async def translate_titles(titles: list[dict[str, Any]], settings: dict[str, Any
     base_url = str(settings.get("base_url") or "https://api.deepseek.com").rstrip("/")
     model = str(settings.get("model") or "deepseek-chat")
     prompt = (
-        "你是媒体库文件名翻译助手。把输入标题翻译成简短自然的中文媒体标题，"
-        "不要包含文件扩展名，不要解释。可以去掉明显无意义广告词。"
+        "你是成人媒体库文件名翻译助手。把输入的英文视频标题完整翻译成自然中文标题，"
+        "不要逐词直译，不要有 AI 味，不要写成机器翻译腔。"
+        "必须保留人物关系、动作、场景、语气和关键限定词；不要为了变短而删掉核心信息。"
+        "可以清理站点名、作者水印、重复分隔符、无意义广告词和多余标点。"
+        "中文要像真人会写的媒体标题，通顺、自然、有画面感，但不要额外脑补原文没有的信息。"
+        "不要包含文件扩展名，不要解释，不要输出编号。"
         "只返回 JSON，格式为 {\"items\":[{\"id\":\"...\",\"title\":\"...\"}]}。\n"
         f"输入：{json.dumps({'items': rows}, ensure_ascii=False)}"
     )
