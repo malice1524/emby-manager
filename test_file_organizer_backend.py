@@ -64,6 +64,48 @@ def test_scan_marks_suspected_organized_unselected(monkeypatch, tmp_path):
     assert result["items"][0]["selected"] is False
 
 
+def test_scan_videos_parses_filename_published_date_and_artwork(monkeypatch, tmp_path):
+    cloud, _, _ = setup_roots(monkeypatch, tmp_path)
+    src = cloud / "src"
+    video = touch(src / "2025-07-16_My_Title_68781106ba7d5.mp4")
+    image = touch(src / "2025-07-16_My_Title_68781106ba7d5.jpg")
+
+    result = file_organizer.scan_videos(str(src), recursive=False, sort="published_date")
+
+    item = result["items"][0]
+    assert item["path"] == str(video)
+    assert item["published_date"] == "2025-07-16"
+    assert item["published_date_source"] == "filename"
+    assert item["artwork_path"] == str(image)
+    assert item["artwork_name"] == image.name
+    assert item["artwork_suffix"] == ".jpg"
+
+
+def test_scan_videos_sorts_by_published_date_then_undated_mtime(monkeypatch, tmp_path):
+    cloud, _, _ = setup_roots(monkeypatch, tmp_path)
+    src = cloud / "src"
+    newer = touch(src / "2025-02-01_New_aaaa.mp4", mtime=10)
+    older = touch(src / "20240101_Old_bbbb.mp4", mtime=30)
+    undated = touch(src / "No_Date_cccc.mp4", mtime=1)
+
+    result = file_organizer.scan_videos(str(src), recursive=False, sort="published_date")
+
+    assert [item["name"] for item in result["items"]] == [older.name, newer.name, undated.name]
+
+
+def test_scan_videos_matches_artwork_by_viewkey_when_stem_differs(monkeypatch, tmp_path):
+    cloud, _, _ = setup_roots(monkeypatch, tmp_path)
+    src = cloud / "src"
+    video = touch(src / "2025-07-16_Title_68781106ba7d5.mp4")
+    image = touch(src / "thumbnail_68781106ba7d5.webp")
+
+    result = file_organizer.scan_videos(str(src), recursive=False, sort="published_date")
+
+    assert result["items"][0]["path"] == str(video)
+    assert result["items"][0]["artwork_path"] == str(image)
+    assert result["items"][0]["artwork_suffix"] == ".webp"
+
+
 def test_build_final_filename_sanitizes_invalid_chars():
     assert file_organizer.build_final_filename("Actor", 1, 5, 'A/B:C*D?', ".mp4") == "Actor.S01E05.A B C D.mp4"
 

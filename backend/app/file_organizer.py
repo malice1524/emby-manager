@@ -10,6 +10,9 @@ VIDEO_SUFFIXES = {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".ts", ".m2ts"
 METADATA_SUFFIXES = {".nfo", ".jpg", ".jpeg", ".png", ".webp"}
 ORGANIZED_RE = re.compile(r"^.+\.S\d{2}E\d{2,}\..+\.[^.]+$", re.I)
 EPISODE_RE = re.compile(r"\.S(?P<season>\d{2})E(?P<episode>\d{2,})\.", re.I)
+PUBLISHED_DATE_DASH_RE = re.compile(r"^(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})(?:[_ .-]|$)")
+PUBLISHED_DATE_COMPACT_RE = re.compile(r"^(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?:[_ .-]|$)")
+VIEWKEY_RE = re.compile(r"(?P<viewkey>[A-Za-z0-9]{11,16})(?=\.[^.]+$|$)")
 INVALID_FILENAME_CHARS_RE = re.compile(r"[/\\:*?\"<>|]+")
 
 ROOTS = {
@@ -21,6 +24,46 @@ DATA_ROOT = Path(os.getenv("MONITOR_DATA_DIR", "/data"))
 
 def _natural_key(value: str) -> list[Any]:
     return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", value)]
+
+
+def _parse_published_date_from_name(name: str) -> str | None:
+    for pattern in (PUBLISHED_DATE_DASH_RE, PUBLISHED_DATE_COMPACT_RE):
+        match = pattern.search(name)
+        if not match:
+            continue
+        try:
+            return datetime(
+                int(match.group("year")),
+                int(match.group("month")),
+                int(match.group("day")),
+            ).strftime("%Y-%m-%d")
+        except ValueError:
+            return None
+    return None
+
+
+def _extract_viewkey_from_name(name: str) -> str | None:
+    match = VIEWKEY_RE.search(name)
+    return match.group("viewkey") if match else None
+
+
+def _find_artwork_for_video(video: Path, directory_files: list[Path]) -> Path | None:
+    same_stem = [
+        path for path in directory_files
+        if path.is_file() and path.suffix.lower() in METADATA_SUFFIXES and path.stem == video.stem
+    ]
+    if same_stem:
+        return sorted(same_stem, key=lambda path: _natural_key(path.name))[0]
+    viewkey = _extract_viewkey_from_name(video.name)
+    if not viewkey:
+        return None
+    matches = [
+        path for path in directory_files
+        if path.is_file()
+        and path.suffix.lower() in METADATA_SUFFIXES
+        and _extract_viewkey_from_name(path.name) == viewkey
+    ]
+    return sorted(matches, key=lambda path: _natural_key(path.name))[0] if matches else None
 
 
 def _root(root_key: str) -> Path:
@@ -58,12 +101,19 @@ def scan_videos(source_dir: str, recursive: bool = False, sort: str = "name") ->
     if not source.exists() or not source.is_dir():
         raise FileNotFoundError("源目录不存在")
     iterator = source.rglob("*") if recursive else source.iterdir()
+    paths = [path for path in iterator]
+    files_by_parent: dict[Path, list[Path]] = {}
+    for path in paths:
+        if path.is_file():
+            files_by_parent.setdefault(path.parent, []).append(path)
     items = []
-    for path in iterator:
+    for path in paths:
         if path.is_file() and path.suffix.lower() in VIDEO_SUFFIXES:
             stat = path.stat()
             suspected = bool(ORGANIZED_RE.match(path.name))
             title = path.stem
+            published_date = _parse_published_date_from_name(path.name)
+            artwork = _find_artwork_for_video(path, files_by_parent.get(path.parent, []))
             items.append({
                 "id": str(len(items) + 1),
                 "name": path.name,
@@ -73,11 +123,23 @@ def scan_videos(source_dir: str, recursive: bool = False, sort: str = "name") ->
                 "suffix": path.suffix,
                 "mtime": stat.st_mtime,
                 "size": stat.st_size,
+                "published_date": published_date,
+                "published_date_source": "filename" if published_date else "",
+                "artwork_path": str(artwork) if artwork else "",
+                "artwork_name": artwork.name if artwork else "",
+                "artwork_suffix": artwork.suffix if artwork else "",
                 "suspected_organized": suspected,
                 "selected": not suspected,
             })
     if sort == "mtime":
         items.sort(key=lambda item: (item["mtime"], _natural_key(item["name"]), _natural_key(item["relative_path"])))
+    elif sort == "published_date":
+        items.sort(key=lambda item: (
+            0 if item.get("published_date") else 1,
+            item.get("published_date") or item["mtime"],
+            _natural_key(item["name"]),
+            _natural_key(item["relative_path"]),
+        ))
     else:
         items.sort(key=lambda item: (_natural_key(item["name"]), _natural_key(item["relative_path"])))
     for index, item in enumerate(items, start=1):
