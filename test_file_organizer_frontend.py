@@ -63,6 +63,19 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
     assert frontend.count("#/file-organizer") == static.count("#/file-organizer")
 
 
+def test_file_organizer_has_published_date_artwork_and_nfo_controls():
+    frontend, static = read_pair()
+    for html in (frontend, static):
+        assert 'label="按发布时间从早到晚" value="published_date"' in html
+        assert 'prop="published_date" label="发布时间"' in html
+        assert 'label="图片"' in html
+        assert '生成每集 NFO' in html
+        assert 'generateNfo' in html
+        assert 'target_artwork_path' in html
+        assert 'target_nfo_path' in html
+        assert 'published_date' in html
+
+
 def test_settings_link_is_after_file_organizer_link():
     frontend, static = read_pair()
     for html in (frontend, static):
