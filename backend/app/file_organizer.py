@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 from datetime import datetime
+from xml.sax.saxutils import escape
 from pathlib import Path
 from typing import Any
 
@@ -158,6 +159,20 @@ def build_final_filename(actor: str, season: int, episode: int, title: str, suff
     return f"{sanitize_filename_part(actor)}.S{int(season):02d}E{int(episode):02d}.{sanitize_filename_part(title)}{suffix}"
 
 
+def _episode_nfo_xml(title: str, season: int, episode: int, published_date: str | None = None) -> str:
+    lines = [
+        "<episodedetails>",
+        f"  <title>{escape(title or '')}</title>",
+        f"  <season>{int(season)}</season>",
+        f"  <episode>{int(episode)}</episode>",
+    ]
+    if published_date:
+        lines.append(f"  <aired>{escape(published_date)}</aired>")
+        lines.append(f"  <premiered>{escape(published_date)}</premiered>")
+    lines.append("</episodedetails>")
+    return "\n".join(lines) + "\n"
+
+
 def suggest_next_episode(target_dir: str, season: int) -> dict[str, Any]:
     target = safe_path("cloud115", target_dir)
     if not target.exists() or not target.is_dir():
@@ -187,10 +202,16 @@ def _validate_video_item(item: dict[str, Any], seen_targets: dict[str, int]) -> 
     try:
         source = safe_path("cloud115", str(item.get("source_path") or ""))
         target = safe_path("cloud115", str(item.get("target_path") or ""))
+        artwork_source = safe_path("cloud115", str(item.get("artwork_path") or "")) if item.get("artwork_path") else None
+        artwork_target = safe_path("cloud115", str(item.get("target_artwork_path") or "")) if item.get("target_artwork_path") else None
+        nfo_target = safe_path("cloud115", str(item.get("target_nfo_path") or "")) if item.get("target_nfo_path") else None
     except ValueError as exc:
         return {"id": row_id, "ok": False, "error": str(exc)}
-    target_key = str(target)
-    seen_targets[target_key] = seen_targets.get(target_key, 0) + 1
+    for candidate in (target, artwork_target, nfo_target):
+        if candidate is None:
+            continue
+        target_key = str(candidate)
+        seen_targets[target_key] = seen_targets.get(target_key, 0) + 1
     if not source.exists() or not source.is_file():
         return {"id": row_id, "ok": False, "error": "源文件不存在"}
     if source.suffix.lower() not in VIDEO_SUFFIXES:
@@ -199,7 +220,30 @@ def _validate_video_item(item: dict[str, Any], seen_targets: dict[str, int]) -> 
         return {"id": row_id, "ok": False, "error": "目标文件已存在"}
     if INVALID_FILENAME_CHARS_RE.search(target.name):
         return {"id": row_id, "ok": False, "error": "目标文件名包含非法字符"}
-    return {"id": row_id, "ok": True, "error": "", "source_path": str(source), "target_path": str(target)}
+    row = {"id": row_id, "ok": True, "error": "", "source_path": str(source), "target_path": str(target)}
+    if artwork_source or artwork_target:
+        if not artwork_source or not artwork_target:
+            return {"id": row_id, "ok": False, "error": "图片源和目标必须同时提供"}
+        if not artwork_source.exists() or not artwork_source.is_file():
+            return {"id": row_id, "ok": False, "error": "图片源文件不存在"}
+        if artwork_source.suffix.lower() not in METADATA_SUFFIXES:
+            return {"id": row_id, "ok": False, "error": "不是支持的图片文件"}
+        if artwork_target.exists():
+            return {"id": row_id, "ok": False, "error": "目标图片已存在"}
+        if INVALID_FILENAME_CHARS_RE.search(artwork_target.name):
+            return {"id": row_id, "ok": False, "error": "目标图片名包含非法字符"}
+        row["artwork_path"] = str(artwork_source)
+        row["target_artwork_path"] = str(artwork_target)
+    if nfo_target:
+        if nfo_target.exists():
+            return {"id": row_id, "ok": False, "error": "目标 NFO 已存在"}
+        if nfo_target.suffix.lower() != ".nfo":
+            return {"id": row_id, "ok": False, "error": "目标 NFO 必须使用 .nfo 后缀"}
+        if INVALID_FILENAME_CHARS_RE.search(nfo_target.name):
+            return {"id": row_id, "ok": False, "error": "目标 NFO 文件名包含非法字符"}
+        row["target_nfo_path"] = str(nfo_target)
+        row["nfo"] = item.get("nfo") or {}
+    return row
 
 
 def precheck_video_moves(payload: dict[str, Any]) -> dict[str, Any]:
@@ -209,9 +253,11 @@ def precheck_video_moves(payload: dict[str, Any]) -> dict[str, Any]:
     rows = [_validate_video_item(item, seen) for item in payload.get("items", [])]
     duplicates = {path for path, count in seen.items() if count > 1}
     for row in rows:
-        if row.get("target_path") in duplicates:
-            row["ok"] = False
-            row["error"] = "目标路径在当前任务中重复"
+        for key in ("target_path", "target_artwork_path", "target_nfo_path"):
+            if row.get(key) in duplicates:
+                row["ok"] = False
+                row["error"] = "目标路径在当前任务中重复"
+                break
     return {"ok": bool(rows) and all(row.get("ok") for row in rows), "items": rows, "error": ""}
 
 
@@ -236,6 +282,24 @@ def execute_video_moves(payload: dict[str, Any]) -> dict[str, Any]:
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
             source.rename(target)
+            if row.get("artwork_path") and row.get("target_artwork_path"):
+                artwork_source = Path(row["artwork_path"])
+                artwork_target = Path(row["target_artwork_path"])
+                artwork_target.parent.mkdir(parents=True, exist_ok=True)
+                artwork_source.rename(artwork_target)
+            if row.get("target_nfo_path"):
+                nfo = row.get("nfo") or {}
+                nfo_path = Path(row["target_nfo_path"])
+                nfo_path.parent.mkdir(parents=True, exist_ok=True)
+                nfo_path.write_text(
+                    _episode_nfo_xml(
+                        str(nfo.get("title") or target.stem),
+                        int(nfo.get("season") or 1),
+                        int(nfo.get("episode") or 1),
+                        str(nfo.get("published_date") or "") or None,
+                    ),
+                    encoding="utf-8",
+                )
             rows.append({**row, "ok": True, "error": ""})
         except OSError as exc:
             rows.append({**row, "ok": False, "error": f"移动失败: {exc}"})

@@ -164,6 +164,64 @@ def test_execute_moves_success_and_keeps_failed_rows(monkeypatch, tmp_path):
     assert rows["2"]["ok"] is False
 
 
+def test_precheck_rejects_existing_artwork_and_nfo_targets(monkeypatch, tmp_path):
+    cloud, _, _ = setup_roots(monkeypatch, tmp_path)
+    src = cloud / "src"
+    target_dir = cloud / "target"
+    video = touch(src / "2025-07-16_Title_key.mp4")
+    artwork = touch(src / "2025-07-16_Title_key.jpg")
+    target_video = target_dir / "Actor.S01E01.标题.mp4"
+    target_artwork = touch(target_dir / "Actor.S01E01.标题.jpg", "existing")
+    target_nfo = touch(target_dir / "Actor.S01E01.标题.nfo", "existing")
+
+    result = file_organizer.precheck_video_moves({"confirmed": True, "items": [{
+        "id": "1",
+        "source_path": str(video),
+        "target_path": str(target_video),
+        "artwork_path": str(artwork),
+        "target_artwork_path": str(target_artwork),
+        "target_nfo_path": str(target_nfo),
+        "nfo": {"title": "标题", "season": 1, "episode": 1, "published_date": "2025-07-16"},
+    }]})
+
+    assert result["ok"] is False
+    assert result["items"][0]["ok"] is False
+    assert "目标图片已存在" in result["items"][0]["error"] or "目标 NFO 已存在" in result["items"][0]["error"]
+
+
+def test_execute_moves_video_artwork_and_writes_episode_nfo(monkeypatch, tmp_path):
+    cloud, _, _ = setup_roots(monkeypatch, tmp_path)
+    src = cloud / "src"
+    target_dir = cloud / "target"
+    video = touch(src / "2025-07-16_Title_68781106ba7d5.mp4", "video")
+    artwork = touch(src / "2025-07-16_Title_68781106ba7d5.jpg", "image")
+    target_video = target_dir / "Actor.S01E01.中文标题.mp4"
+    target_artwork = target_dir / "Actor.S01E01.中文标题.jpg"
+    target_nfo = target_dir / "Actor.S01E01.中文标题.nfo"
+
+    result = file_organizer.execute_video_moves({"confirmed": True, "items": [{
+        "id": "1",
+        "source_path": str(video),
+        "target_path": str(target_video),
+        "artwork_path": str(artwork),
+        "target_artwork_path": str(target_artwork),
+        "target_nfo_path": str(target_nfo),
+        "nfo": {"title": "中文标题", "season": 1, "episode": 1, "published_date": "2025-07-16"},
+    }]})
+
+    assert result["ok"] is True
+    assert target_video.read_text(encoding="utf-8") == "video"
+    assert target_artwork.read_text(encoding="utf-8") == "image"
+    assert not video.exists()
+    assert not artwork.exists()
+    xml = target_nfo.read_text(encoding="utf-8")
+    assert "<title>中文标题</title>" in xml
+    assert "<season>1</season>" in xml
+    assert "<episode>1</episode>" in xml
+    assert "<aired>2025-07-16</aired>" in xml
+    assert "<premiered>2025-07-16</premiered>" in xml
+
+
 def test_metadata_copy_preserves_structure_and_overwrites(monkeypatch, tmp_path):
     cloud, strm, _ = setup_roots(monkeypatch, tmp_path)
     source = strm / "PornHub" / "Actor"
