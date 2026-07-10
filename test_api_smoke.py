@@ -15,6 +15,7 @@ def test_api_smoke_and_spa_contains_monitor_and_nfo():
             "/api/monitor/status",
             "/api/monitor/logs",
             "/api/config",
+            "/api/settings/metube",
         ]:
             response = client.get(path)
             assert response.status_code == 200, (path, response.status_code, response.text[:200])

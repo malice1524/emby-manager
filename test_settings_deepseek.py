@@ -81,3 +81,14 @@ def test_batch_size_is_coerced_to_positive_int(monkeypatch, tmp_path):
     assert effective["batch_size"] == 10
     assert effective["base_url"] == "https://api.deepseek.com"
     assert effective["model"] == "deepseek-chat"
+
+
+def test_metube_url_can_be_saved_and_loaded(monkeypatch, tmp_path):
+    store = reload_settings_store(monkeypatch, tmp_path)
+
+    assert store.public_metube_settings() == {"url": "http://192.168.1.7:8081"}
+
+    saved = store.save_metube_settings({"url": " http://nas.local:8081/ "})
+
+    assert saved == {"url": "http://nas.local:8081"}
+    assert store.load_metube_settings()["url"] == "http://nas.local:8081"

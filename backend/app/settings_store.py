@@ -6,6 +6,7 @@ from typing import Any
 DEFAULT_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "deepseek-chat"
 DEFAULT_BATCH_SIZE = 10
+DEFAULT_METUBE_URL = "http://192.168.1.7:8081"
 SETTINGS_DATA_DIR = Path(os.getenv("MONITOR_DATA_DIR", "/data"))
 SETTINGS_PATH = SETTINGS_DATA_DIR / "settings.json"
 
@@ -88,3 +89,30 @@ def save_deepseek_settings(payload: dict[str, Any]) -> dict[str, Any]:
     data["deepseek"] = updated
     _write_settings_file(data)
     return public_deepseek_settings()
+
+
+def _normalize_metube(raw: dict[str, Any] | None) -> dict[str, Any]:
+    raw = raw if isinstance(raw, dict) else {}
+    url = str(raw.get("url") or os.getenv("METUBE_URL") or DEFAULT_METUBE_URL).strip()
+    url = (url or DEFAULT_METUBE_URL).rstrip("/")
+    return {"url": url}
+
+
+def load_metube_settings() -> dict[str, Any]:
+    data = _read_settings_file()
+    return _normalize_metube(data.get("metube"))
+
+
+def public_metube_settings() -> dict[str, Any]:
+    return load_metube_settings()
+
+
+def save_metube_settings(payload: dict[str, Any]) -> dict[str, Any]:
+    payload = payload if isinstance(payload, dict) else {}
+    data = _read_settings_file()
+    current = load_metube_settings()
+    if "url" in payload:
+        current["url"] = str(payload.get("url") or DEFAULT_METUBE_URL).strip().rstrip("/") or DEFAULT_METUBE_URL
+    data["metube"] = current
+    _write_settings_file(data)
+    return public_metube_settings()

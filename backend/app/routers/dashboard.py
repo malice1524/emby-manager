@@ -1,17 +1,19 @@
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response
 from ..config import EMBY_URL, HEADERS
+from ..settings_store import load_metube_settings
 from collections import Counter
 from pathlib import Path
 import json
+import os
 import re
 import httpx
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
-METUBE_PROGRESS_FILE = Path("/vol1/1000/docker/metube/uploader/upload-progress.json")
-METUBE_STATE_FILE = Path("/vol1/1000/docker/metube/uploader/upload-state.json")
-METUBE_HISTORY_URL = "http://127.0.0.1:8081/history"
+METUBE_PROGRESS_FILE = Path(os.environ.get("METUBE_PROGRESS_FILE", "/vol1/1000/docker/metube/uploader/upload-progress.json"))
+METUBE_STATE_FILE = Path(os.environ.get("METUBE_STATE_FILE", "/vol1/1000/docker/metube/uploader/upload-state.json"))
+
 _SECRET_RE = re.compile(r"(?i)('?(?:user_key|token|cookie|password|secret)'?\s*[:=]\s*)'[^']*'")
 
 
@@ -53,8 +55,9 @@ def _error_type(text: str) -> str:
 
 
 async def _fetch_metube_history() -> dict:
+    metube_url = load_metube_settings()["url"].rstrip("/")
     async with httpx.AsyncClient(timeout=5) as client:
-        resp = await client.get(METUBE_HISTORY_URL)
+        resp = await client.get(f"{metube_url}/history")
         resp.raise_for_status()
         return resp.json()
 

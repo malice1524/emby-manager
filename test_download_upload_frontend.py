@@ -23,6 +23,11 @@ def assert_download_upload_frontend(html: str):
     assert '失败项' in html
     assert 'formatBytes(bytes)' in html
     assert 'statusLabel(status)' in html
+    assert "fetchJSON('/settings/metube')" in html
+    assert "fetchJSON('/settings/metube',{method:'PUT'" in html
+    assert 'MeTube 地址' in html
+    assert 'class="du-home-card fade-in"' in html
+    assert "goDownloadUpload" in html
 
 
 def test_static_has_download_upload_page():

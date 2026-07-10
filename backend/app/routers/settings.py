@@ -4,7 +4,13 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..deepseek_client import translate_titles
-from ..settings_store import public_deepseek_settings, save_deepseek_settings, load_deepseek_settings
+from ..settings_store import (
+    public_deepseek_settings,
+    save_deepseek_settings,
+    load_deepseek_settings,
+    public_metube_settings,
+    save_metube_settings,
+)
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -28,6 +34,16 @@ def get_deepseek_settings():
 @router.put("/deepseek")
 def put_deepseek_settings(payload: dict[str, Any]):
     return save_deepseek_settings(payload)
+
+
+@router.get("/metube")
+def get_metube_settings():
+    return public_metube_settings()
+
+
+@router.put("/metube")
+def put_metube_settings(payload: dict[str, Any]):
+    return save_metube_settings(payload)
 
 
 @router.post("/deepseek/test-translation")
