@@ -28,6 +28,8 @@ def assert_download_upload_frontend(html: str):
     assert 'MeTube 地址' in html
     assert 'class="du-home-card fade-in"' in html
     assert "goDownloadUpload" in html
+    assert "homeProgressPercent" in html
+    assert "homeProgressLabel" in html
 
 
 def test_static_has_download_upload_page():

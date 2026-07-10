@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 METUBE_PROGRESS_FILE = Path(os.environ.get("METUBE_PROGRESS_FILE", "/vol1/1000/docker/metube/uploader/upload-progress.json"))
 METUBE_STATE_FILE = Path(os.environ.get("METUBE_STATE_FILE", "/vol1/1000/docker/metube/uploader/upload-state.json"))
+VIDEO_EXTS = {".mp4", ".mkv", ".webm", ".mov", ".m4v"}
 
 _SECRET_RE = re.compile(r"(?i)('?(?:user_key|token|cookie|password|secret)'?\s*[:=]\s*)'[^']*'")
 
@@ -54,6 +55,10 @@ def _error_type(text: str) -> str:
     return text.split(":", 1)[0].strip()[:80]
 
 
+def _is_video_filename(filename: str) -> bool:
+    return Path(filename or "").suffix.lower() in VIDEO_EXTS
+
+
 async def _fetch_metube_history() -> dict:
     metube_url = load_metube_settings()["url"].rstrip("/")
     async with httpx.AsyncClient(timeout=5) as client:
@@ -85,6 +90,8 @@ def _summarize_metube(history: dict) -> dict:
 async def get_metube_dashboard_status():
     """Read MeTube queue and 115 uploader progress for the dashboard."""
     progress = _read_json_file(METUBE_PROGRESS_FILE, {})
+    if not isinstance(progress, dict) or not _is_video_filename(str(progress.get("filename") or "")):
+        progress = {}
     state = _read_json_file(METUBE_STATE_FILE, {})
     status_counts = Counter()
     failed = []
