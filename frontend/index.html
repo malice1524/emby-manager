@@ -628,6 +628,41 @@ body {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+.du-page { display:grid; gap:18px; }
+.du-subtitle { color:var(--text-muted); font-size:13px; margin-top:-8px; }
+.du-grid { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(280px,.9fr); gap:18px; }
+.du-progress-card, .du-side-card, .du-failed-card { padding:20px; border:1px solid var(--glass-border); border-radius:22px; background:linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.065)); box-shadow:0 18px 50px rgba(0,0,0,.22); overflow:hidden; }
+.du-card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:18px; }
+.du-eyebrow { color:var(--text-muted); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.du-file { margin-top:6px; color:var(--text); font-size:17px; font-weight:800; line-height:1.35; overflow-wrap:anywhere; }
+.du-badge { display:inline-flex; align-items:center; gap:6px; padding:7px 10px; border-radius:999px; background:rgba(46,229,157,.12); color:var(--green); border:1px solid rgba(46,229,157,.28); font-size:12px; font-weight:700; white-space:nowrap; }
+.du-pct-row { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-bottom:10px; }
+.du-percent { font-size:44px; line-height:.95; font-weight:900; letter-spacing:-.05em; color:var(--text); }
+.du-bytes { color:var(--text-dim); font-size:13px; text-align:right; font-variant-numeric:tabular-nums; }
+.du-progress-bg { height:15px; border-radius:999px; background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.1); overflow:hidden; }
+.du-progress-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,var(--accent),#22d3ee,var(--green)); box-shadow:0 0 20px rgba(34,211,238,.38); transition:width .3s ease; }
+.du-meta-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px; }
+.du-meta { padding:11px; border:1px solid var(--glass-border); border-radius:14px; background:rgba(255,255,255,.045); min-width:0; }
+.du-meta b { display:block; font-size:16px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.du-meta span { display:block; margin-top:3px; color:var(--text-muted); font-size:12px; }
+.du-steps { display:grid; gap:9px; margin-top:16px; padding-top:14px; border-top:1px solid var(--glass-border); }
+.du-step { display:flex; align-items:center; gap:9px; color:var(--text-dim); font-size:13px; }
+.du-step-dot { width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.18); }
+.du-step.done .du-step-dot { background:var(--green); }
+.du-step.active .du-step-dot { background:#22d3ee; box-shadow:0 0 14px rgba(34,211,238,.7); }
+.du-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.du-stat { padding:14px 10px; text-align:center; border-radius:16px; border:1px solid var(--glass-border); background:rgba(255,255,255,.045); }
+.du-stat b { display:block; font-size:26px; line-height:1; color:var(--text); }
+.du-stat span { display:block; margin-top:6px; color:var(--text-muted); font-size:12px; }
+.du-state-list { display:grid; gap:9px; margin-top:15px; }
+.du-state-row { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-radius:13px; background:rgba(255,255,255,.045); color:var(--text-dim); font-size:13px; }
+.du-ok { color:var(--green)!important; } .du-warn { color:#ffd166!important; } .du-bad { color:var(--red)!important; }
+.du-failed-card { margin-top:18px; }
+.du-failed-item { padding:13px; border:1px solid rgba(255,90,110,.25); border-radius:14px; background:rgba(255,90,110,.07); margin-top:10px; }
+.du-failed-name { font-weight:800; color:var(--text); overflow-wrap:anywhere; }
+.du-failed-info { color:var(--text-muted); font-size:12px; margin-top:6px; }
+.du-error { margin-top:8px; color:#ffb3bf; font-size:12px; white-space:pre-wrap; overflow-wrap:anywhere; }
+@media (max-width: 760px) { .du-grid { grid-template-columns:1fr; } .du-pct-row { align-items:flex-start; flex-direction:column; } .du-bytes { text-align:left; } .du-meta-grid { grid-template-columns:repeat(2,1fr); } .du-percent { font-size:38px; } }
 .fade-in { animation: fadeInUp 0.5s ease both; }
 .fade-in-1 { animation-delay: 0.05s; }
 .fade-in-2 { animation-delay: 0.10s; }
@@ -657,6 +692,7 @@ body {
     </div>
     <nav>
       <a href="#/" onclick="navClose()"><span class="nav-icon">📊</span> 仪表盘</a>
+      <a href="#/download-upload" onclick="navClose()"><span class="nav-icon">⬆️</span> 下载上传</a>
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
       <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
@@ -1763,9 +1799,97 @@ const FileOrganizer = {
   }
 }
 
+// ---- Download / Upload Monitor ----
+const DownloadUpload = {
+  template: `
+    <div class="du-page fade-in">
+      <div>
+        <div class="section-title" style="margin-bottom:8px">⬆️ 下载上传</div>
+        <div class="du-subtitle">MeTube 下载队列与 115 上传进度监控</div>
+      </div>
+
+      <div v-if="!loaded" class="empty-state" style="padding:24px">加载中...</div>
+      <div v-else-if="!data.available" class="glass-card" style="padding:18px;color:var(--red)">{{data.error || 'MeTube 状态不可用'}}</div>
+
+      <div class="du-grid" v-if="loaded">
+        <section class="du-progress-card">
+          <div class="du-card-head">
+            <div>
+              <div class="du-eyebrow">115 Upload Now</div>
+              <div class="du-file">{{progress.filename || '暂无上传任务'}}</div>
+            </div>
+            <div class="du-badge">{{statusLabel(progress.status)}}</div>
+          </div>
+          <div class="du-pct-row">
+            <div class="du-percent">{{percentText}}%</div>
+            <div class="du-bytes">{{formatBytes(progress.uploaded_bytes)}} / {{formatBytes(progress.total_bytes)}}<br>{{progress.updated_at || '-'}}</div>
+          </div>
+          <div class="du-progress-bg"><div class="du-progress-fill" :style="'width:'+percentText+'%'"></div></div>
+          <div class="du-meta-grid">
+            <div class="du-meta"><b>{{progress.status || '-'}}</b><span>当前状态</span></div>
+            <div class="du-meta"><b>{{formatBytes(progress.total_bytes)}}</b><span>文件大小</span></div>
+            <div class="du-meta"><b>115</b><span>目标网盘</span></div>
+          </div>
+          <div class="du-steps">
+            <div class="du-step" :class="stepClass('starting')"><span class="du-step-dot"></span>文件稳定，准备上传</div>
+            <div class="du-step" :class="stepClass('computing_sha1')"><span class="du-step-dot"></span>SHA1 计算</div>
+            <div class="du-step" :class="stepClass('uploading')"><span class="du-step-dot"></span>正在分片上传</div>
+            <div class="du-step" :class="stepClass('upload_returned')"><span class="du-step-dot"></span>上传返回，等待 115 确认</div>
+            <div class="du-step" :class="stepClass('confirmed')"><span class="du-step-dot"></span>确认后删除本地</div>
+          </div>
+        </section>
+
+        <aside class="du-side-card">
+          <div class="section-title" style="margin-bottom:12px">下载与上传概览</div>
+          <div class="du-stats">
+            <div class="du-stat"><b>{{metube.finished||0}}</b><span>已完成</span></div>
+            <div class="du-stat"><b>{{metube.downloading||0}}</b><span>下载中</span></div>
+            <div class="du-stat"><b>{{metube.pending||0}}</b><span>待下载</span></div>
+          </div>
+          <div class="du-state-list">
+            <div class="du-state-row"><span>已确认并删本地</span><b class="du-ok">{{statusCount('deleted_local_after_confirm')}}</b></div>
+            <div class="du-state-row"><span>等待 115 确认</span><b class="du-warn">{{statusCount('waiting_remote_confirm')}}</b></div>
+            <div class="du-state-row"><span>未稳定/下载中</span><b>{{statusCount('unstable')}}</b></div>
+            <div class="du-state-row"><span>上传失败</span><b class="du-bad">{{statusCount('upload_failed')}}</b></div>
+          </div>
+        </aside>
+      </div>
+
+      <section class="du-failed-card" v-if="loaded">
+        <div class="section-title" style="margin-bottom:10px">⚠️ 失败项</div>
+        <div v-if="failed.length">
+          <div class="du-failed-item" v-for="item in failed" :key="item.filename">
+            <div class="du-failed-name">{{item.filename}}</div>
+            <div class="du-failed-info">{{item.size_text}} · {{item.updated_at}} · {{item.error_type || '上传失败'}}</div>
+            <div class="du-error">{{item.error}}</div>
+          </div>
+        </div>
+        <div v-else class="empty-state" style="padding:16px">暂无上传失败</div>
+      </section>
+    </div>
+  `,
+  data(){ return {loaded:false,data:{available:true,progress:{},metube:{},uploader:{statuses:{}},failed:[]}} },
+  computed:{
+    progress(){ return this.data.progress || {} },
+    metube(){ return this.data.metube || {} },
+    failed(){ return this.data.failed || [] },
+    percentText(){ const p=Number(this.progress.percent||0); return Math.max(0,Math.min(100,p)).toFixed(2) }
+  },
+  async mounted(){ await this.load(); this._poll=setInterval(()=>this.load(true),5000) },
+  beforeUnmount(){ if(this._poll) clearInterval(this._poll) },
+  methods:{
+    async load(silent){ try{ this.data=await fetchJSON('/dashboard/metube') }catch(e){ if(!silent) this.data={available:false,error:e.message,progress:{},metube:{},uploader:{statuses:{}},failed:[]} } finally { this.loaded=true } },
+    statusCount(name){ return (this.data.uploader && this.data.uploader.statuses && this.data.uploader.statuses[name]) || 0 },
+    formatBytes(bytes){ const n=Number(bytes||0); if(!n) return '0 B'; const u=['B','KB','MB','GB','TB']; let v=n,i=0; while(v>=1024&&i<u.length-1){v/=1024;i++} return i ? v.toFixed(2)+' '+u[i] : Math.round(v)+' B' },
+    statusLabel(status){ return ({starting:'准备中',computing_sha1:'计算 SHA1',uploading:'上传中',upload_returned:'等待确认',confirmed:'已确认'})[status] || (status || '暂无任务') },
+    stepClass(step){ const order=['starting','computing_sha1','uploading','upload_returned','confirmed']; const cur=this.progress.status||''; const ci=order.indexOf(cur), si=order.indexOf(step); if(ci<0||si<0) return ''; if(si<ci) return 'done'; if(si===ci) return 'active'; return '' }
+  }
+}
+
 // ---- Router ----
 const routes = [
   {path:'/',component:Dashboard},
+  {path:'/download-upload',component:DownloadUpload},
   {path:'/users',component:Users},
   {path:'/libraries',component:Libraries},
   {path:'/nfo',component:NfoGenerator},

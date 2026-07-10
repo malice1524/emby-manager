@@ -1,9 +1,128 @@
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import Response
 from ..config import EMBY_URL, HEADERS
+from collections import Counter
+from pathlib import Path
+import json
+import re
 import httpx
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+METUBE_PROGRESS_FILE = Path("/vol1/1000/docker/metube/uploader/upload-progress.json")
+METUBE_STATE_FILE = Path("/vol1/1000/docker/metube/uploader/upload-state.json")
+METUBE_HISTORY_URL = "http://127.0.0.1:8081/history"
+_SECRET_RE = re.compile(r"(?i)('?(?:user_key|token|cookie|password|secret)'?\s*[:=]\s*)'[^']*'")
+
+
+def _read_json_file(path: Path, fallback):
+    try:
+        if not path.exists():
+            return fallback
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return fallback
+
+
+def _format_bytes(size: int | float | None) -> str:
+    try:
+        value = float(size or 0)
+    except Exception:
+        value = 0.0
+    units = ["B", "KB", "MB", "GB", "TB"]
+    idx = 0
+    while value >= 1024 and idx < len(units) - 1:
+        value /= 1024
+        idx += 1
+    return f"{value:.2f} {units[idx]}" if idx else f"{int(value)} B"
+
+
+def _redact_error(text: str) -> str:
+    if not text:
+        return ""
+    redacted = _SECRET_RE.sub(lambda m: f"{m.group(1)}'[redacted]'", text)
+    if len(redacted) > 1000:
+        return redacted[:1000] + "..."
+    return redacted
+
+
+def _error_type(text: str) -> str:
+    if not text:
+        return ""
+    return text.split(":", 1)[0].strip()[:80]
+
+
+async def _fetch_metube_history() -> dict:
+    async with httpx.AsyncClient(timeout=5) as client:
+        resp = await client.get(METUBE_HISTORY_URL)
+        resp.raise_for_status()
+        return resp.json()
+
+
+def _summarize_metube(history: dict) -> dict:
+    counts = Counter()
+    total = 0
+    for items in history.values():
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            total += 1
+            counts[item.get("status") or "unknown"] += 1
+    return {
+        "finished": counts.get("finished", 0),
+        "downloading": counts.get("downloading", 0),
+        "pending": counts.get("pending", 0),
+        "preparing": counts.get("preparing", 0),
+        "failed": counts.get("failed", 0) + counts.get("error", 0),
+        "total": total,
+    }
+
+
+@router.get("/metube")
+async def get_metube_dashboard_status():
+    """Read MeTube queue and 115 uploader progress for the dashboard."""
+    progress = _read_json_file(METUBE_PROGRESS_FILE, {})
+    state = _read_json_file(METUBE_STATE_FILE, {})
+    status_counts = Counter()
+    failed = []
+    if isinstance(state, dict):
+        for filename, entry in state.items():
+            if not isinstance(entry, dict):
+                continue
+            status = entry.get("status") or "unknown"
+            status_counts[status] += 1
+            if status == "upload_failed":
+                raw_error = str(entry.get("error") or "")
+                failed.append({
+                    "filename": filename,
+                    "size": entry.get("size") or 0,
+                    "size_text": _format_bytes(entry.get("size") or 0),
+                    "updated_at": entry.get("updated_at") or "",
+                    "error_type": _error_type(raw_error),
+                    "error": _redact_error(raw_error),
+                })
+
+    try:
+        history = await _fetch_metube_history()
+        metube = _summarize_metube(history)
+        available = True
+        error = ""
+    except Exception as exc:
+        metube = {"finished": 0, "downloading": 0, "pending": 0, "preparing": 0, "failed": 0, "total": 0}
+        available = False
+        error = f"MeTube 不可用: {type(exc).__name__}: {exc}"
+
+    return {
+        "available": available,
+        "error": error,
+        "progress": progress if isinstance(progress, dict) else {},
+        "metube": metube,
+        "uploader": {
+            "total": sum(status_counts.values()),
+            "statuses": dict(status_counts),
+        },
+        "failed": failed,
+    }
 
 
 @router.get("/images/{item_id}")
