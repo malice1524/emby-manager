@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
@@ -18,6 +20,34 @@ from . import nfo as nfo_router
 router = APIRouter(prefix="/api/media-organizer", tags=["media-organizer"])
 
 
+def _candidate_roots(root: str) -> list[Path]:
+    if root == "strm":
+        values = [os.getenv("NFO_MEDIA_ROOT"), os.getenv("STRM_ROOT"), "/vol1/1000/docker/strm", "/strm"]
+    else:
+        values = [os.getenv("CLOUD115_ROOT"), "/CloudDrive115", "/vol1/1000/docker/CloudDrive115/CloudDrive"]
+    return [Path(value).expanduser().resolve() for value in values if value]
+
+
+def _existing_root(root: str) -> Path:
+    candidates = _candidate_roots(root)
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+    return candidates[0]
+
+
+def _browse_dir(root: str, path: str | None = None) -> tuple[Path, Path]:
+    root_path = _existing_root(root)
+    current = Path(path).expanduser().resolve() if path else root_path
+    try:
+        current.relative_to(root_path)
+    except ValueError:
+        raise ValueError(f"路径必须位于允许根目录内: {root_path}")
+    if not current.exists() or not current.is_dir():
+        raise FileNotFoundError(f"目录不存在: {current}")
+    return root_path, current
+
+
 def _handle_error(exc: Exception):
     if isinstance(exc, FileNotFoundError):
         raise HTTPException(status_code=404, detail=str(exc))
@@ -29,30 +59,28 @@ def _handle_error(exc: Exception):
 @router.get("/browse")
 def browse(root: str = Query("cloud115"), path: str | None = None):
     try:
+        root_path, current = _browse_dir(root, path)
+        directories = []
+        for child in current.iterdir():
+            if not child.is_dir():
+                continue
+            item = {"name": child.name, "path": str(child)}
+            if root == "strm":
+                item["is_actor_dir"] = (child / "Season 1").is_dir()
+                item["has_tvshow"] = (child / "tvshow.nfo").exists()
+            directories.append(item)
+        directories.sort(key=lambda item: item["name"].lower())
+        parent = ""
+        if current != root_path:
+            parent_path = current.parent.resolve()
+            try:
+                parent_path.relative_to(root_path)
+                parent = str(parent_path)
+            except ValueError:
+                parent = ""
         if root == "strm":
-            current = nfo_router._safe_browse_dir(path)
-            dirs = []
-            for child in current.iterdir():
-                if not child.is_dir():
-                    continue
-                dirs.append({
-                    "name": child.name,
-                    "path": str(child),
-                    "is_actor_dir": (child / "Season 1").is_dir(),
-                    "has_tvshow": (child / "tvshow.nfo").exists(),
-                })
-            dirs.sort(key=lambda item: item["name"].lower())
-            parent = ""
-            root_path = nfo_router._media_root()
-            if current != root_path:
-                parent_path = current.parent.resolve()
-                try:
-                    parent_path.relative_to(root_path)
-                    parent = str(parent_path)
-                except ValueError:
-                    parent = ""
-            return {"media_root": str(root_path), "path": str(current), "parent": parent, "dirs": dirs}
-        return browse_directory(root, path)
+            return {"media_root": str(root_path), "path": str(current), "parent": parent, "dirs": directories}
+        return {"root": str(root_path), "path": str(current), "parent": parent, "directories": directories}
     except Exception as exc:
         _handle_error(exc)
 
