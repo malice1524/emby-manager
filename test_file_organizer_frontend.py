@@ -30,8 +30,8 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert 'poster.jpg' in html
         assert 'fanart.jpg' in html
         assert 'logo.png' in html
-        assert '/api/media-organizer/browse' in html
-        assert '/api/media-organizer/suggest-next-episode' in html
+        assert '/media-organizer/browse' in html
+        assert '/media-organizer/suggest-next-episode' in html
         assert 'suggestNextEpisode' in html
         assert 'episodeHint' in html
         assert 'actorNameFromPath' in html
@@ -55,12 +55,12 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert '预检查' in html
         assert '执行移动' in html
         assert '扫描视频 / 翻译标题 / 生成每集 NFO / 移动到目标目录' in html
-        assert '/api/media-organizer/scan' in html
+        assert '/media-organizer/scan' in html
         assert "file-organizer-page" in html
         assert ".file-organizer-page .el-collapse" in html
         assert "{path:'/media-organizer',component:FileOrganizer}" in html
-        assert '/api/media-organizer/tvshow' in html
-        assert '/api/media-organizer/upload-artwork' in html
+        assert '/media-organizer/tvshow' in html
+        assert '/media-organizer/upload-artwork' in html
     assert frontend.count("#/media-organizer") == static.count("#/media-organizer")
 
 

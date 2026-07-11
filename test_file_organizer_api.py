@@ -104,3 +104,19 @@ def test_metadata_precheck_reports_overwrite(monkeypatch, tmp_path):
     data = pre.json()
     assert [item["relative_path"] for item in data["items"]] == ["Season 1/a.jpg", "tvshow.nfo"]
     assert any(item["will_overwrite"] for item in data["items"] if item["relative_path"] == "tvshow.nfo")
+
+
+def test_media_organizer_strm_browse_returns_frontend_directories(monkeypatch, tmp_path):
+    _, strm, _ = setup_roots(monkeypatch, tmp_path)
+    monkeypatch.setenv("NFO_MEDIA_ROOT", str(strm))
+    touch(strm / "Actor" / "Season 1" / "episode.strm", "strm")
+    client = TestClient(app)
+
+    res = client.get("/api/media-organizer/browse", params={"root": "strm"})
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["root"] == str(strm.resolve())
+    assert data["directories"] == data["dirs"]
+    assert data["directories"][0]["name"] == "Actor"
+    assert data["directories"][0]["is_actor_dir"] is True

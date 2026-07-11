@@ -79,7 +79,14 @@ def browse(root: str = Query("cloud115"), path: str | None = None):
             except ValueError:
                 parent = ""
         if root == "strm":
-            return {"media_root": str(root_path), "path": str(current), "parent": parent, "dirs": directories}
+            return {
+                "media_root": str(root_path),
+                "root": str(root_path),
+                "path": str(current),
+                "parent": parent,
+                "dirs": directories,
+                "directories": directories,
+            }
         return {"root": str(root_path), "path": str(current), "parent": parent, "directories": directories}
     except Exception as exc:
         _handle_error(exc)
