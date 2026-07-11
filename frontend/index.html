@@ -1335,6 +1335,144 @@ const Libraries = {
   }
 }
 
+const Monitor = {
+  template: `
+    <div class="monitor-page">
+      <div class="hero" style="padding:24px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;position:relative;z-index:1;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="hero-avatar" style="background:linear-gradient(135deg,var(--green),#00b894)">🔔</div>
+            <div><h2 style="font-size:18px;font-weight:600">完结监控</h2><div style="font-size:12px;color:var(--text-dim)">监控剧集更新与完结状态，推送 Telegram 通知</div></div>
+          </div>
+          <el-button @click="showSettings=true" type="primary" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text)">⚙️ 设置</el-button>
+        </div>
+      </div>
+
+      <div class="glass-card" style="margin-bottom:16px;padding:16px">
+        <div class="monitor-search-bar">
+          <input v-model="searchQuery" placeholder="输入剧名搜索..." @keyup.enter="doSearch" @input="onSearchInput" :disabled="searching" class="monitor-search-input" />
+          <el-button type="primary" @click="doSearch" :loading="searching" class="monitor-search-btn">🔍 搜索</el-button>
+        </div>
+        <div v-if="searchError" style="margin-top:8px;font-size:12px;color:var(--red)">{{searchError}}</div>
+        <div v-if="searchResults.length" class="monitor-search-results">
+          <div class="monitor-search-results-header"><span>搜索结果 · {{searchResults.length}} 条</span><button type="button" class="monitor-search-clear" @click="clearSearchResults">关闭</button></div>
+          <div v-for="item in searchResults" :key="item.tmdb_id" @click="addSeries(item)" class="monitor-search-result-item">
+            <img v-if="item.poster_url" :src="item.poster_url" class="monitor-search-poster" @error="$event.target.style.display='none'" />
+            <div v-else class="monitor-search-poster-placeholder">📺</div>
+            <div class="monitor-search-body"><div class="monitor-search-title">{{item.title}}</div><div class="monitor-search-meta">{{item.year || '-'}} · ⭐ {{item.vote_average || '-'}}</div><div v-if="item.overview" class="monitor-search-overview">{{item.overview}}</div></div>
+            <el-button size="small" type="primary" style="background:var(--accent);border-color:var(--accent);flex-shrink:0">+ 添加</el-button>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card monitor-list-card">
+        <div class="monitor-list-header">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div style="font-size:15px;font-weight:600">已监控剧集 <span style="font-size:12px;color:var(--text-dim);font-weight:400;margin-left:6px">{{monitoredList.length}} 部</span><span v-if="refreshing && hasCachedList" class="monitor-cache-hint">后台刷新中...</span></div>
+            <div class="lib-filter" style="margin-bottom:0;display:inline-flex">
+              <span class="filter-chip" :class="{active:filterStatus==='all'}" @click="filterStatus='all'" style="font-size:11px;padding:3px 10px">全部</span>
+              <span class="filter-chip" :class="{active:filterStatus==='continuing'}" @click="filterStatus='continuing'" style="font-size:11px;padding:3px 10px">连载中</span>
+              <span class="filter-chip" :class="{active:filterStatus==='ended'}" @click="filterStatus='ended'" style="font-size:11px;padding:3px 10px">已完结</span>
+            </div>
+          </div>
+          <el-button size="small" @click="refreshList" :disabled="refreshing" circle class="monitor-refresh-btn" aria-label="刷新监控列表"><span class="monitor-refresh-icon" :class="{spinning:refreshing}">🔄</span></el-button>
+        </div>
+        <div v-if="!monitoredList.length && !loadingList" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">暂无监控剧集，在上方搜索添加</div>
+        <div v-if="loadingList && !monitoredList.length" style="text-align:center;padding:40px;color:var(--text-muted)">加载中...</div>
+        <div v-if="monitoredList.length" class="monitor-list-scroll">
+          <div v-for="s in filteredList" :key="s.tmdb_id" class="monitor-list-item">
+            <img v-if="s.poster_url" :src="s.poster_url" style="width:44px;height:66px;object-fit:cover;border-radius:6px;flex-shrink:0" @error="$event.target.style.display='none'" />
+            <div v-else style="width:44px;height:66px;border-radius:6px;background:var(--glass);display:flex;align-items:center;justify-content:center;flex-shrink:0">📺</div>
+            <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.title}} <span v-if="s.year" style="font-size:12px;color:var(--text-dim);font-weight:400">({{s.year}})</span></div><div style="font-size:12px;color:var(--text-dim);margin-top:4px">{{s.type || '-'}} · ⭐ {{s.vote_average || '-'}}</div><div v-if="s.last_episode?.episode_number" style="font-size:12px;color:var(--text-dim);margin-top:2px">📺 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' / '+s.total_episodes+' 集' : ''}}</div><div v-if="s.next_episode?.air_date && s.current_status!=='Ended' && s.current_status!=='Canceled'" style="font-size:12px;color:var(--green);margin-top:2px">📅 {{s.next_episode.air_date}} · {{daysUntil(s.next_episode.air_date)}}</div></div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0"><span v-if="s.current_status==='Ended'" style="font-size:12px;color:var(--red)">🔴 已完结</span><span v-else-if="s.current_status==='Canceled'" style="font-size:12px;color:var(--text-muted)">⚫ 已取消</span><span v-else style="font-size:12px;color:var(--green)">🟢 连载中</span><span v-if="s.current_status==='Ended'" style="font-size:11px;color:var(--text-dim)">{{s.notified_ended ? '✅ 已通知' : '⏳ 待通知'}}</span><el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)">删除</el-button></div>
+          </div>
+          <div v-if="!filteredList.length" style="text-align:center;padding:36px;color:var(--text-muted);font-size:14px">当前筛选条件下暂无剧集</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <el-collapse v-model="activeCollapse">
+          <el-collapse-item title="📊 运行状态" name="status"><div class="glass-card" style="padding:16px"><div v-if="monitorStatus" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:13px"><div><span style="color:var(--text-dim)">状态：</span>{{monitorStatus.is_running ? '🟢 运行中' : '🔴 已停止'}}</div><div><span style="color:var(--text-dim)">监控剧集：</span>{{monitorStatus.monitored_count}} 部</div><div><span style="color:var(--text-dim)">上次检查：</span>{{fmtTime2(monitorStatus.last_check_time)}}</div><div><span style="color:var(--text-dim)">最近通知：</span>{{fmtTime2(monitorStatus.last_notification_time)}}</div></div><div v-else style="color:var(--text-muted);font-size:13px">加载中...</div></div></el-collapse-item>
+          <el-collapse-item title="📄 检查日志" name="logs"><div class="glass-card" style="padding:16px"><div v-if="logs.length"><div v-for="(log,i) in logs" :key="i" style="padding:6px 0;border-bottom:1px solid var(--glass-border);font-size:12px;display:flex;gap:8px"><span style="color:var(--text-muted);flex-shrink:0">{{fmtTime2(log.time)}}</span><span :style="{color: log.status==='ok' ? 'var(--green)' : 'var(--orange)'}">{{log.status==='ok' ? '✅' : '⚠️'}}</span><span style="color:var(--text-dim)">{{log.message}}</span></div></div><div v-else style="color:var(--text-muted);font-size:13px">暂无日志</div></div></el-collapse-item>
+        </el-collapse>
+      </div>
+
+      <el-dialog v-model="showSettings" title="⚙️ 完结监控设置" width="min(92vw,520px)" :style="'--el-dialog-bg-color:var(--surface);--el-dialog-text-color:var(--text);--el-dialog-border-color:var(--glass-border)'">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">TMDB API Key</div><input v-model="config.tmdb_api_key" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Bot Token</div><input v-model="config.tg_bot_token" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Chat ID</div><input v-model="config.tg_chat_id" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">代理 URL（可选）</div><input v-model="config.proxy_url" placeholder="http://127.0.0.1:7890" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">检查 Cron 规则</div><input v-model="config.check_cron" placeholder="*/30 * * * *" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /><div style="font-size:11px;color:var(--text-muted);margin-top:5px">标准 5 段 cron，例如 */30 * * * * 表示每 30 分钟检查一次</div></div>
+        </div>
+        <template #footer><div style="display:flex;gap:8px;justify-content:flex-end"><el-button @click="testConfig">测试通知</el-button><el-button @click="saveConfig" type="primary" style="background:var(--accent);border-color:var(--accent)">💾 保存</el-button></div></template>
+      </el-dialog>
+    </div>
+  `,
+  data(){ return { searchQuery:'', searchResults:[], searching:false, searchError:'', monitoredList:[], loadingList:false, refreshing:false, hasCachedList:false, showSettings:false, filterStatus:'all', monitorStatus:null, logs:[], activeCollapse:[], config:{tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',proxy_url:'',check_cron:'*/30 * * * *'} } },
+  computed:{ filteredList(){ if(this.filterStatus==='continuing') return this.monitoredList.filter(s=>s.current_status!=='Ended'&&s.current_status!=='Canceled'); if(this.filterStatus==='ended') return this.monitoredList.filter(s=>s.current_status==='Ended'); return this.monitoredList } },
+  async mounted(){ this.restoreCachedList(); this.loadList({background:this.hasCachedList}); await this.loadConfig(); await this.loadStatus(); await this.loadLogs(); this._statusTimer=setInterval(()=>{this.loadStatus();this.loadLogs()},30000) },
+  beforeUnmount(){ if(this._statusTimer) clearInterval(this._statusTimer) },
+  methods:{
+    onSearchInput(){ if(!this.searchQuery.trim()) this.clearSearchResults() },
+    clearSearchResults(){ this.searchResults=[]; this.searchError='' },
+    async doSearch(){ if(!this.searchQuery.trim()){ this.clearSearchResults(); return } this.searching=true; this.searchError=''; try{ const d=await fetchJSON('/tmdb/search?q='+encodeURIComponent(this.searchQuery.trim())); this.searchResults=d.results||[]; if(!this.searchResults.length) this.searchError='未找到相关剧集' }catch(e){ this.searchError=e.message }finally{ this.searching=false } },
+    async addSeries(item){ try{ const d=await fetchJSON('/monitor/add',{method:'POST',body:JSON.stringify({tmdb_id:item.tmdb_id,title:item.title,year:item.year,poster_url:item.poster_url})}); if(!this.monitoredList.some(s=>s.tmdb_id===item.tmdb_id)){ this.monitoredList=[...this.monitoredList,{tmdb_id:item.tmdb_id,title:item.title,year:item.year,poster_url:item.poster_url,last_status:'Unknown',current_status:'Unknown',notified_ended:false}]; this.hasCachedList=true; this.saveCachedList() } ElementPlus.ElMessage.success(d.notification_sent?'已添加并发送通知':'已添加，正在后台刷新信息'); this.clearSearchResults(); this.searchQuery=''; this.loadList({background:true}); setTimeout(()=>this.loadList({background:true}),2000); await this.loadStatus() }catch(e){ ElementPlus.ElMessage.error(e.message) } },
+    async deleteSeries(tmdbId){ try{ await ElementPlus.ElMessageBox.confirm('确定要删除该剧集的监控吗？','确认删除',{type:'warning'}); await fetchJSON('/monitor/'+tmdbId,{method:'DELETE'}); this.monitoredList=this.monitoredList.filter(s=>s.tmdb_id!==tmdbId); this.saveCachedList(); ElementPlus.ElMessage.success('已删除'); await this.loadStatus() }catch(e){ if(e!=='cancel') ElementPlus.ElMessage.error(e.message||'删除失败') } },
+    restoreCachedList(){ try{ const raw=localStorage.getItem('emby-manager:monitor:list'); if(!raw) return; const cached=JSON.parse(raw); if(Array.isArray(cached.series)){ this.monitoredList=cached.series; this.hasCachedList=this.monitoredList.length>0 } }catch(e){ localStorage.removeItem('emby-manager:monitor:list') } },
+    saveCachedList(){ try{ localStorage.setItem('emby-manager:monitor:list', JSON.stringify({series:this.monitoredList, savedAt:Date.now()})) }catch(e){} },
+    async loadList(opts={}){ const background=!!opts.background; if(background) this.refreshing=true; else this.loadingList=true; try{ const d=await fetchJSON('/monitor/list'); this.monitoredList=d.series||[]; this.hasCachedList=this.monitoredList.length>0; this.saveCachedList() }catch(e){}finally{ if(background) this.refreshing=false; else this.loadingList=false } },
+    async refreshList(){ this.refreshing=true; await this.loadList({background:true}); this.refreshing=false },
+    async loadConfig(){ try{ const d=await fetchJSON('/config'); this.config={...this.config,...d} }catch(e){} },
+    async saveConfig(){ try{ const payload={tmdb_api_key:this.config.tmdb_api_key,tg_bot_token:this.config.tg_bot_token,tg_chat_id:this.config.tg_chat_id,proxy_url:this.config.proxy_url,check_cron:(this.config.check_cron||'*/30 * * * *').trim()}; await fetchJSON('/config',{method:'PUT',body:JSON.stringify(payload)}); ElementPlus.ElMessage.success('保存成功'); this.showSettings=false; await this.loadStatus() }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') } },
+    async testConfig(){ try{ const d=await fetchJSON('/config/test',{method:'POST'}); d.success ? ElementPlus.ElMessage.success(d.message||'测试消息已发送') : ElementPlus.ElMessage.error(d.error||'测试失败') }catch(e){ ElementPlus.ElMessage.error(e.message||'测试失败') } },
+    async loadStatus(){ try{ this.monitorStatus=await fetchJSON('/monitor/status') }catch(e){} },
+    async loadLogs(){ try{ this.logs=await fetchJSON('/monitor/logs?limit=50') }catch(e){} },
+    fmtTime2(t){ if(!t) return '-'; return new Date(t).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) },
+    daysUntil(dateStr){ if(!dateStr) return ''; const now=new Date(); const today=new Date(now.getFullYear(),now.getMonth(),now.getDate()); const p=dateStr.split('-'); const target=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])); const diff=Math.round((target-today)/86400000); if(diff<0)return'已播出'; if(diff===0)return'今天'; if(diff===1)return'明天'; return diff+'天后' }
+  }
+}
+
+// ---- File Organizer ----
+const Settings = {
+  template: `
+    <div class="fade-in">
+      <div class="glass-card" style="padding:18px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div><h2 style="font-size:18px;font-weight:600">设置</h2><div style="font-size:12px;color:var(--text-dim)">DeepSeek 翻译配置</div></div>
+          <el-tag :type="settings.api_key_configured?'success':'warning'">{{settings.api_key_configured ? 'API Key 已配置：'+settings.api_key_source : 'API Key 未配置'}}</el-tag>
+        </div>
+      </div>
+      <div class="glass-card" style="padding:18px;display:grid;gap:14px;max-width:760px">
+        <div><div style="font-size:13px;font-weight:500;margin-bottom:5px">DeepSeek API Key <span v-if="settings.api_key_configured" style="font-size:12px;color:var(--green);font-weight:400">已保存 API Key，留空不修改</span></div><input v-model="form.api_key" type="password" :placeholder="settings.api_key_configured ? '已保存 API Key，留空不修改；输入新 Key 后保存会替换' : '请输入 DeepSeek API Key，或使用环境变量 DEEPSEEK_API_KEY'" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+        <div><div style="font-size:13px;font-weight:500;margin-bottom:5px">DeepSeek Base URL</div><input v-model="form.base_url" placeholder="https://api.deepseek.com" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
+        <div style="display:grid;grid-template-columns:1fr 160px;gap:12px"><div><div style="font-size:13px;font-weight:500;margin-bottom:5px">模型</div><input v-model="form.model" placeholder="deepseek-chat" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div><div><div style="font-size:13px;font-weight:500;margin-bottom:5px">翻译批次大小</div><input v-model.number="form.batch_size" type="number" min="1" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end"><el-button @click="load">刷新</el-button><el-button type="primary" @click="save" :loading="saving">保存设置</el-button></div>
+      </div>
+      <div class="glass-card" style="padding:18px;margin-top:16px;display:grid;gap:12px;max-width:760px">
+        <div style="font-size:15px;font-weight:600">MeTube 地址</div>
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.5">用于「下载上传」页面读取 MeTube /history。部署在 NAS 上通常填写 http://192.168.1.7:8081。</div>
+        <input v-model="metube.url" placeholder="http://192.168.1.7:8081" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" />
+        <div style="display:flex;gap:10px;justify-content:flex-end"><el-button @click="loadMetube">刷新</el-button><el-button type="primary" @click="saveMetube" :loading="savingMetube">保存 MeTube 地址</el-button></div>
+      </div>
+      <div class="glass-card" style="padding:18px;margin-top:16px;display:grid;gap:12px;max-width:760px">
+        <div style="font-size:15px;font-weight:600">测试翻译</div>
+        <input v-model="testTitle" placeholder="Beautiful Girl At Home 1080p" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" />
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><el-button @click="testTranslate" :loading="testing">测试翻译</el-button><span v-if="testResult" style="color:var(--green);font-size:13px">{{testResult}}</span></div>
+      </div>
+    </div>
+  `,
+  data(){ return {settings:{api_key_configured:false,api_key_source:'none'},form:{api_key:undefined,base_url:'https://api.deepseek.com',model:'deepseek-chat',batch_size:10},metube:{url:'http://192.168.1.7:8081'},saving:false,savingMetube:false,testing:false,testTitle:'',testResult:''} },
+  async mounted(){ await this.load() },
+  methods:{
+    async load(){ try{ const d=await fetchJSON('/settings/deepseek'); this.settings=d; this.form={api_key:undefined,base_url:d.base_url||'https://api.deepseek.com',model:d.model||'deepseek-chat',batch_size:d.batch_size||10}; await this.loadMetube() }catch(e){ ElementPlus.ElMessage.error(e.message||'加载设置失败') } },
+    async loadMetube(){ try{ const d=await fetchJSON('/settings/metube'); this.metube={url:d.url||'http://192.168.1.7:8081'} }catch(e){ ElementPlus.ElMessage.error(e.message||'加载 MeTube 设置失败') } },
+    async save(){ this.saving=true; try{ const payload={base_url:this.form.base_url,model:this.form.model,batch_size:this.form.batch_size}; if(this.form.api_key!==undefined) payload.api_key=this.form.api_key; const d=await fetchJSON('/settings/deepseek',{method:'PUT',body:JSON.stringify(payload)}); this.settings=d; this.form.api_key=undefined; ElementPlus.ElMessage.success('保存成功') }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') }finally{ this.saving=false } },
+    async saveMetube(){ this.savingMetube=true; try{ const d=await fetchJSON('/settings/metube',{method:'PUT',body:JSON.stringify({url:this.metube.url})}); this.metube={url:d.url||this.metube.url}; ElementPlus.ElMessage.success('MeTube 地址已保存') }catch(e){ ElementPlus.ElMessage.error(e.message||'保存 MeTube 地址失败') }finally{ this.savingMetube=false } },
+    async testTranslate(){ if(!this.testTitle.trim()) return ElementPlus.ElMessage.warning('请输入测试标题'); this.testing=true; this.testResult=''; try{ const d=await fetchJSON('/settings/deepseek/test-translation',{method:'POST',body:JSON.stringify({title:this.testTitle.trim()})}); this.testResult=d.title; ElementPlus.ElMessage.success('测试成功') }catch(e){ ElementPlus.ElMessage.error(e.message||'测试失败') }finally{ this.testing=false } }
+  }
+}
+
 const FileOrganizer = {
   template: `
     <div class="fade-in file-organizer-page">
