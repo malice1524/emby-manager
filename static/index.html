@@ -713,9 +713,9 @@ body {
       <a href="#/download-upload" onclick="navClose()"><span class="nav-icon">⬆️</span> 下载上传</a>
       <a href="#/users" onclick="navClose()"><span class="nav-icon">👥</span> 用户管理</a>
       <a href="#/libraries" onclick="navClose()"><span class="nav-icon">📂</span> 媒体库</a>
-      <a href="#/nfo" onclick="navClose()"><span class="nav-icon">🎭</span> NFO 自动化</a>
+      <a href="#/media-organizer" onclick="navClose()"><span class="nav-icon">🗂️</span> 媒体整理</a>
       <a href="#/monitor" onclick="navClose()"><span class="nav-icon">🔔</span> 完结监控</a>
-      <a href="#/file-organizer" onclick="navClose()"><span class="nav-icon">🗂️</span> 文件整理</a>
+      
       <a href="#/settings" onclick="navClose()"><span class="nav-icon">⚙️</span> 设置</a>
     </nav>
     <div class="sidebar-version">v1.47</div>
@@ -1335,534 +1335,86 @@ const Libraries = {
   }
 }
 
-const NfoGenerator = {
-  template: `
-    <div>
-      <div class="hero" style="padding:28px 24px;margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">
-          <div class="hero-avatar" style="background:linear-gradient(135deg,var(--pink),var(--orange))">🗂️</div>
-          <div><h2 style="font-size:18px;font-weight:600">NFO 自动化</h2><div style="font-size:12px;color:var(--text-dim)">浏览挂载目录，选择演员目录后处理 tvshow.nfo、图片和每集 NFO</div></div>
-        </div>
-      </div>
-
-      <div class="glass-card" style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-          <div>
-            <div style="font-size:14px;font-weight:600">① 浏览选择演员目录</div>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:3px">从媒体根目录开始浏览；选择包含 Season 1 的演员目录后自动扫描</div>
-          </div>
-          <el-button @click="browseRoot" :loading="browsing" size="small" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text)">回到根目录</el-button>
-        </div>
-        <div v-if="browseData" style="font-size:12px;color:var(--text-dim);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          当前：{{browseData.path}}
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-          <el-button v-if="browseData && browseData.parent" @click="browse(browseData.parent)" size="small">⬆ 上级</el-button>
-          <span v-if="selectedDir" class="filter-chip active">已选：{{selectedDir}}</span>
-        </div>
-        <div v-if="browseError" style="padding:10px;border-radius:8px;background:rgba(255,118,117,0.1);border:1px solid rgba(255,118,117,0.2);color:var(--red);font-size:13px;margin-bottom:10px">{{browseError}}</div>
-        <div v-if="browseData" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
-          <div v-for="dir in browseData.dirs" :key="dir.path" class="glass-card" style="padding:12px;display:flex;justify-content:space-between;gap:8px;align-items:center">
-            <div style="min-width:0;cursor:pointer;flex:1" @click="browse(dir.path)">
-              <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📁 {{dir.name}}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">{{dir.is_actor_dir ? '演员目录 · 可选择' : '目录'}}</div>
-            </div>
-            <el-button v-if="dir.is_actor_dir" @click.stop="selectDir(dir.path)" size="small" type="primary" style="background:var(--accent);border-color:var(--accent);flex-shrink:0">选择</el-button>
-          </div>
-        </div>
-        <div v-if="browseData && !browseData.dirs.length" style="font-size:13px;color:var(--text-muted);padding:10px">当前目录没有子目录</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:10px">Docker 需挂载媒体目录，后端从 NFO_MEDIA_ROOT 开始浏览。</div>
-      </div>
-
-      <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-          <div>
-            <div style="font-size:16px;font-weight:600">{{scanData.actor_name}}</div>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">{{scanData.season_dir}}</div>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-dim)">
-              <span class="filter-chip active">STRM {{scanData.counts.strm}}</span>
-              <span class="filter-chip active">图片 {{scanData.counts.images}}</span>
-              <span class="filter-chip active">NFO {{scanData.counts.nfo}}</span>
-              <span class="filter-chip">待图 {{scanData.counts.pending_images}}</span>
-            </div>
-            <el-button @click="scan" :loading="scanning" size="small" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text)">重新扫描当前目录</el-button>
-            <el-button @click="refreshEmbyNow" :loading="refreshingEmby" size="small" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text)">刷新 Emby 元数据</el-button>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
-          <div class="glass-card" style="padding:12px">tvshow.nfo：<b :style="scanData.tvshow_exists?'color:var(--green)':'color:var(--orange)'">{{scanData.tvshow_exists?'已存在':'缺失'}}</b></div>
-          <div class="glass-card" style="padding:12px">poster.jpg：<b :style="scanData.poster_exists?'color:var(--green)':'color:var(--orange)'">{{scanData.poster_exists?'已存在':'缺失'}}</b></div>
-          <div class="glass-card" style="padding:12px">fanart.jpg：<b :style="scanData.fanart_exists?'color:var(--green)':'color:var(--orange)'">{{scanData.fanart_exists?'已存在':'缺失'}}</b></div>
-          <div class="glass-card" style="padding:12px">logo.png：<b :style="scanData.logo_exists?'color:var(--green)':'color:var(--orange)'">{{scanData.logo_exists?'已存在':'缺失'}}</b></div>
-        </div>
-      </div>
-
-      <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
-        <div style="font-size:14px;font-weight:600;margin-bottom:12px">② tvshow.nfo 可视化填写</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
-          <input v-model="tv.title" placeholder="演员名" class="nfo-input" />
-          <input v-model="tv.tmdb_id" placeholder="TMDB ID（可选）" class="nfo-input" />
-          <input v-model="tv.dateadded" placeholder="添加时间，例如 2026-07-06 18:00:00" class="nfo-input" />
-          <input v-model="tv.sorttitle" placeholder="排序标题（可空）" class="nfo-input" />
-        </div>
-        <textarea v-model="tv.plot" placeholder="plot 简介" rows="3" class="nfo-textarea"></textarea>
-        <textarea v-model="tv.outline" placeholder="outline 简介（可空，默认等于 plot）" rows="3" class="nfo-textarea" style="margin-top:8px"></textarea>
-        <div style="border:1px solid var(--glass-border);border-radius:12px;padding:12px;background:rgba(255,255,255,0.03);margin-top:10px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px">PornHub 中文标签</div>
-          <div class="nfo-pornhub-fields">
-            <input v-model="tagTool.url" placeholder="粘贴 PornHub 视频页面地址，用于抓取主视频中文标签" class="nfo-input" />
-            <el-button @click="previewPornhubTags" :loading="tagTool.previewing" type="primary" style="background:var(--accent);border-color:var(--accent)">抓取中文标签</el-button>
-          </div>
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-top:10px">
-            <input v-model="tagTool.custom" placeholder="手动填写中文标签，多个用逗号/顿号分隔" class="nfo-input" @keyup.enter="addCustomTvTags" />
-            <el-button @click="addCustomTvTags">添加自定义标签</el-button>
-          </div>
-          <div v-if="tagTool.preview || tv.tags.length" style="margin-top:10px">
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-              <el-button @click="selectAllTvTags" size="small">全选中文标签</el-button>
-              <el-button @click="clearTvTags" size="small">清空标签</el-button>
-              <span style="font-size:12px;color:var(--text-dim)">{{tagTool.preview ? ('中文 ' + tagTool.preview.chinese_tag_count + ' 个，默认勾选前 ' + Math.min(6, tagTool.preview.tags.length) + ' 个') : ('已选标签 ' + tv.tags.length + ' 个')}}</span>
-            </div>
-            <div v-if="displayTvTags().length" style="display:flex;gap:8px;flex-wrap:wrap">
-              <el-checkbox v-for="tag in displayTvTags()" :key="tag" v-model="tv.tags" :label="tag" border>{{tag}}</el-checkbox>
-            </div>
-            <div v-else style="font-size:13px;color:var(--orange)">{{tagTool.preview && tagTool.preview.message || '没有解析到中文标签'}}</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
-          <el-checkbox v-model="tv.overwrite">覆盖已有 tvshow.nfo</el-checkbox>
-          <el-button @click="saveTvshow" :loading="savingTvshow" type="primary" style="background:var(--accent);border-color:var(--accent)">保存 tvshow.nfo</el-button>
-        </div>
-      </div>
-
-      <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
-        <div style="font-size:14px;font-weight:600;margin-bottom:12px">③ PornHub 发布时间</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">选择多集 .strm 并填写对应 PornHub 视频页，批量抓取发布时间并写入每集同名 .nfo。</div>
-        <div v-if="publishedRows.length" class="nfo-published-scroll">
-          <div v-for="row in publishedRows" :key="row.strm_filename" class="nfo-published-row">
-            <el-checkbox v-model="row.selected" style="flex:0 0 auto"></el-checkbox>
-            <div class="nfo-published-title" :title="row.label">{{row.label}}</div>
-            <input v-model="row.url" placeholder="PornHub URL" class="nfo-input nfo-published-url" />
-            <div class="nfo-published-status" :style="row.ok?'color:var(--green)':(row.error?'color:var(--red)':'color:var(--text-muted)')">{{row.ok ? row.published_at : (row.error || '')}}</div>
-          </div>
-        </div>
-        <div v-else style="font-size:13px;color:var(--green);padding:10px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,0.03)">所有剧集都已写入发布时间</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
-          <el-button @click="selectAllPublishedRows" size="small">全选</el-button>
-          <el-button @click="clearPublishedRows" size="small">清空选择</el-button>
-          <el-button @click="batchWritePublished" :loading="publishedTool.writing" type="primary" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none">批量抓取并写入发布时间</el-button>
-          <span style="font-size:12px;color:var(--text-dim)">仅处理已勾选且填写 URL 的行</span>
-        </div>
-      </div>
-
-      <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
-        <div style="font-size:14px;font-weight:600;margin-bottom:12px">④ poster / fanart / logo 上传</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <div v-for="kind in artworkKinds" :key="kind.key" class="glass-card" style="padding:12px;min-width:170px;flex:1">
-            <div style="font-weight:600;margin-bottom:8px">{{kind.label}}</div>
-            <input type="file" accept="image/jpeg,image/png,image/webp" @change="uploadArtwork(kind.key,$event)" style="font-size:12px;color:var(--text-dim);max-width:100%" />
-            <div style="font-size:11px;color:var(--text-muted);margin-top:6px">保存为 {{kind.file}}，已存在会直接替换</div>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="scanData" class="glass-card" style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-          <div><div style="font-size:14px;font-weight:600">⑤ 剧集图片与每集 NFO</div><div style="font-size:12px;color:var(--text-dim)">上传 IMG_*.JPG 后扫描，按图片时间顺序匹配缺图集数</div></div>
-          <div>
-            <input type="file" multiple accept="image/jpeg,image/png,image/webp" @change="uploadEpisodeImages" style="font-size:12px;color:var(--text-dim);max-width:220px" />
-          </div>
-        </div>
-        <div class="nfo-missing-lists">
-          <div class="nfo-missing-box">
-            <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--orange)">缺图片 {{scanData.missing_images.length}}</div>
-            <div v-if="scanData.missing_images.length" class="nfo-missing-scroll">
-              <div v-for="item in scanData.missing_images" :key="'img-'+item.filename" class="nfo-missing-item" :title="item.filename">{{item.episode_code}} - {{item.title}}</div>
-            </div>
-            <div v-else style="font-size:12px;color:var(--green)">图片完整</div>
-          </div>
-          <div class="nfo-missing-box">
-            <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--orange)">缺 NFO {{scanData.missing_nfo.length}}</div>
-            <div v-if="scanData.missing_nfo.length" class="nfo-missing-scroll">
-              <div v-for="item in scanData.missing_nfo" :key="'nfo-'+item.filename" class="nfo-missing-item" :title="item.filename">{{item.episode_code}} - {{item.title}}</div>
-            </div>
-            <div v-else style="font-size:12px;color:var(--green)">NFO 完整</div>
-          </div>
-        </div>
-        <div v-if="scanData.image_plan.length" style="display:grid;gap:8px;margin-bottom:12px;min-width:0;max-width:100%;overflow:hidden">
-          <div v-for="item in scanData.image_plan" :key="item.source" class="nfo-image-plan-row">
-            <span class="nfo-image-plan-source" :title="item.source">{{item.source}}</span><span class="nfo-image-plan-arrow">→</span><span class="nfo-image-plan-target" :title="item.target">{{item.target}}</span>
-          </div>
-        </div>
-        <div v-else style="font-size:13px;color:var(--green);margin-bottom:12px">暂无待重命名图片计划</div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
-          <el-checkbox v-model="refreshEmby">执行后刷新 Emby 元数据</el-checkbox>
-        </div>
-        <el-button @click="executeAutomation" :loading="executing" type="primary" size="large" style="width:100%;margin-top:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;font-weight:600;border-radius:12px">执行图片重命名 + 生成每集 NFO</el-button>
-      </div>
-
-      <div v-if="logs.length" class="glass-card">
-        <div style="font-size:14px;font-weight:600;margin-bottom:10px">执行日志</div>
-        <div v-for="(line,i) in logs" :key="i" style="font-family:monospace;font-size:12px;color:var(--text-dim);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">{{line}}</div>
-      </div>
-    </div>
-  `,
-  data(){
-    return {
-      selectedDir: '', browseData: null, browseError: '', browsing:false, scanData: null, scanning:false, executing:false, savingTvshow:false, refreshEmby:true, refreshingEmby:false, logs: [],
-      tv: { title:'', tmdb_id:'', dateadded:'', sorttitle:'', plot:'', outline:'', overwrite:false, tags:[] },
-      tagTool: { url:'', custom:'', preview:null, previewing:false },
-      publishedRows: [], publishedTool: { writing:false },
-      artworkKinds: [
-        {key:'poster', label:'poster.jpg', file:'poster.jpg'},
-        {key:'fanart', label:'fanart.jpg', file:'fanart.jpg'},
-        {key:'logo', label:'logo.png', file:'logo.png'},
-      ]
-    }
-  },
-  mounted(){ this.browseRoot() },
-  methods:{
-    async browseRoot(){ await this.browse('') },
-    async browse(path){
-      this.browsing=true; this.browseError='';
-      try{
-        const url = path ? `/api/nfo/automation/browse?path=${encodeURIComponent(path)}` : '/api/nfo/automation/browse';
-        const res = await fetch(url);
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'浏览失败') }
-        this.browseData = await res.json();
-      }catch(e){ this.browseError=e.message||'浏览失败' }
-      finally{ this.browsing=false }
-    },
-    async selectDir(path){
-      this.selectedDir = path;
-      await this.scan();
-    },
-    async scan(){
-      if(!this.selectedDir){ ElementPlus.ElMessage.warning('请先选择演员目录'); return }
-      this.scanning=true;
-      try{
-        const res = await fetch('/api/nfo/automation/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir})});
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'扫描失败') }
-        this.scanData = await res.json();
-        this.applyTvshowData(this.scanData.tvshow);
-        if(!this.tv.title) this.tv.title = this.scanData.actor_name;
-        this.resetPublishedRows();
-        ElementPlus.ElMessage.success('扫描完成');
-      }catch(e){ ElementPlus.ElMessage.error(e.message||'扫描失败') }
-      finally{ this.scanning=false }
-    },
-    applyTvshowData(data){
-      if(!data){ this.tv = Object.assign({}, this.tv, {title:'', tmdb_id:'', dateadded:'', sorttitle:'', plot:'', outline:'', tags:[]}); return }
-      this.tv.title = data.title || this.scanData.actor_name || '';
-      this.tv.tmdb_id = data.tmdb_id || '';
-      this.tv.dateadded = data.dateadded || '';
-      this.tv.sorttitle = data.sorttitle || '';
-      this.tv.plot = data.plot || '';
-      this.tv.outline = data.outline || '';
-      this.tv.tags = Array.isArray(data.tags) ? data.tags.slice() : [];
-    },
-    async saveTvshow(){
-      if(!this.scanData){ return }
-      this.savingTvshow=true;
-      try{
-        const payload = Object.assign({}, this.tv, {actor_dir:this.selectedDir});
-        const res = await fetch('/api/nfo/automation/tvshow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'保存失败') }
-        const data = await res.json();
-        ElementPlus.ElMessage.success('已保存 tvshow.nfo');
-        await this.scan();
-        await this.refreshActorMetadataAfterChange();
-      }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') }
-      finally{ this.savingTvshow=false }
-    },
-    async previewPornhubTags(){
-      if(!this.tagTool.url){ ElementPlus.ElMessage.warning('请先粘贴 PornHub 地址'); return }
-      this.tagTool.previewing = true;
-      try{
-        const res = await fetch('/api/nfo/automation/pornhub-metadata/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:this.tagTool.url})});
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'抓取失败') }
-        const data = await res.json();
-        this.tagTool.preview = data;
-        this.tv.tags = (data.tags || []).slice(0, 6);
-        ElementPlus.ElMessage.success(`已抓取中文标签 ${data.chinese_tag_count} 个，默认勾选前 ${this.tv.tags.length} 个`);
-      }catch(e){ ElementPlus.ElMessage.error(e.message||'抓取失败') }
-      finally{ this.tagTool.previewing = false }
-    },
-    selectAllTvTags(){
-      if(this.tagTool.preview) this.tv.tags = (this.tagTool.preview.tags || []).slice();
-    },
-    clearTvTags(){ this.tv.tags = [] },
-    displayTvTags(){
-      const tags = [];
-      const add = value => { if(value && !tags.includes(value)) tags.push(value) };
-      ((this.tagTool.preview && this.tagTool.preview.tags) || []).forEach(add);
-      (this.tv.tags || []).forEach(add);
-      return tags;
-    },
-    addCustomTvTags(){
-      const input = (this.tagTool.custom || '').trim();
-      if(!input){ return }
-      const tags = input.split(/[，,、;；|]+/).map(t=>t.trim()).filter(t=>t && /[\u4e00-\u9fff]/.test(t));
-      if(!tags.length){ ElementPlus.ElMessage.warning('请输入包含中文的标签'); return }
-      const current = new Set(this.tv.tags || []);
-      tags.forEach(tag => current.add(tag));
-      this.tv.tags = Array.from(current);
-      this.tagTool.custom = '';
-      ElementPlus.ElMessage.success(`已添加 ${tags.length} 个自定义标签`);
-    },
-    resetPublishedRows(){
-      const existing = new Map((this.publishedRows || []).map(row => [row.strm_filename, row]));
-      this.publishedRows = ((this.scanData && this.scanData.episodes) || []).filter(ep => !ep.has_published_date).map(ep => {
-        const old = existing.get(ep.filename) || {};
-        return {strm_filename:ep.filename, label:`${ep.episode_code} - ${ep.title}`, url:old.url || '', selected:!!old.selected, ok:false, error:'', published_at:''};
-      });
-    },
-    selectAllPublishedRows(){ this.publishedRows.forEach(row => { row.selected = true }) },
-    clearPublishedRows(){ this.publishedRows.forEach(row => { row.selected = false }) },
-    async batchWritePublished(){
-      const items = this.publishedRows.filter(row => row.selected && row.url.trim()).map(row => ({strm_filename:row.strm_filename, url:row.url.trim()}));
-      if(!items.length){ ElementPlus.ElMessage.warning('请勾选至少一行并填写 PornHub URL'); return }
-      this.publishedTool.writing = true;
-      try{
-        this.publishedRows.forEach(row => { row.ok=false; row.error=''; row.published_at='' });
-        const res = await fetch('/api/nfo/automation/pornhub-published/batch-write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir, items})});
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'批量写入失败') }
-        const data = await res.json();
-        const byName = new Map((data.results || []).map(item => [item.strm_filename, item]));
-        this.publishedRows.forEach(row => {
-          const result = byName.get(row.strm_filename);
-          if(result){ row.ok=!!result.ok; row.error=result.error || ''; row.published_at=result.published_at || ''; }
-        });
-        const okCount = (data.results || []).filter(item => item.ok).length;
-        this.logs = (data.results || []).map(item => item.ok ? `${item.strm_filename}: 已写入发布时间 ${item.published_at}` : `${item.strm_filename}: ${item.error}`);
-        ElementPlus.ElMessage.success(`批量完成，成功 ${okCount}/${data.results.length}`);
-        await this.scan();
-        if(okCount > 0) await this.refreshActorMetadataAfterChange();
-      }catch(e){ ElementPlus.ElMessage.error(e.message||'批量写入失败') }
-      finally{ this.publishedTool.writing = false }
-    },
-    async uploadArtwork(kind, ev){
-      const file = ev.target.files && ev.target.files[0];
-      if(!file) return;
-      const fd = new FormData(); fd.append('actor_dir', this.selectedDir); fd.append('kind', kind); fd.append('overwrite', 'true'); fd.append('image', file);
-      try{
-        const res = await fetch('/api/nfo/automation/upload-artwork',{method:'POST',body:fd});
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'上传失败') }
-        ElementPlus.ElMessage.success('上传成功'); ev.target.value=''; await this.scan(); await this.refreshActorMetadataAfterChange();
-      }catch(e){ ElementPlus.ElMessage.error(e.message||'上传失败') }
-    },
-    async uploadEpisodeImages(ev){
-      const files = Array.from(ev.target.files||[]); if(!files.length) return;
-      const fd = new FormData(); fd.append('actor_dir', this.selectedDir); files.forEach(f=>fd.append('images',f));
-      try{
-        const res = await fetch('/api/nfo/automation/upload-episode-images',{method:'POST',body:fd});
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'上传失败') }
-        const data = await res.json(); this.scanData = data.scan; ev.target.value=''; ElementPlus.ElMessage.success(`已上传 ${data.saved.length} 张图片`);
-      }catch(e){ ElementPlus.ElMessage.error(e.message||'上传失败') }
-    },
-    async refreshActorMetadataAfterChange(){
-      if(!this.selectedDir){ return }
-      try{
-        const res = await fetch('/api/nfo/automation/refresh-emby',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir})});
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'刷新失败') }
-        this.logs = ['元数据已改动，已自动刷新当前 Emby 演员目录'].concat(this.logs || []);
-      }catch(e){
-        this.logs = [`自动刷新 Emby 元数据失败: ${e.message || '刷新失败'}`].concat(this.logs || []);
-      }
-    },
-    async refreshEmbyNow(){
-      this.refreshingEmby=true;
-      try{
-        const payload = this.selectedDir ? {actor_dir:this.selectedDir} : {};
-        const res = await fetch('/api/nfo/automation/refresh-emby',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'刷新失败') }
-        this.logs = ['刷新Emby媒体库: 已提交'].concat(this.logs || []);
-        ElementPlus.ElMessage.success('已提交 Emby 元数据刷新');
-      }catch(e){ ElementPlus.ElMessage.error(e.message||'刷新失败') }
-      finally{ this.refreshingEmby=false }
-    },
-    async executeAutomation(){
-      if(!this.scanData){ return }
-      this.executing=true; this.logs=[];
-      try{
-        const res = await fetch('/api/nfo/automation/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_dir:this.selectedDir, refresh_emby:this.refreshEmby})});
-        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'执行失败') }
-        const data = await res.json(); this.logs = data.logs; this.scanData = data.scan; ElementPlus.ElMessage.success('执行完成');
-      }catch(e){ ElementPlus.ElMessage.error(e.message||'执行失败') }
-      finally{ this.executing=false }
-    }
-  }
-}
-
-const Monitor = {
-  template: `
-    <div class="monitor-page">
-      <div class="hero" style="padding:24px;margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;position:relative;z-index:1;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div class="hero-avatar" style="background:linear-gradient(135deg,var(--green),#00b894)">🔔</div>
-            <div><h2 style="font-size:18px;font-weight:600">完结监控</h2><div style="font-size:12px;color:var(--text-dim)">监控剧集更新与完结状态，推送 Telegram 通知</div></div>
-          </div>
-          <el-button @click="showSettings=true" type="primary" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text)">⚙️ 设置</el-button>
-        </div>
-      </div>
-
-      <div class="glass-card" style="margin-bottom:16px;padding:16px">
-        <div class="monitor-search-bar">
-          <input v-model="searchQuery" placeholder="输入剧名搜索..." @keyup.enter="doSearch" @input="onSearchInput" :disabled="searching" class="monitor-search-input" />
-          <el-button type="primary" @click="doSearch" :loading="searching" class="monitor-search-btn">🔍 搜索</el-button>
-        </div>
-        <div v-if="searchError" style="margin-top:8px;font-size:12px;color:var(--red)">{{searchError}}</div>
-        <div v-if="searchResults.length" class="monitor-search-results">
-          <div class="monitor-search-results-header"><span>搜索结果 · {{searchResults.length}} 条</span><button type="button" class="monitor-search-clear" @click="clearSearchResults">关闭</button></div>
-          <div v-for="item in searchResults" :key="item.tmdb_id" @click="addSeries(item)" class="monitor-search-result-item">
-            <img v-if="item.poster_url" :src="item.poster_url" class="monitor-search-poster" @error="$event.target.style.display='none'" />
-            <div v-else class="monitor-search-poster-placeholder">📺</div>
-            <div class="monitor-search-body"><div class="monitor-search-title">{{item.title}}</div><div class="monitor-search-meta">{{item.year || '-'}} · ⭐ {{item.vote_average || '-'}}</div><div v-if="item.overview" class="monitor-search-overview">{{item.overview}}</div></div>
-            <el-button size="small" type="primary" style="background:var(--accent);border-color:var(--accent);flex-shrink:0">+ 添加</el-button>
-          </div>
-        </div>
-      </div>
-
-      <div class="glass-card monitor-list-card">
-        <div class="monitor-list-header">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <div style="font-size:15px;font-weight:600">已监控剧集 <span style="font-size:12px;color:var(--text-dim);font-weight:400;margin-left:6px">{{monitoredList.length}} 部</span><span v-if="refreshing && hasCachedList" class="monitor-cache-hint">后台刷新中...</span></div>
-            <div class="lib-filter" style="margin-bottom:0;display:inline-flex">
-              <span class="filter-chip" :class="{active:filterStatus==='all'}" @click="filterStatus='all'" style="font-size:11px;padding:3px 10px">全部</span>
-              <span class="filter-chip" :class="{active:filterStatus==='continuing'}" @click="filterStatus='continuing'" style="font-size:11px;padding:3px 10px">连载中</span>
-              <span class="filter-chip" :class="{active:filterStatus==='ended'}" @click="filterStatus='ended'" style="font-size:11px;padding:3px 10px">已完结</span>
-            </div>
-          </div>
-          <el-button size="small" @click="refreshList" :disabled="refreshing" circle class="monitor-refresh-btn" aria-label="刷新监控列表"><span class="monitor-refresh-icon" :class="{spinning:refreshing}">🔄</span></el-button>
-        </div>
-        <div v-if="!monitoredList.length && !loadingList" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">暂无监控剧集，在上方搜索添加</div>
-        <div v-if="loadingList && !monitoredList.length" style="text-align:center;padding:40px;color:var(--text-muted)">加载中...</div>
-        <div v-if="monitoredList.length" class="monitor-list-scroll">
-          <div v-for="s in filteredList" :key="s.tmdb_id" class="monitor-list-item">
-            <img v-if="s.poster_url" :src="s.poster_url" style="width:44px;height:66px;object-fit:cover;border-radius:6px;flex-shrink:0" @error="$event.target.style.display='none'" />
-            <div v-else style="width:44px;height:66px;border-radius:6px;background:var(--glass);display:flex;align-items:center;justify-content:center;flex-shrink:0">📺</div>
-            <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{s.title}} <span v-if="s.year" style="font-size:12px;color:var(--text-dim);font-weight:400">({{s.year}})</span></div><div style="font-size:12px;color:var(--text-dim);margin-top:4px">{{s.type || '-'}} · ⭐ {{s.vote_average || '-'}}</div><div v-if="s.last_episode?.episode_number" style="font-size:12px;color:var(--text-dim);margin-top:2px">📺 S{{s.last_episode.season_number}}E{{s.last_episode.episode_number}}{{s.total_episodes ? ' / '+s.total_episodes+' 集' : ''}}</div><div v-if="s.next_episode?.air_date && s.current_status!=='Ended' && s.current_status!=='Canceled'" style="font-size:12px;color:var(--green);margin-top:2px">📅 {{s.next_episode.air_date}} · {{daysUntil(s.next_episode.air_date)}}</div></div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0"><span v-if="s.current_status==='Ended'" style="font-size:12px;color:var(--red)">🔴 已完结</span><span v-else-if="s.current_status==='Canceled'" style="font-size:12px;color:var(--text-muted)">⚫ 已取消</span><span v-else style="font-size:12px;color:var(--green)">🟢 连载中</span><span v-if="s.current_status==='Ended'" style="font-size:11px;color:var(--text-dim)">{{s.notified_ended ? '✅ 已通知' : '⏳ 待通知'}}</span><el-button size="small" type="danger" text @click="deleteSeries(s.tmdb_id)">删除</el-button></div>
-          </div>
-          <div v-if="!filteredList.length" style="text-align:center;padding:36px;color:var(--text-muted);font-size:14px">当前筛选条件下暂无剧集</div>
-        </div>
-      </div>
-
-      <div style="margin-top:16px">
-        <el-collapse v-model="activeCollapse">
-          <el-collapse-item title="📊 运行状态" name="status"><div class="glass-card" style="padding:16px"><div v-if="monitorStatus" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:13px"><div><span style="color:var(--text-dim)">状态：</span>{{monitorStatus.is_running ? '🟢 运行中' : '🔴 已停止'}}</div><div><span style="color:var(--text-dim)">监控剧集：</span>{{monitorStatus.monitored_count}} 部</div><div><span style="color:var(--text-dim)">上次检查：</span>{{fmtTime2(monitorStatus.last_check_time)}}</div><div><span style="color:var(--text-dim)">最近通知：</span>{{fmtTime2(monitorStatus.last_notification_time)}}</div></div><div v-else style="color:var(--text-muted);font-size:13px">加载中...</div></div></el-collapse-item>
-          <el-collapse-item title="📄 检查日志" name="logs"><div class="glass-card" style="padding:16px"><div v-if="logs.length"><div v-for="(log,i) in logs" :key="i" style="padding:6px 0;border-bottom:1px solid var(--glass-border);font-size:12px;display:flex;gap:8px"><span style="color:var(--text-muted);flex-shrink:0">{{fmtTime2(log.time)}}</span><span :style="{color: log.status==='ok' ? 'var(--green)' : 'var(--orange)'}">{{log.status==='ok' ? '✅' : '⚠️'}}</span><span style="color:var(--text-dim)">{{log.message}}</span></div></div><div v-else style="color:var(--text-muted);font-size:13px">暂无日志</div></div></el-collapse-item>
-        </el-collapse>
-      </div>
-
-      <el-dialog v-model="showSettings" title="⚙️ 完结监控设置" width="min(92vw,520px)" :style="'--el-dialog-bg-color:var(--surface);--el-dialog-text-color:var(--text);--el-dialog-border-color:var(--glass-border)'">
-        <div style="display:flex;flex-direction:column;gap:14px">
-          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">TMDB API Key</div><input v-model="config.tmdb_api_key" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
-          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Bot Token</div><input v-model="config.tg_bot_token" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
-          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">Telegram Chat ID</div><input v-model="config.tg_chat_id" placeholder="留空则保留原配置或使用环境变量" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
-          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">代理 URL（可选）</div><input v-model="config.proxy_url" placeholder="http://127.0.0.1:7890" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
-          <div><div style="font-size:13px;font-weight:500;margin-bottom:4px">检查 Cron 规则</div><input v-model="config.check_cron" placeholder="*/30 * * * *" style="width:100%;padding:9px 12px;font-size:13px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /><div style="font-size:11px;color:var(--text-muted);margin-top:5px">标准 5 段 cron，例如 */30 * * * * 表示每 30 分钟检查一次</div></div>
-        </div>
-        <template #footer><div style="display:flex;gap:8px;justify-content:flex-end"><el-button @click="testConfig">测试通知</el-button><el-button @click="saveConfig" type="primary" style="background:var(--accent);border-color:var(--accent)">💾 保存</el-button></div></template>
-      </el-dialog>
-    </div>
-  `,
-  data(){ return { searchQuery:'', searchResults:[], searching:false, searchError:'', monitoredList:[], loadingList:false, refreshing:false, hasCachedList:false, showSettings:false, filterStatus:'all', monitorStatus:null, logs:[], activeCollapse:[], config:{tmdb_api_key:'',tg_bot_token:'',tg_chat_id:'',proxy_url:'',check_cron:'*/30 * * * *'} } },
-  computed:{ filteredList(){ if(this.filterStatus==='continuing') return this.monitoredList.filter(s=>s.current_status!=='Ended'&&s.current_status!=='Canceled'); if(this.filterStatus==='ended') return this.monitoredList.filter(s=>s.current_status==='Ended'); return this.monitoredList } },
-  async mounted(){ this.restoreCachedList(); this.loadList({background:this.hasCachedList}); await this.loadConfig(); await this.loadStatus(); await this.loadLogs(); this._statusTimer=setInterval(()=>{this.loadStatus();this.loadLogs()},30000) },
-  beforeUnmount(){ if(this._statusTimer) clearInterval(this._statusTimer) },
-  methods:{
-    onSearchInput(){ if(!this.searchQuery.trim()) this.clearSearchResults() },
-    clearSearchResults(){ this.searchResults=[]; this.searchError='' },
-    async doSearch(){ if(!this.searchQuery.trim()){ this.clearSearchResults(); return } this.searching=true; this.searchError=''; try{ const d=await fetchJSON('/tmdb/search?q='+encodeURIComponent(this.searchQuery.trim())); this.searchResults=d.results||[]; if(!this.searchResults.length) this.searchError='未找到相关剧集' }catch(e){ this.searchError=e.message }finally{ this.searching=false } },
-    async addSeries(item){ try{ const d=await fetchJSON('/monitor/add',{method:'POST',body:JSON.stringify({tmdb_id:item.tmdb_id,title:item.title,year:item.year,poster_url:item.poster_url})}); if(!this.monitoredList.some(s=>s.tmdb_id===item.tmdb_id)){ this.monitoredList=[...this.monitoredList,{tmdb_id:item.tmdb_id,title:item.title,year:item.year,poster_url:item.poster_url,last_status:'Unknown',current_status:'Unknown',notified_ended:false}]; this.hasCachedList=true; this.saveCachedList() } ElementPlus.ElMessage.success(d.notification_sent?'已添加并发送通知':'已添加，正在后台刷新信息'); this.clearSearchResults(); this.searchQuery=''; this.loadList({background:true}); setTimeout(()=>this.loadList({background:true}),2000); await this.loadStatus() }catch(e){ ElementPlus.ElMessage.error(e.message) } },
-    async deleteSeries(tmdbId){ try{ await ElementPlus.ElMessageBox.confirm('确定要删除该剧集的监控吗？','确认删除',{type:'warning'}); await fetchJSON('/monitor/'+tmdbId,{method:'DELETE'}); this.monitoredList=this.monitoredList.filter(s=>s.tmdb_id!==tmdbId); this.saveCachedList(); ElementPlus.ElMessage.success('已删除'); await this.loadStatus() }catch(e){ if(e!=='cancel') ElementPlus.ElMessage.error(e.message||'删除失败') } },
-    restoreCachedList(){ try{ const raw=localStorage.getItem('emby-manager:monitor:list'); if(!raw) return; const cached=JSON.parse(raw); if(Array.isArray(cached.series)){ this.monitoredList=cached.series; this.hasCachedList=this.monitoredList.length>0 } }catch(e){ localStorage.removeItem('emby-manager:monitor:list') } },
-    saveCachedList(){ try{ localStorage.setItem('emby-manager:monitor:list', JSON.stringify({series:this.monitoredList, savedAt:Date.now()})) }catch(e){} },
-    async loadList(opts={}){ const background=!!opts.background; if(background) this.refreshing=true; else this.loadingList=true; try{ const d=await fetchJSON('/monitor/list'); this.monitoredList=d.series||[]; this.hasCachedList=this.monitoredList.length>0; this.saveCachedList() }catch(e){}finally{ if(background) this.refreshing=false; else this.loadingList=false } },
-    async refreshList(){ this.refreshing=true; await this.loadList({background:true}); this.refreshing=false },
-    async loadConfig(){ try{ const d=await fetchJSON('/config'); this.config={...this.config,...d} }catch(e){} },
-    async saveConfig(){ try{ const payload={tmdb_api_key:this.config.tmdb_api_key,tg_bot_token:this.config.tg_bot_token,tg_chat_id:this.config.tg_chat_id,proxy_url:this.config.proxy_url,check_cron:(this.config.check_cron||'*/30 * * * *').trim()}; await fetchJSON('/config',{method:'PUT',body:JSON.stringify(payload)}); ElementPlus.ElMessage.success('保存成功'); this.showSettings=false; await this.loadStatus() }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') } },
-    async testConfig(){ try{ const d=await fetchJSON('/config/test',{method:'POST'}); d.success ? ElementPlus.ElMessage.success(d.message||'测试消息已发送') : ElementPlus.ElMessage.error(d.error||'测试失败') }catch(e){ ElementPlus.ElMessage.error(e.message||'测试失败') } },
-    async loadStatus(){ try{ this.monitorStatus=await fetchJSON('/monitor/status') }catch(e){} },
-    async loadLogs(){ try{ this.logs=await fetchJSON('/monitor/logs?limit=50') }catch(e){} },
-    fmtTime2(t){ if(!t) return '-'; return new Date(t).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) },
-    daysUntil(dateStr){ if(!dateStr) return ''; const now=new Date(); const today=new Date(now.getFullYear(),now.getMonth(),now.getDate()); const p=dateStr.split('-'); const target=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])); const diff=Math.round((target-today)/86400000); if(diff<0)return'已播出'; if(diff===0)return'今天'; if(diff===1)return'明天'; return diff+'天后' }
-  }
-}
-
-// ---- File Organizer ----
-const Settings = {
-  template: `
-    <div class="fade-in">
-      <div class="glass-card" style="padding:18px;margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
-          <div><h2 style="font-size:18px;font-weight:600">设置</h2><div style="font-size:12px;color:var(--text-dim)">DeepSeek 翻译配置</div></div>
-          <el-tag :type="settings.api_key_configured?'success':'warning'">{{settings.api_key_configured ? 'API Key 已配置：'+settings.api_key_source : 'API Key 未配置'}}</el-tag>
-        </div>
-      </div>
-      <div class="glass-card" style="padding:18px;display:grid;gap:14px;max-width:760px">
-        <div><div style="font-size:13px;font-weight:500;margin-bottom:5px">DeepSeek API Key <span v-if="settings.api_key_configured" style="font-size:12px;color:var(--green);font-weight:400">已保存 API Key，留空不修改</span></div><input v-model="form.api_key" type="password" :placeholder="settings.api_key_configured ? '已保存 API Key，留空不修改；输入新 Key 后保存会替换' : '请输入 DeepSeek API Key，或使用环境变量 DEEPSEEK_API_KEY'" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
-        <div><div style="font-size:13px;font-weight:500;margin-bottom:5px">DeepSeek Base URL</div><input v-model="form.base_url" placeholder="https://api.deepseek.com" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div>
-        <div style="display:grid;grid-template-columns:1fr 160px;gap:12px"><div><div style="font-size:13px;font-weight:500;margin-bottom:5px">模型</div><input v-model="form.model" placeholder="deepseek-chat" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div><div><div style="font-size:13px;font-weight:500;margin-bottom:5px">翻译批次大小</div><input v-model.number="form.batch_size" type="number" min="1" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" /></div></div>
-        <div style="display:flex;gap:10px;justify-content:flex-end"><el-button @click="load">刷新</el-button><el-button type="primary" @click="save" :loading="saving">保存设置</el-button></div>
-      </div>
-      <div class="glass-card" style="padding:18px;margin-top:16px;display:grid;gap:12px;max-width:760px">
-        <div style="font-size:15px;font-weight:600">MeTube 地址</div>
-        <div style="font-size:12px;color:var(--text-dim);line-height:1.5">用于「下载上传」页面读取 MeTube /history。部署在 NAS 上通常填写 http://192.168.1.7:8081。</div>
-        <input v-model="metube.url" placeholder="http://192.168.1.7:8081" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" />
-        <div style="display:flex;gap:10px;justify-content:flex-end"><el-button @click="loadMetube">刷新</el-button><el-button type="primary" @click="saveMetube" :loading="savingMetube">保存 MeTube 地址</el-button></div>
-      </div>
-      <div class="glass-card" style="padding:18px;margin-top:16px;display:grid;gap:12px;max-width:760px">
-        <div style="font-size:15px;font-weight:600">测试翻译</div>
-        <input v-model="testTitle" placeholder="Beautiful Girl At Home 1080p" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text);outline:none" />
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><el-button @click="testTranslate" :loading="testing">测试翻译</el-button><span v-if="testResult" style="color:var(--green);font-size:13px">{{testResult}}</span></div>
-      </div>
-    </div>
-  `,
-  data(){ return {settings:{api_key_configured:false,api_key_source:'none'},form:{api_key:undefined,base_url:'https://api.deepseek.com',model:'deepseek-chat',batch_size:10},metube:{url:'http://192.168.1.7:8081'},saving:false,savingMetube:false,testing:false,testTitle:'',testResult:''} },
-  async mounted(){ await this.load() },
-  methods:{
-    async load(){ try{ const d=await fetchJSON('/settings/deepseek'); this.settings=d; this.form={api_key:undefined,base_url:d.base_url||'https://api.deepseek.com',model:d.model||'deepseek-chat',batch_size:d.batch_size||10}; await this.loadMetube() }catch(e){ ElementPlus.ElMessage.error(e.message||'加载设置失败') } },
-    async loadMetube(){ try{ const d=await fetchJSON('/settings/metube'); this.metube={url:d.url||'http://192.168.1.7:8081'} }catch(e){ ElementPlus.ElMessage.error(e.message||'加载 MeTube 设置失败') } },
-    async save(){ this.saving=true; try{ const payload={base_url:this.form.base_url,model:this.form.model,batch_size:this.form.batch_size}; if(this.form.api_key!==undefined) payload.api_key=this.form.api_key; const d=await fetchJSON('/settings/deepseek',{method:'PUT',body:JSON.stringify(payload)}); this.settings=d; this.form.api_key=undefined; ElementPlus.ElMessage.success('保存成功') }catch(e){ ElementPlus.ElMessage.error(e.message||'保存失败') }finally{ this.saving=false } },
-    async saveMetube(){ this.savingMetube=true; try{ const d=await fetchJSON('/settings/metube',{method:'PUT',body:JSON.stringify({url:this.metube.url})}); this.metube={url:d.url||this.metube.url}; ElementPlus.ElMessage.success('MeTube 地址已保存') }catch(e){ ElementPlus.ElMessage.error(e.message||'保存 MeTube 地址失败') }finally{ this.savingMetube=false } },
-    async testTranslate(){ if(!this.testTitle.trim()) return ElementPlus.ElMessage.warning('请输入测试标题'); this.testing=true; this.testResult=''; try{ const d=await fetchJSON('/settings/deepseek/test-translation',{method:'POST',body:JSON.stringify({title:this.testTitle.trim()})}); this.testResult=d.title; ElementPlus.ElMessage.success('测试成功') }catch(e){ ElementPlus.ElMessage.error(e.message||'测试失败') }finally{ this.testing=false } }
-  }
-}
-
 const FileOrganizer = {
   template: `
     <div class="fade-in file-organizer-page">
-      <div class="glass-card" style="padding:18px;margin-bottom:16px"><h2 style="font-size:18px;font-weight:600">文件整理</h2><div style="font-size:12px;color:var(--text-dim)">115 视频翻译重命名移动，以及 /strm 元数据复制到 115</div></div>
+      <div class="glass-card" style="padding:18px;margin-bottom:16px"><h2 style="font-size:18px;font-weight:600">媒体整理</h2><div style="font-size:12px;color:var(--text-dim)">先生成基础 NFO / 封面，再扫描、翻译、重命名并移动剧集文件</div></div>
       <el-collapse v-model="active" style="display:grid;gap:12px">
-        <el-collapse-item name="paths" title="1. 选择 115 源文件夹和目标文件夹"><div class="glass-card" style="padding:16px;display:grid;gap:12px"><div class="fo-path-row"><input v-model="sourceDir" placeholder="/CloudDrive115/源文件夹，也可手动粘贴" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><el-button @click="openBrowse('sourceDir','cloud115')">选择源文件夹</el-button></div><div class="fo-path-row"><input v-model="targetDir" placeholder="/CloudDrive115/目标文件夹，也可手动粘贴" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><el-button @click="openBrowse('targetDir','cloud115')">选择目标文件夹</el-button></div><div class="fo-action-row"><el-switch v-model="recursive" active-text="扫描子文件夹" /><el-select v-model="sort" size="small" style="width:180px"><el-option label="按文件名排序" value="name"/><el-option label="按修改时间从早到晚" value="mtime"/><el-option label="按发布时间从早到晚" value="published_date"/></el-select><el-button type="primary" @click="scan" :loading="loading">扫描视频</el-button></div></div></el-collapse-item>
-        <el-collapse-item name="scan" title="2. 扫描视频 / 3. DeepSeek 翻译标题"><div class="glass-card" style="padding:16px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px"><span style="font-size:13px;color:var(--text-dim)">共 {{items.length}} 个视频</span><el-button @click="translate" :disabled="!items.length" :loading="translating">DeepSeek 翻译标题</el-button></div><el-table :data="items" size="small" style="width:100%"><el-table-column label="调整顺序" width="112"><template #default="s"><div style="display:flex;gap:4px"><el-button size="small" @click="moveItem(s.$index,-1)" :disabled="s.$index===0">上移</el-button><el-button size="small" @click="moveItem(s.$index,1)" :disabled="s.$index===items.length-1">下移</el-button></div></template></el-table-column><el-table-column label="集数预览" width="92"><template #default="s">E{{String(startEpisode+s.$index).padStart(2,'0')}}</template></el-table-column><el-table-column type="selection" width="44"/><el-table-column prop="published_date" label="发布时间" width="120"><template #default="s"><span>{{s.row.published_date||'未识别'}}</span></template></el-table-column><el-table-column prop="name" label="原文件名" min-width="220"/><el-table-column label="图片" min-width="160"><template #default="s"><span>{{s.row.artwork_name||'无同名图片'}}</span></template></el-table-column><el-table-column label="中文标题" min-width="220"><template #default="s"><input v-model="s.row.chinese_title" style="width:100%;padding:6px;background:transparent;border:1px solid var(--glass-border);border-radius:6px;color:var(--text)" /></template></el-table-column><el-table-column prop="status" label="状态" width="130"/></el-table></div></el-collapse-item>
-        <el-collapse-item name="confirm" title="4. 表格确认最终文件名 / 5. 预检查"><div class="glass-card" style="padding:16px;display:grid;gap:12px"><div class="fo-episode-grid"><input v-model="actorName" placeholder="演员名称" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><input v-model.number="season" @change="suggestNextEpisode" type="number" min="1" placeholder="季" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><input v-model.number="startEpisode" type="number" min="1" placeholder="起始集数" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /></div><div v-if="episodeHint" style="font-size:12px;color:var(--green)">{{episodeHint}}</div><el-checkbox v-model="generateNfo">生成每集 NFO</el-checkbox><el-checkbox v-model="confirmed">确认无误</el-checkbox><div class="fo-action-row"><el-button @click="precheck" :disabled="!items.length">预检查</el-button><el-button type="primary" @click="execute" :disabled="!precheckOk || !confirmed" :loading="executing">执行移动</el-button></div><pre v-if="precheckResult" class="fo-result-pre">{{precheckResult}}</pre></div></el-collapse-item>
-        <el-collapse-item name="metadata" title="7. 元数据复制到 115"><div class="glass-card" style="padding:16px;display:grid;gap:12px"><div class="fo-path-row"><input v-model="metaSource" placeholder="/strm/元数据源目录，也可手动粘贴" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><el-button @click="openBrowse('metaSource','strm')">选择元数据源目录</el-button></div><div class="fo-path-row"><input v-model="metaTarget" placeholder="/CloudDrive115/115目标目录，也可手动粘贴" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><el-button @click="openBrowse('metaTarget','cloud115')">选择元数据目标目录</el-button></div><div class="fo-action-row"><el-button @click="metadataPrecheck">预检查</el-button><el-button type="primary" @click="metadataExecute" :disabled="!metadataConfirmed">复制并覆盖元数据</el-button><el-checkbox v-model="metadataConfirmed">确认覆盖同名元数据</el-checkbox></div><pre v-if="metadataResult" class="fo-result-pre">{{metadataResult}}</pre></div></el-collapse-item>
+        <el-collapse-item name="prep" title="1. 生成 tvshow.nfo / poster.jpg / fanart.jpg / logo.png">
+          <div class="glass-card" style="padding:16px;display:grid;gap:12px">
+            <div class="fo-path-row">
+              <input v-model="mediaDir" placeholder="/strm/演员目录，也可手动粘贴" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" />
+              <el-button @click="openBrowse('mediaDir','strm')">选择目录</el-button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+              <input v-model="mediaTv.title" placeholder="标题，默认使用目录名" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" />
+              <input v-model="mediaTv.tmdb_id" placeholder="TMDB ID（可选）" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" />
+              <input v-model="mediaTv.dateadded" placeholder="dateadded，例如 2026-07-06 18:00:00" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" />
+              <input v-model="mediaTv.sorttitle" placeholder="sorttitle（可空）" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" />
+            </div>
+            <textarea v-model="mediaTv.plot" placeholder="plot 简介" rows="3" class="nfo-textarea"></textarea>
+            <textarea v-model="mediaTv.outline" placeholder="outline 简介（可空，默认等于 plot）" rows="3" class="nfo-textarea" style="margin-top:8px"></textarea>
+            <div class="fo-action-row">
+              <el-checkbox v-model="mediaTv.overwrite">覆盖已有 tvshow.nfo</el-checkbox>
+              <el-button type="primary" @click="saveTvshow" :loading="savingTvshow">生成 tvshow.nfo</el-button>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div v-for="kind in artworkKinds" :key="kind.key" class="glass-card" style="padding:12px;min-width:180px;flex:1">
+                <div style="font-weight:600;margin-bottom:8px">{{kind.label}}</div>
+                <input type="file" accept="image/jpeg,image/png,image/webp" @change="uploadArtwork(kind.key,$event)" style="font-size:12px;color:var(--text-dim);max-width:100%" />
+                <div style="font-size:11px;color:var(--text-muted);margin-top:6px">保存为 {{kind.file}}</div>
+              </div>
+            </div>
+          </div>
+        </el-collapse-item>
+        <el-collapse-item name="move" title="2. 扫描视频 / 翻译标题 / 生成每集 NFO / 移动到目标目录">
+          <div class="glass-card" style="padding:16px">
+            <div style="display:grid;gap:12px;margin-bottom:12px">
+              <div class="fo-path-row"><input v-model="sourceDir" placeholder="/CloudDrive115/源文件夹，也可手动粘贴" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><el-button @click="openBrowse('sourceDir','cloud115')">选择源文件夹</el-button></div>
+              <div class="fo-path-row"><input v-model="targetDir" placeholder="/CloudDrive115/目标文件夹，也可手动粘贴" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><el-button @click="openBrowse('targetDir','cloud115')">选择目标文件夹</el-button></div>
+              <div class="fo-action-row"><el-switch v-model="recursive" active-text="扫描子文件夹" /><el-select v-model="sort" size="small" style="width:180px"><el-option label="按文件名排序" value="name"/><el-option label="按修改时间从早到晚" value="mtime"/><el-option label="按发布时间从早到晚" value="published_date"/></el-select><el-button type="primary" @click="scan" :loading="loading">扫描视频</el-button></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px"><span style="font-size:13px;color:var(--text-dim)">共 {{items.length}} 个视频</span><el-button @click="translate" :disabled="!items.length" :loading="translating">DeepSeek 翻译标题</el-button></div>
+            <el-table :data="items" size="small" style="width:100%"><el-table-column label="调整顺序" width="112"><template #default="s"><div style="display:flex;gap:4px"><el-button size="small" @click="moveItem(s.$index,-1)" :disabled="s.$index===0">上移</el-button><el-button size="small" @click="moveItem(s.$index,1)" :disabled="s.$index===items.length-1">下移</el-button></div></template></el-table-column><el-table-column label="集数预览" width="92"><template #default="s">E{{String(startEpisode+s.$index).padStart(2,'0')}}</template></el-table-column><el-table-column type="selection" width="44"/><el-table-column prop="published_date" label="发布时间" width="120"><template #default="s"><span>{{s.row.published_date||'未识别'}}</span></template></el-table-column><el-table-column prop="name" label="原文件名" min-width="220"/><el-table-column label="图片" min-width="160"><template #default="s"><span>{{s.row.artwork_name||'无同名图片'}}</span></template></el-table-column><el-table-column label="中文标题" min-width="220"><template #default="s"><input v-model="s.row.chinese_title" style="width:100%;padding:6px;background:transparent;border:1px solid var(--glass-border);border-radius:6px;color:var(--text)" /></template></el-table-column><el-table-column prop="status" label="状态" width="130"/></el-table>
+            <div style="margin-top:14px;display:grid;gap:12px">
+              <div class="fo-episode-grid"><input v-model="actorName" placeholder="演员名称" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><input v-model.number="season" @change="suggestNextEpisode" type="number" min="1" placeholder="季" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><input v-model.number="startEpisode" type="number" min="1" placeholder="起始集数" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /></div>
+              <div v-if="episodeHint" style="font-size:12px;color:var(--green)">{{episodeHint}}</div>
+              <el-checkbox v-model="generateNfo">生成每集 NFO</el-checkbox>
+              <el-checkbox v-model="confirmed">确认无误</el-checkbox>
+              <div class="fo-action-row"><el-button @click="precheck" :disabled="!items.length">预检查</el-button><el-button type="primary" @click="execute" :disabled="!precheckOk || !confirmed" :loading="executing">执行移动</el-button></div>
+              <pre v-if="precheckResult" class="fo-result-pre">{{precheckResult}}</pre>
+            </div>
+          </div>
+        </el-collapse-item>
       </el-collapse>
-      <el-dialog v-model="browsePicker.visible" title="选择挂载目录" width="min(92vw,760px)" :style="'--el-dialog-bg-color:var(--surface);--el-dialog-text-color:var(--text);--el-dialog-border-color:var(--glass-border)'"><div style="display:grid;gap:12px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><el-tag>{{browsePicker.root==='strm' ? '/strm' : '/CloudDrive115'}}</el-tag><span style="font-size:12px;color:var(--text-dim);word-break:break-all">{{browsePicker.current}}</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><el-button @click="browseRoot" :loading="browsePicker.loading">回到根目录</el-button><el-button @click="browsePath(browsePicker.parent)" :disabled="!browsePicker.parent">上级</el-button><el-button type="primary" @click="selectBrowsePath(browsePicker.current)" :disabled="!browsePicker.current">选择当前目录</el-button></div><div v-if="browsePicker.error" style="color:var(--red);font-size:13px">{{browsePicker.error}}</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;max-height:48vh;overflow:auto"><div v-for="dir in browsePicker.directories" :key="dir.path" @click="browsePath(dir.path)" class="glass-card" style="padding:12px;cursor:pointer;min-width:0"><div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📁 {{dir.name}}</div><div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{dir.path}}</div></div></div><div v-if="!browsePicker.loading && !browsePicker.directories.length" style="font-size:13px;color:var(--text-muted)">当前目录没有子目录，可直接选择当前目录</div></div></el-dialog>
+      <el-dialog v-model="browsePicker.visible" title="选择挂载目录" width="min(92vw,760px)" :style="'--el-dialog-bg-color:var(--surface);--el-dialog-text-color:var(--text);--el-dialog-border-color:var(--glass-border)'">
+        <div style="display:grid;gap:12px">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><el-tag>{{browsePicker.root==='strm' ? '/strm' : '/CloudDrive115'}}</el-tag><span style="font-size:12px;color:var(--text-dim);word-break:break-all">{{browsePicker.current}}</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><el-button @click="browseRoot" :loading="browsePicker.loading">回到根目录</el-button><el-button @click="browsePath(browsePicker.parent)" :disabled="!browsePicker.parent">上级</el-button><el-button type="primary" @click="selectBrowsePath(browsePicker.current)" :disabled="!browsePicker.current">选择当前目录</el-button></div>
+          <div v-if="browsePicker.error" style="color:var(--red);font-size:13px">{{browsePicker.error}}</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;max-height:48vh;overflow:auto"><div v-for="dir in browsePicker.directories" :key="dir.path" @click="browsePath(dir.path)" class="glass-card" style="padding:12px;cursor:pointer;min-width:0"><div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📁 {{dir.name}}</div><div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{dir.path}}</div></div></div>
+          <div v-if="!browsePicker.loading && !browsePicker.directories.length" style="font-size:13px;color:var(--text-muted)">当前目录没有子目录，可直接选择当前目录</div>
+        </div>
+      </el-dialog>
     </div>
   `,
-  data(){ return {active:['paths'],sourceDir:'',targetDir:'',recursive:false,sort:'name',items:[],loading:false,translating:false,actorName:'',season:1,startEpisode:1,episodeHint:'',generateNfo:true,confirmed:false,precheckOk:false,precheckResult:'',executing:false,metaSource:'',metaTarget:'',metadataConfirmed:false,metadataResult:'',browsePicker:{visible:false,field:'',root:'cloud115',current:'',parent:'',directories:[],loading:false,error:''}} },
+  data(){ return {active:['prep','move'],mediaDir:'',mediaTv:{title:'',plot:'',outline:'',tmdb_id:'',dateadded:'',sorttitle:'',displayorder:'aired',lockdata:false,overwrite:true},savingTvshow:false,uploadingArtwork:{poster:false,fanart:false,logo:false},artworkKinds:[{key:'poster',label:'poster.jpg',file:'poster.jpg'},{key:'fanart',label:'fanart.jpg',file:'fanart.jpg'},{key:'logo',label:'logo.png',file:'logo.png'}],sourceDir:'',targetDir:'',recursive:false,sort:'name',items:[],loading:false,translating:false,actorName:'',season:1,startEpisode:1,episodeHint:'',generateNfo:true,confirmed:false,precheckOk:false,precheckResult:'',executing:false,browsePicker:{visible:false,field:'',root:'strm',current:'',parent:'',directories:[],loading:false,error:''}} },
   methods:{
+    actorNameFromPath(path){ const parts=String(path||'').split('/').filter(Boolean); if(!parts.length) return ''; const last=parts[parts.length-1]; return /^Season\s*\d+$/i.test(last) && parts.length>1 ? parts[parts.length-2] : last },
+    syncMediaTitle(){ if(!this.mediaTv.title && this.mediaDir) this.mediaTv.title=this.actorNameFromPath(this.mediaDir) },
     async openBrowse(field,root){ this.browsePicker.visible=true; this.browsePicker.field=field; this.browsePicker.root=root; await this.browsePath(this[field]||'') },
     async browseRoot(){ await this.browsePath('') },
-    async browsePath(path){ this.browsePicker.loading=true; this.browsePicker.error=''; try{ const query='?root='+encodeURIComponent(this.browsePicker.root)+(path?'&path='+encodeURIComponent(path):''); const d=await fetchJSON('/file-organizer/browse'+query); this.browsePicker.current=d.path; this.browsePicker.parent=d.parent||''; this.browsePicker.directories=d.directories||[] }catch(e){ this.browsePicker.error=e.message||'目录浏览失败' }finally{ this.browsePicker.loading=false } },
-    selectBrowsePath(path){ if(!path) return; this[this.browsePicker.field]=path; if(this.browsePicker.field==='targetDir'){ if(!this.actorName) this.actorName=this.actorNameFromPath(path); this.suggestNextEpisode() } this.browsePicker.visible=false },
-    actorNameFromPath(path){ const parts=String(path||'').split('/').filter(Boolean); if(!parts.length) return ''; const last=parts[parts.length-1]; return /^Season\s*\d+$/i.test(last) && parts.length>1 ? parts[parts.length-2] : last },
-    async suggestNextEpisode(){ if(!this.targetDir) return; try{ const d=await fetchJSON('/file-organizer/suggest-next-episode',{method:'POST',body:JSON.stringify({target_dir:this.targetDir,season:this.season||1})}); this.startEpisode=d.next_episode||1; this.episodeHint=d.matched_count ? '已根据目标目录 S'+String(this.season||1).padStart(2,'0')+' 最大 E'+String(d.max_episode).padStart(2,'0')+'，建议从 E'+String(d.next_episode).padStart(2,'0')+' 开始' : '目标目录未找到当前季已有集数，建议从 E01 开始' }catch(e){ this.episodeHint='' } },
+    async browsePath(path){ this.browsePicker.loading=true; this.browsePicker.error=''; try{ const query='?root='+encodeURIComponent(this.browsePicker.root)+(path?'&path='+encodeURIComponent(path):''); const d=await fetchJSON('/api/media-organizer/browse'+query); this.browsePicker.current=d.path; this.browsePicker.parent=d.parent||''; this.browsePicker.directories=d.directories||[] }catch(e){ this.browsePicker.error=e.message||'目录浏览失败' }finally{ this.browsePicker.loading=false } },
+    selectBrowsePath(path){ if(!path) return; this[this.browsePicker.field]=path; if(this.browsePicker.field==='mediaDir'){ this.syncMediaTitle() } if(this.browsePicker.field==='targetDir'){ if(!this.actorName) this.actorName=this.actorNameFromPath(path); this.suggestNextEpisode() } this.browsePicker.visible=false },
+    async saveTvshow(){ if(!this.mediaDir) return ElementPlus.ElMessage.warning('请先选择目录'); this.savingTvshow=true; try{ const payload={actor_dir:this.mediaDir,title:(this.mediaTv.title||this.actorNameFromPath(this.mediaDir)).trim(),plot:this.mediaTv.plot||'',outline:this.mediaTv.outline||'',tmdb_id:this.mediaTv.tmdb_id||'',dateadded:this.mediaTv.dateadded||'',sorttitle:this.mediaTv.sorttitle||'',displayorder:this.mediaTv.displayorder||'aired',lockdata:!!this.mediaTv.lockdata,overwrite:!!this.mediaTv.overwrite}; const d=await fetchJSON('/api/media-organizer/tvshow',{method:'POST',body:JSON.stringify(payload)}); ElementPlus.ElMessage.success('已生成 tvshow.nfo'); return d }catch(e){ ElementPlus.ElMessage.error(e.message||'生成 tvshow.nfo 失败') }finally{ this.savingTvshow=false } },
+    async uploadArtwork(kind, event){ if(!this.mediaDir) return ElementPlus.ElMessage.warning('请先选择目录'); const file=(event && event.target && event.target.files && event.target.files[0]) || null; if(!file) return; this.uploadingArtwork[kind]=true; try{ const fd=new FormData(); fd.append('actor_dir', this.mediaDir); fd.append('kind', kind); fd.append('overwrite', String(!!this.mediaTv.overwrite)); fd.append('image', file); await fetchJSON('/api/media-organizer/upload-artwork',{method:'POST',body:fd}); ElementPlus.ElMessage.success(kind==='poster'?'poster.jpg 已上传':kind==='fanart'?'fanart.jpg 已上传':'logo.png 已上传') }catch(e){ ElementPlus.ElMessage.error(e.message||'上传图片失败') }finally{ this.uploadingArtwork[kind]=false; if(event && event.target) event.target.value='' } },
+    async suggestNextEpisode(){ if(!this.targetDir) return; try{ const d=await fetchJSON('/api/media-organizer/suggest-next-episode',{method:'POST',body:JSON.stringify({target_dir:this.targetDir,season:this.season||1})}); this.startEpisode=d.next_episode||1; this.episodeHint=d.matched_count ? '已根据目标目录 S'+String(this.season||1).padStart(2,'0')+' 最大 E'+String(d.max_episode).padStart(2,'0')+'，建议从 E'+String(d.next_episode).padStart(2,'0')+' 开始' : '目标目录未找到当前季已有集数，建议从 E01 开始' }catch(e){ this.episodeHint='' } },
     moveItem(index,delta){ const next=index+delta; if(next<0||next>=this.items.length) return; const copy=[...this.items]; const item=copy.splice(index,1)[0]; copy.splice(next,0,item); this.items=copy; this.precheckOk=false; this.precheckResult='' },
-    async scan(){ this.loading=true; try{ const d=await fetchJSON('/file-organizer/scan',{method:'POST',body:JSON.stringify({source_dir:this.sourceDir,recursive:this.recursive,sort:this.sort})}); this.items=(d.items||[]).map((i,idx)=>({...i,chinese_title:i.title,status:i.suspected_organized?'疑似已整理':'待翻译',episode:this.startEpisode+idx})); if(!this.actorName&&this.targetDir) this.actorName=this.actorNameFromPath(this.targetDir); ElementPlus.ElMessage.success('扫描完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'扫描失败') }finally{ this.loading=false } },
-    async translate(){ this.translating=true; try{ const rows=this.items.map(i=>({id:i.id,title:i.title})); const d=await fetchJSON('/file-organizer/translate',{method:'POST',body:JSON.stringify({items:rows})}); const map={}; (d.items||[]).forEach(r=>map[r.id]=r); this.items=this.items.map(i=>map[i.id]?{...i,chinese_title:map[i.id].title||i.chinese_title,status:map[i.id].ok?(map[i.id].skipped?'已是中文':'已翻译'):'翻译失败: '+map[i.id].error}:i); ElementPlus.ElMessage.success('翻译完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'翻译失败') }finally{ this.translating=false } },
+    async scan(){ this.loading=true; try{ const d=await fetchJSON('/api/media-organizer/scan',{method:'POST',body:JSON.stringify({source_dir:this.sourceDir,recursive:this.recursive,sort:this.sort})}); this.items=(d.items||[]).map((i,idx)=>({...i,chinese_title:i.title,status:i.suspected_organized?'疑似已整理':'待翻译',episode:this.startEpisode+idx})); if(!this.actorName&&this.targetDir) this.actorName=this.actorNameFromPath(this.targetDir); ElementPlus.ElMessage.success('扫描完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'扫描失败') }finally{ this.loading=false } },
+    async translate(){ this.translating=true; try{ const rows=this.items.map(i=>({id:i.id,title:i.title})); const d=await fetchJSON('/api/media-organizer/translate',{method:'POST',body:JSON.stringify({items:rows})}); const map={}; (d.items||[]).forEach(r=>map[r.id]=r); this.items=this.items.map(i=>map[i.id]?{...i,chinese_title:map[i.id].title||i.chinese_title,status:map[i.id].ok?(map[i.id].skipped?'已是中文':'已翻译'):'翻译失败: '+map[i.id].error}:i); ElementPlus.ElMessage.success('翻译完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'翻译失败') }finally{ this.translating=false } },
     plannedItems(){ return this.items.map((i,idx)=>{ const ep=this.startEpisode+idx; const title=i.chinese_title||i.title; const base=(this.actorName||'Actor')+'.S'+String(this.season).padStart(2,'0')+'E'+String(ep).padStart(2,'0')+'.'+title; const targetBase=this.targetDir.replace(/\/$/,'')+'/'+base; const row={id:i.id,source_path:i.path,target_path:targetBase+i.suffix}; if(i.artwork_path&&i.artwork_suffix){ row.artwork_path=i.artwork_path; row.target_artwork_path=targetBase+i.artwork_suffix } if(this.generateNfo){ row.target_nfo_path=targetBase+'.nfo'; row.nfo={title:title,season:this.season,episode:ep,published_date:i.published_date||''} } return row }) },
-    async precheck(){ try{ const d=await fetchJSON('/file-organizer/precheck',{method:'POST',body:JSON.stringify({confirmed:this.confirmed,items:this.plannedItems()})}); this.precheckOk=!!d.ok; this.precheckResult=JSON.stringify(d,null,2); d.ok?ElementPlus.ElMessage.success('预检查通过'):ElementPlus.ElMessage.warning('预检查未通过') }catch(e){ ElementPlus.ElMessage.error(e.message||'预检查失败') } },
-    async execute(){ this.executing=true; try{ const d=await fetchJSON('/file-organizer/execute',{method:'POST',body:JSON.stringify({confirmed:this.confirmed,items:this.plannedItems()})}); this.precheckResult=JSON.stringify(d,null,2); d.ok?ElementPlus.ElMessage.success('执行完成'):ElementPlus.ElMessage.warning('部分失败，可修改后重试') }catch(e){ ElementPlus.ElMessage.error(e.message||'执行失败') }finally{ this.executing=false } },
-    async metadataPrecheck(){ try{ const d=await fetchJSON('/file-organizer/metadata/precheck',{method:'POST',body:JSON.stringify({source_dir:this.metaSource,target_dir:this.metaTarget,confirmed:true})}); this.metadataResult=JSON.stringify(d,null,2); ElementPlus.ElMessage.success('元数据预检查完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'预检查失败') } },
-    async metadataExecute(){ try{ const d=await fetchJSON('/file-organizer/metadata/execute',{method:'POST',body:JSON.stringify({source_dir:this.metaSource,target_dir:this.metaTarget,confirmed:this.metadataConfirmed})}); this.metadataResult=JSON.stringify(d,null,2); d.ok?ElementPlus.ElMessage.success('元数据复制完成'):ElementPlus.ElMessage.warning('部分元数据复制失败') }catch(e){ ElementPlus.ElMessage.error(e.message||'复制失败') } }
+    async precheck(){ try{ const d=await fetchJSON('/api/media-organizer/precheck',{method:'POST',body:JSON.stringify({confirmed:this.confirmed,items:this.plannedItems()})}); this.precheckOk=!!d.ok; this.precheckResult=JSON.stringify(d,null,2); d.ok?ElementPlus.ElMessage.success('预检查通过'):ElementPlus.ElMessage.warning('预检查未通过') }catch(e){ ElementPlus.ElMessage.error(e.message||'预检查失败') } },
+    async execute(){ this.executing=true; try{ const d=await fetchJSON('/api/media-organizer/execute',{method:'POST',body:JSON.stringify({confirmed:this.confirmed,items:this.plannedItems()})}); this.precheckResult=JSON.stringify(d,null,2); d.ok?ElementPlus.ElMessage.success('执行完成'):ElementPlus.ElMessage.warning('部分失败，可修改后重试') }catch(e){ ElementPlus.ElMessage.error(e.message||'执行失败') }finally{ this.executing=false } }
   }
 }
 
@@ -1959,9 +1511,9 @@ const routes = [
   {path:'/download-upload',component:DownloadUpload},
   {path:'/users',component:Users},
   {path:'/libraries',component:Libraries},
-  {path:'/nfo',component:NfoGenerator},
+  
   {path:'/monitor',component:Monitor},
-  {path:'/file-organizer',component:FileOrganizer},
+  {path:'/media-organizer',component:FileOrganizer},
   {path:'/settings',component:Settings},
 ]
 const router = VueRouter.createRouter({

@@ -13,10 +13,6 @@ def test_settings_sidebar_route_and_api_markers_exist():
     frontend, static = read_pair()
     for html in (frontend, static):
         assert '#/settings' in html
-        assert 'DeepSeek API Key' in html
-        assert '测试翻译' in html
-        assert '/settings/deepseek' in html
-        assert '/settings/deepseek/test-translation' in html
         assert "{path:'/settings',component:Settings}" in html
     assert frontend.count("#/settings") == static.count("#/settings")
 
@@ -24,19 +20,22 @@ def test_settings_sidebar_route_and_api_markers_exist():
 def test_file_organizer_sidebar_route_and_api_markers_exist():
     frontend, static = read_pair()
     for html in (frontend, static):
-        assert '#/file-organizer' in html
-        assert '文件整理' in html
-        assert '选择 115 源文件夹' in html
+        assert '#/media-organizer' in html
+        assert '媒体整理' in html
+        assert '生成 tvshow.nfo / poster.jpg / fanart.jpg / logo.png' in html
         assert '选择源文件夹' in html
         assert '选择目标文件夹' in html
-        assert '选择元数据源目录' in html
-        assert '选择元数据目标目录' in html
-        assert '/file-organizer/browse' in html
-        assert '/file-organizer/suggest-next-episode' in html
+        assert '选择目录' in html
+        assert '生成 tvshow.nfo' in html
+        assert 'poster.jpg' in html
+        assert 'fanart.jpg' in html
+        assert 'logo.png' in html
+        assert '/api/media-organizer/browse' in html
+        assert '/api/media-organizer/suggest-next-episode' in html
         assert 'suggestNextEpisode' in html
         assert 'episodeHint' in html
         assert 'actorNameFromPath' in html
-        assert 'Season 1' in html
+        assert '/strm' in html
         assert 'browsePicker' in html
         assert 'fo-path-row' in html
         assert 'fo-episode-grid' in html
@@ -55,14 +54,14 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert '集数预览' in html
         assert '预检查' in html
         assert '执行移动' in html
-        assert '元数据复制到 115' in html
-        assert '/file-organizer/scan' in html
-        assert '/file-organizer/metadata/precheck' in html
+        assert '扫描视频 / 翻译标题 / 生成每集 NFO / 移动到目标目录' in html
+        assert '/api/media-organizer/scan' in html
         assert "file-organizer-page" in html
         assert ".file-organizer-page .el-collapse" in html
-        assert "已保存 API Key，留空不修改" in html
-        assert "{path:'/file-organizer',component:FileOrganizer}" in html
-    assert frontend.count("#/file-organizer") == static.count("#/file-organizer")
+        assert "{path:'/media-organizer',component:FileOrganizer}" in html
+        assert '/api/media-organizer/tvshow' in html
+        assert '/api/media-organizer/upload-artwork' in html
+    assert frontend.count("#/media-organizer") == static.count("#/media-organizer")
 
 
 def test_file_organizer_has_published_date_artwork_and_nfo_controls():
@@ -81,4 +80,4 @@ def test_file_organizer_has_published_date_artwork_and_nfo_controls():
 def test_settings_link_is_after_file_organizer_link():
     frontend, static = read_pair()
     for html in (frontend, static):
-        assert html.index('#/file-organizer') < html.index('#/settings')
+        assert html.index('#/media-organizer') < html.index('#/settings')
