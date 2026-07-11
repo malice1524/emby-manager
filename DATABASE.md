@@ -245,7 +245,7 @@ backend/app/deepseek_client.py
 
 ### 7.1 用途
 
-记录 `文件整理` 页的视频移动和元数据复制执行结果，便于追踪失败项和历史操作。
+记录 `媒体整理` 页第二步视频移动/重命名执行结果，便于追踪失败项和历史操作。旧文件名仍保留为 `/data/file-organizer/logs/*.json`。
 
 ### 7.2 日志内容
 
@@ -262,7 +262,7 @@ items[].error
 items[].will_overwrite
 ```
 
-日志中不要写入 DeepSeek API Key。视频移动不覆盖目标视频、不删除视频、不自动回滚；元数据复制只复制 `.nfo/.jpg/.jpeg/.png/.webp`，保留目录结构，并在确认后覆盖同名元数据。
+日志中不要写入 DeepSeek API Key。视频移动不覆盖目标视频、不自动回滚；媒体整理会按计划移动/重命名视频、同名图片，并可生成每集 `.nfo`。
 
 ## 8. 外部数据源
 
@@ -341,21 +341,23 @@ APScheduler
   → 追加 monitor_log.json
 ```
 
-### 7.4 NFO 自动化
+### 7.4 媒体整理
 
 ```text
-前端浏览选择演员目录
-  → GET /api/nfo/automation/browse 读取 NFO_MEDIA_ROOT 下目录
-  → POST /api/nfo/automation/scan 统计 Season 1 内 .strm/同名图片(.jpg/.jpeg/.png/.webp)/.nfo，并返回缺图、缺 nfo、单集发布时间状态
-  → POST /api/nfo/automation/tvshow 保存 tvshow.nfo（写媒体目录，不写 /data）
-  → POST /api/nfo/automation/upload-artwork 上传 poster/fanart/logo（写媒体目录，不写 /data）
-  → POST /api/nfo/automation/upload-episode-images 上传剧集图片为 IMG_UPLOAD_*.JPG
-  → POST /api/nfo/automation/pornhub-published/batch-write 批量抓取 PornHub 发布时间并写入每集 aired/premiered
-  → POST /api/nfo/automation/execute 重命名剧集图片、生成每集 nfo
-  → 默认按 NFO_MEDIA_ROOT → EMBY_MEDIA_ROOT 映射精准刷新当前 Emby 演员目录，找不到则全库刷新
+前端媒体整理页
+  → GET /api/media-organizer/browse?root=strm 浏览 STRM 根目录并选择演员目录
+  → POST /api/media-organizer/tvshow 保存 tvshow.nfo（复用 nfo 路由能力，写媒体目录，不写 /data）
+  → POST /api/media-organizer/upload-artwork 上传 poster/fanart/logo（写媒体目录，不写 /data）
+  → GET /api/media-organizer/browse?root=cloud115 浏览 115 挂载并选择源/目标目录
+  → POST /api/media-organizer/scan 扫描视频与同名图片，识别文件名前缀发布时间
+  → POST /api/media-organizer/translate 调 DeepSeek 翻译标题
+  → POST /api/media-organizer/suggest-next-episode 根据目标目录建议下一集集数
+  → POST /api/media-organizer/precheck 检查目标冲突
+  → POST /api/media-organizer/execute 移动/重命名视频与同名图片，可生成每集 .nfo
+  → 写 /data/file-organizer/logs/*.json 记录执行结果
 ```
 
-NFO 自动化不写入 `/data`。保存 `tvshow.nfo`、上传 `poster/fanart/logo`、批量写入 PornHub 发布时间后，前端会自动重新扫描当前演员目录并调用 `POST /api/nfo/automation/refresh-emby` 精准刷新当前 Emby 演员目录；演员目录扫描概览也提供手动重新扫描和刷新按钮。
+媒体整理页面不写传统数据库。`tvshow.nfo`、封面图、每集 `.nfo`、视频和图片都直接写入挂载媒体目录；执行日志仍写入 `/data/file-organizer/logs/*.json`。目录浏览响应统一使用 `directories` 字段，`root=strm` 额外保留 `dirs` 兼容旧前端。
 
 ## 8. 备份与迁移
 
@@ -386,7 +388,7 @@ monitor_data/monitor_log.json
    - `DATABASE.md`
    - `API.md`
 4. 不要把敏感值写进 README、测试快照或日志。
-5. NFO 自动化写媒体目录，不写 `/data`；保存/上传类操作不自动刷新 Emby，执行自动化或手动刷新按钮才触发刷新。
+5. 媒体整理写媒体目录，不写传统数据库；执行日志写 `/data/file-organizer/logs/*.json`。前端调用 `/media-organizer/...`，由 `fetchJSON` 自动补 `/api`。
 
 ## 10. 文档发送优先级
 

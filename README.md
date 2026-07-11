@@ -1,14 +1,13 @@
 # Emby Manager
 
-Emby 媒体服务器 Web 管理面板，提供仪表盘、用户管理、媒体库浏览、完结监控、NFO 自动化等常用 NAS/Emby 管理能力。
+Emby 媒体服务器 Web 管理面板，提供仪表盘、用户管理、媒体库浏览、完结监控、媒体整理等常用 NAS/Emby 管理能力。
 
 ## 功能特性
 
 - 📊 **仪表盘** — 服务器状态、媒体统计、活跃会话、最近添加内容
 - 👥 **用户管理** — 新建/删除用户、修改密码、启用/禁用
 - 📂 **媒体库** — 海报墙浏览、搜索、分页跳转、TMDB 信息查看
-- 🗂️ **NFO 自动化** — 可视化填写 `tvshow.nfo`、抓取 PornHub 主视频中文标签写入 `tvshow.nfo`、批量抓取 PornHub 发布时间写入每集 `.nfo`、上传 `poster/fanart/logo`、上传剧集图并自动重命名、按 `.strm` 批量生成基础每集 `.nfo`；元数据改动后自动扫描并刷新当前 Emby 演员目录
-- 🗃️ **文件整理** — 整理 CloudDrive2 挂载的 115 视频文件，支持 DeepSeek 标题翻译、确认表格、预检查、移动重命名，以及从 `/strm` 复制 NFO/图片元数据到 115
+- 🗂️ **媒体整理** — 合并旧 NFO 自动化与文件整理：第 1 步在 `/strm` 选择演员目录并生成 `tvshow.nfo`、上传 `poster/fanart/logo`；第 2 步整理 115 视频，支持目录选择、扫描、DeepSeek 标题翻译、顺序调整、预检查、移动重命名、同名图片处理和每集 `.nfo` 生成
 - 🖼️ **图片代理** — 通过后端代理访问 Emby/TMDB 图片，减少跨网络加载失败
 - 🔍 **全局搜索** — 跨媒体库搜索内容
 - 🔔 **完结监控** — 剧集状态检测、更新提醒、完结提醒、Telegram 通知；更新通知可包含单集标题、简介、评分、片长、剧照与北京时间播出时间
@@ -35,13 +34,13 @@ services:
       - EMBY_ADMIN_USER=你的Emby管理员用户名
       - EMBY_ADMIN_PW=你的Emby管理员密码
       - MONITOR_DATA_DIR=/data
-      # 文件整理翻译可在页面设置 DeepSeek Key；环境变量作为兜底
+      # 媒体整理翻译可在页面设置 DeepSeek Key；环境变量作为兜底
       - DEEPSEEK_API_KEY=
     ports:
       - "8117:8000"
     volumes:
       - ./monitor_data:/data
-      # 文件整理：115 CloudDrive2 挂载与本地 STRM 元数据目录
+      # 媒体整理：115 CloudDrive2 挂载与本地 STRM 元数据目录
       - /vol1/1000/docker/CloudDrive115:/CloudDrive115
       - /vol1/1000/docker/strm/已整理:/strm
     restart: unless-stopped
@@ -105,49 +104,55 @@ DockerHub 镜像：
 
 填写配置后即可开始使用。
 
-## NFO 自动化功能
+## 媒体整理功能
 
 入口：
 
 ```text
-🗂️ NFO 自动化
+🗂️ 媒体整理
 ```
 
-使用方式：
+媒体整理把旧 `NFO 自动化` 与 `文件整理` 合并成一个两步流程：
 
-1. 从媒体根目录浏览目录并选择演员目录，例如 `已整理/PornHub/Sienna Moore`
-2. 选择后自动扫描 `Season 1`，预览 `.strm/图片/.nfo` 数量、缺图集数、缺 NFO 集数；演员目录扫描概览可手动重新扫描当前目录或刷新 Emby 元数据
-3. 可视化填写 `tvshow.nfo`，可粘贴 PornHub 视频页抓取主视频中文标签，默认勾选前 6 个，保存时写入 `tvshow.nfo`
-4. 在“PornHub 发布时间”卡片中勾选多集 `.strm`，逐行填写对应 PornHub URL，批量抓取发布时间并写入每集同名 `.nfo`
-5. 上传/替换 `poster.jpg`、`fanart.jpg`、`logo.png`
-6. 上传剧集图片，系统按 `IMG_*` 与 mtime 匹配缺图集数
-7. 执行图片重命名并批量生成每集同名 `.nfo`
-8. 可勾选“执行后刷新 Emby 元数据”，或手动点击“刷新 Emby 元数据”触发 Emby 媒体库刷新
+### 1. 生成 tvshow.nfo / poster.jpg / fanart.jpg / logo.png
 
-刷新说明：
+1. 点击“选择目录”，从 `/strm` 选择演员目录。
+2. 填写标题、TMDB ID、dateadded、简介等信息。
+3. 点击“生成 tvshow.nfo”写入演员目录。
+4. 上传或替换 `poster.jpg`、`fanart.jpg`、`logo.png`。
 
-- 点击“执行图片重命名 + 生成每集 NFO”后，默认会刷新当前选择的 Emby 演员目录
-- 保存 `tvshow.nfo`、上传 `poster/fanart/logo`、批量写入 PornHub 发布时间后，会自动重新扫描当前演员目录并刷新当前 Emby 演员目录
-- 上传剧集图片后，需要执行自动化把图片重命名为同名 `.JPG`，执行完成后再刷新 Emby
+### 2. 扫描视频 / 翻译标题 / 生成每集 NFO / 移动到目标目录
 
-Docker 部署需要挂载媒体目录，例如：
+1. 点击“选择源文件夹”和“选择目标文件夹”，从 `/CloudDrive115` 选择待整理目录与目标演员目录。
+2. 扫描视频，可选择是否递归扫描，并按文件名、修改时间或发布时间排序。
+3. 使用 DeepSeek 翻译标题，必要时手动调整集数顺序和中文标题。
+4. 填写演员名、季号、起始集数；系统可根据目标目录建议下一集集数。
+5. 勾选是否生成每集 NFO，确认无误后预检查。
+6. 执行移动：移动/重命名视频和同名图片，并按勾选生成每集 `.nfo`。
+
+Docker 部署建议挂载：
 
 ```yaml
 volumes:
-  - /vol1/1000/docker/strm:/vol1/1000/docker/strm
+  - /vol1/1000/docker/CloudDrive115:/CloudDrive115
+  - /vol1/1000/docker/strm/已整理:/strm
 ```
 
-后端默认只允许操作 `NFO_MEDIA_ROOT` 内的目录，默认值为 `/vol1/1000/docker/strm`。如需精准刷新当前演员目录，可配置 `EMBY_MEDIA_ROOT`，例如：
+可选环境变量：
 
 ```yaml
 environment:
-  - NFO_MEDIA_ROOT=/vol1/1000/docker/strm/已整理/PornHub
-  - EMBY_MEDIA_ROOT=/pron/PornHub
-volumes:
-  - /vol1/1000/docker/strm/已整理/PornHub:/vol1/1000/docker/strm/已整理/PornHub
+  - CLOUD115_ROOT=/CloudDrive115
+  - STRM_ROOT=/strm
+  - NFO_MEDIA_ROOT=/strm
+  - DEEPSEEK_API_KEY=
 ```
 
-这样本地目录 `/vol1/1000/docker/strm/已整理/PornHub/Sienna Moore` 会映射到 Emby 路径 `/pron/PornHub/Sienna Moore`，执行后优先精准刷新该演员目录；找不到 Emby 项目时自动兜底全库刷新。
+目录浏览说明：
+
+- `/strm` 用于选择演员元数据目录。
+- `/CloudDrive115` 用于选择源视频目录和整理目标目录。
+- 页面目录弹窗已适配移动端和滚动位置，点击选择目录会直接显示弹窗。
 
 ## 常见问题
 
@@ -227,7 +232,7 @@ static/index.html
 
 ### v1.14 及更早
 
-- 🗂️ 将旧 NFO 生成替换为 NFO 自动化功能
+- 🗂️ 将旧 NFO 自动化与文件整理合并为媒体整理功能
 - 🔔 新增剧集完结监控模块
 - ⚙️ 新增 Web 配置系统
 - 🎨 UI 全面优化：暗色主题、毛玻璃卡片、移动端适配

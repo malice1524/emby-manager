@@ -657,65 +657,114 @@ Content-Type: application/json
 {"ok":true,"title":"美丽女孩在家中","skipped":false}
 ```
 
-## 9. 文件整理 `/api/file-organizer`
+## 9. 媒体整理 `/api/media-organizer`
 
-主要文件：`backend/app/routers/file_organizer.py`、`backend/app/file_organizer.py`
+主要文件：`backend/app/routers/media_organizer.py`、`backend/app/file_organizer.py`、`backend/app/routers/nfo.py`。
 
-安全边界：视频整理只允许 `/CloudDrive115` 内路径；元数据源只允许 `/strm`；元数据目标只允许 `/CloudDrive115`。
+媒体整理是当前前端入口，合并旧 `NFO 自动化` 与 `文件整理`。前端调用 `fetchJSON('/media-organizer/...')`，由 `fetchJSON` 统一补 `/api`；不要写成 `fetchJSON('/api/media-organizer/...')`。
 
 ### 9.1 浏览目录
 
 ```http
-GET /api/file-organizer/browse?root=cloud115&path=/CloudDrive115
+GET /api/media-organizer/browse?root=strm
+GET /api/media-organizer/browse?root=cloud115&path=/CloudDrive115
 ```
 
-`root` 支持 `cloud115` 和 `strm`。返回当前目录、父目录和子目录列表。
+`root` 支持：
 
-### 9.2 扫描视频
+- `strm`：候选根目录依次为 `NFO_MEDIA_ROOT`、`STRM_ROOT`、`/vol1/1000/docker/strm`、`/strm`。
+- `cloud115`：候选根目录依次为 `CLOUD115_ROOT`、`/CloudDrive115`、`/vol1/1000/docker/CloudDrive115/CloudDrive`。
+
+返回当前目录、父目录、实际根目录和子目录列表。统一返回 `directories`；`root=strm` 额外返回 `media_root` 和 `dirs` 兼容旧字段。
+
+### 9.2 保存 tvshow.nfo
 
 ```http
-POST /api/file-organizer/scan
+POST /api/media-organizer/tvshow
+Content-Type: application/json
+
+{
+  "actor_dir":"/strm/PornHub/Sienna Moore",
+  "title":"Sienna Moore",
+  "plot":"简介",
+  "outline":"简介",
+  "tmdb_id":"",
+  "dateadded":"2026-07-06 18:00:00",
+  "sorttitle":"",
+  "displayorder":"aired",
+  "lockdata":false,
+  "overwrite":true
+}
+```
+
+复用 NFO 路由写入演员目录下的 `tvshow.nfo`。
+
+### 9.3 上传演员图片
+
+```http
+POST /api/media-organizer/upload-artwork
+multipart/form-data:
+  actor_dir=/strm/PornHub/Sienna Moore
+  kind=poster|fanart|logo
+  overwrite=true
+  image=<file>
+```
+
+保存为固定文件名：`poster.jpg`、`fanart.jpg`、`logo.png`。
+
+### 9.4 扫描视频
+
+```http
+POST /api/media-organizer/scan
 Content-Type: application/json
 
 {"source_dir":"/CloudDrive115/待整理","recursive":false,"sort":"name"}
 ```
 
-`sort` 支持 `name` 和 `mtime`。只返回 `.mp4/.mkv/.avi/.mov/.wmv/.flv/.ts/.m2ts/.webm`。
+`sort` 支持 `name`、`mtime`、`published_date`。只返回视频文件，并识别同名图片和文件名前缀发布时间。
 
-### 9.3 翻译标题
+### 9.5 翻译标题
 
 ```http
-POST /api/file-organizer/translate
+POST /api/media-organizer/translate
 Content-Type: application/json
 
 {"items":[{"id":"1","title":"Beautiful Girl At Home"}]}
 ```
 
-中文标题会跳过 DeepSeek；非中文标题按 DeepSeek 批量翻译返回行级结果。
+中文标题会跳过 DeepSeek；非中文标题按设置页 DeepSeek 配置批量翻译。
 
-### 9.4 视频移动预检查与执行
-
-```http
-POST /api/file-organizer/precheck
-POST /api/file-organizer/execute
-```
-
-请求包含 `confirmed` 和 `items[].source_path/target_path`。执行使用挂载文件系统移动，不覆盖目标视频、不删除视频、不自动回滚；部分失败保留失败项用于重试。
-
-### 9.5 元数据复制预检查与执行
+### 9.6 建议下一集集数
 
 ```http
-POST /api/file-organizer/metadata/precheck
-POST /api/file-organizer/metadata/execute
+POST /api/media-organizer/suggest-next-episode
+Content-Type: application/json
+
+{"target_dir":"/CloudDrive115/PornHub/Sienna Moore","season":1}
 ```
 
-请求示例：
+扫描目标目录已有 `SxxExx` 文件，返回建议的 `next_episode`。
 
-```json
-{"source_dir":"/strm/PornHub/Sienna Moore","target_dir":"/CloudDrive115/PornHub/Sienna Moore","confirmed":true}
+### 9.7 视频移动预检查与执行
+
+```http
+POST /api/media-organizer/precheck
+POST /api/media-organizer/execute
 ```
 
-只复制 `.nfo/.jpg/.jpeg/.png/.webp`，不复制 `.strm` 或视频文件；保留 `Season 1` 等目录结构；同名元数据确认后覆盖。
+请求包含 `confirmed` 和 `items[].source_path/target_path`，可附带 `artwork_path/target_artwork_path` 与 `nfo`。执行移动/重命名视频和同名图片；勾选生成 NFO 时写同名 `.nfo`。不覆盖目标视频，部分失败会写日志并保留错误信息。
+
+### 9.8 文件整理兼容 API `/api/file-organizer`
+
+`/api/file-organizer` 仍作为后端核心/兼容接口保留，主要由 `media_organizer` 路由复用：
+
+- `GET /api/file-organizer/browse`
+- `POST /api/file-organizer/scan`
+- `POST /api/file-organizer/translate`
+- `POST /api/file-organizer/precheck` / `execute`
+- `POST /api/file-organizer/metadata/precheck` / `metadata/execute`
+
+新前端优先使用 `/api/media-organizer`。
 
 ## 10. API 开发注意事项
 
