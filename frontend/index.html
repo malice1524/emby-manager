@@ -725,7 +725,7 @@ body {
       
       <a href="#/settings" onclick="navClose()"><span class="nav-icon">⚙️</span> 设置</a>
     </nav>
-    <div class="sidebar-version">v1.51</div>
+    <div class="sidebar-version">v1.52</div>
   </aside>
 
   <!-- Main -->
@@ -1484,7 +1484,7 @@ const Settings = {
 
 const FileOrganizer = {
   template: `
-    <div class="fade-in file-organizer-page">
+    <div class="file-organizer-page">
       <div class="glass-card" style="padding:18px;margin-bottom:16px"><h2 style="font-size:18px;font-weight:600">媒体整理</h2><div style="font-size:12px;color:var(--text-dim)">先生成基础 NFO / 封面，再扫描、翻译、重命名并移动剧集文件</div></div>
       <el-collapse v-model="active" style="display:grid;gap:12px">
         <el-collapse-item name="prep" title="1. 生成 tvshow.nfo / poster.jpg / fanart.jpg / logo.png">
@@ -1552,7 +1552,7 @@ const FileOrganizer = {
         <div class="fo-path-row"><input v-model="metadataSourceDir" placeholder="/strm/NAS演员元数据目录" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><el-button @click="openBrowse('metadataSourceDir','strm')">选择 NAS 演员目录</el-button></div>
         <div class="fo-path-row"><input v-model="metadataTargetDir" placeholder="/CloudDrive115/115演员目录" style="padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><el-button @click="openBrowse('metadataTargetDir','cloud115')">选择 115 演员目录</el-button></div>
         <div class="fo-info-row">
-          <span>会复制 `.nfo/.jpg/.jpeg/.png/.webp`，跳过 `.strm` 和视频文件；同名文件直接覆盖 115。</span>
+          <span>会复制 .nfo/.jpg/.jpeg/.png/.webp，跳过 .strm 和视频文件；同名文件直接覆盖 115。</span>
         </div>
         <div class="fo-action-row"><el-button @click="metadataPrecheck" :loading="metadataChecking">预检查复制内容</el-button><el-button type="primary" @click="metadataExecute" :loading="metadataCopying" :disabled="!metadataPrecheckOk">执行复制并覆盖 115</el-button></div>
         <pre v-if="metadataResult" class="fo-result-pre">{{metadataResult}}</pre>
