@@ -55,6 +55,12 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert '预检查' in html
         assert '执行移动' in html
         assert '扫描视频 / 翻译标题 / 生成每集 NFO / 移动到目标目录' in html
+        assert '复制 NAS 元数据到 115' in html
+        assert 'metadataSourceDir' in html
+        assert 'metadataTargetDir' in html
+        assert '/media-organizer/metadata/precheck' in html
+        assert '/media-organizer/metadata/execute' in html
+        assert '执行复制并覆盖 115' in html
         assert '/media-organizer/scan' in html
         assert "file-organizer-page" in html
         assert ".file-organizer-page .el-collapse" in html

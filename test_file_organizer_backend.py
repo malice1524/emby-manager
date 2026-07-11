@@ -230,6 +230,8 @@ def test_metadata_copy_preserves_structure_and_overwrites(monkeypatch, tmp_path)
     target = cloud / "PornHub" / "Actor"
     touch(source / "tvshow.nfo", "new")
     touch(source / "poster.jpg", "poster")
+    touch(source / "fanart.jpg", "fanart")
+    touch(source / "logo.png", "logo")
     touch(source / "Season 1" / "a.nfo", "nfo")
     touch(source / "Season 1" / "a.jpg", "jpg")
     touch(source / "Season 1" / "a.strm", "strm")
@@ -239,7 +241,10 @@ def test_metadata_copy_preserves_structure_and_overwrites(monkeypatch, tmp_path)
     assert any(item["will_overwrite"] for item in pre["items"] if item["relative_path"] == "tvshow.nfo")
     result = file_organizer.execute_metadata_copy({"source_dir": str(source), "target_dir": str(target), "confirmed": True})
     copied = sorted(item["relative_path"] for item in result["items"] if item["ok"])
-    assert copied == ["Season 1/a.jpg", "Season 1/a.nfo", "poster.jpg", "tvshow.nfo"]
+    assert copied == ["Season 1/a.jpg", "Season 1/a.nfo", "fanart.jpg", "logo.png", "poster.jpg", "tvshow.nfo"]
+    assert (target / "tvshow.nfo").read_text(encoding="utf-8") == "new"
+    assert (target / "fanart.jpg").read_text(encoding="utf-8") == "fanart"
+    assert (target / "logo.png").read_text(encoding="utf-8") == "logo"
     assert (target / "Season 1" / "a.nfo").read_text(encoding="utf-8") == "nfo"
     assert not (target / "Season 1" / "a.strm").exists()
     assert not (target / "Season 1" / "a.mp4").exists()
