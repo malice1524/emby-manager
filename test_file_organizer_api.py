@@ -120,3 +120,42 @@ def test_media_organizer_strm_browse_returns_frontend_directories(monkeypatch, t
     assert data["directories"] == data["dirs"]
     assert data["directories"][0]["name"] == "Actor"
     assert data["directories"][0]["is_actor_dir"] is True
+
+
+def test_media_organizer_actor_info_prefills_existing_tvshow(monkeypatch, tmp_path):
+    _, strm, _ = setup_roots(monkeypatch, tmp_path)
+    monkeypatch.setenv("NFO_MEDIA_ROOT", str(strm))
+    actor = strm / "Actor"
+    touch(actor / "tvshow.nfo", """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<tvshow>
+  <plot>已有简介</plot>
+  <outline>已有短简介</outline>
+  <lockdata>true</lockdata>
+  <dateadded>2026-07-06 18:00:00</dateadded>
+  <title>已有标题</title>
+  <actor><tmdbid>12345</tmdbid></actor>
+  <sorttitle>Actor Sort</sorttitle>
+  <displayorder>dvd</displayorder>
+</tvshow>
+""")
+    touch(actor / "poster.jpg", "jpg")
+    touch(actor / "logo.png", "png")
+    client = TestClient(app)
+
+    res = client.post("/api/media-organizer/actor-info", json={"actor_dir": str(actor)})
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["actor_name"] == "Actor"
+    assert data["tvshow_exists"] is True
+    assert data["poster_exists"] is True
+    assert data["fanart_exists"] is False
+    assert data["logo_exists"] is True
+    assert data["tvshow"]["title"] == "已有标题"
+    assert data["tvshow"]["plot"] == "已有简介"
+    assert data["tvshow"]["outline"] == "已有短简介"
+    assert data["tvshow"]["tmdb_id"] == "12345"
+    assert data["tvshow"]["dateadded"] == "2026-07-06 18:00:00"
+    assert data["tvshow"]["sorttitle"] == "Actor Sort"
+    assert data["tvshow"]["displayorder"] == "dvd"
+    assert data["tvshow"]["lockdata"] is True

@@ -92,6 +92,24 @@ def browse(root: str = Query("cloud115"), path: str | None = None):
         _handle_error(exc)
 
 
+@router.post("/actor-info")
+def actor_info(payload: dict[str, Any]):
+    try:
+        _, actor_dir = _browse_dir("strm", str(payload.get("actor_dir") or ""))
+        tvshow = nfo_router._read_tvshow_nfo(actor_dir)
+        return {
+            "actor_dir": str(actor_dir),
+            "actor_name": actor_dir.name,
+            "tvshow_exists": (actor_dir / "tvshow.nfo").exists(),
+            "poster_exists": (actor_dir / "poster.jpg").exists(),
+            "fanart_exists": (actor_dir / "fanart.jpg").exists(),
+            "logo_exists": (actor_dir / "logo.png").exists(),
+            "tvshow": tvshow,
+        }
+    except Exception as exc:
+        _handle_error(exc)
+
+
 @router.post("/scan")
 def scan(payload: dict[str, Any]):
     try:

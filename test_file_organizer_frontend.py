@@ -61,6 +61,11 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert "{path:'/media-organizer',component:FileOrganizer}" in html
         assert '/media-organizer/tvshow' in html
         assert '/media-organizer/upload-artwork' in html
+        assert '/media-organizer/actor-info' in html
+        assert 'loadActorInfo' in html
+        assert 'applyActorInfo' in html
+        assert 'mediaInfo.tvshow_exists' in html
+        assert '已读取 tvshow.nfo' in html
     assert frontend.count("#/media-organizer") == static.count("#/media-organizer")
 
 
