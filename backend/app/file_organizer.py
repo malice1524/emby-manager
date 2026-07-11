@@ -159,8 +159,9 @@ def build_final_filename(actor: str, season: int, episode: int, title: str, suff
     return f"{sanitize_filename_part(actor)}.S{int(season):02d}E{int(episode):02d}.{sanitize_filename_part(title)}{suffix}"
 
 
-def _episode_nfo_xml(title: str, season: int, episode: int, published_date: str | None = None) -> str:
+def _episode_nfo_xml(title: str, season: int, episode: int, published_date: str | None = None, plot: str | None = None) -> str:
     lines = [
+        '<?xml version="1.0" encoding="utf-8" standalone="yes"?>',
         "<episodedetails>",
         f"  <title>{escape(title or '')}</title>",
         f"  <season>{int(season)}</season>",
@@ -169,6 +170,8 @@ def _episode_nfo_xml(title: str, season: int, episode: int, published_date: str 
     if published_date:
         lines.append(f"  <aired>{escape(published_date)}</aired>")
         lines.append(f"  <premiered>{escape(published_date)}</premiered>")
+    if plot:
+        lines.append(f"  <plot>{escape(plot)}</plot>")
     lines.append("</episodedetails>")
     return "\n".join(lines) + "\n"
 
@@ -297,6 +300,7 @@ def execute_video_moves(payload: dict[str, Any]) -> dict[str, Any]:
                         int(nfo.get("season") or 1),
                         int(nfo.get("episode") or 1),
                         str(nfo.get("published_date") or "") or None,
+                        str(nfo.get("plot") or "") or None,
                     ),
                     encoding="utf-8",
                 )

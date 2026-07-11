@@ -206,7 +206,7 @@ def test_execute_moves_video_artwork_and_writes_episode_nfo(monkeypatch, tmp_pat
         "artwork_path": str(artwork),
         "target_artwork_path": str(target_artwork),
         "target_nfo_path": str(target_nfo),
-        "nfo": {"title": "中文标题", "season": 1, "episode": 1, "published_date": "2025-07-16"},
+        "nfo": {"title": "中文标题", "season": 1, "episode": 1, "published_date": "2025-07-16", "plot": "Original English Title"},
     }]})
 
     assert result["ok"] is True
@@ -215,11 +215,13 @@ def test_execute_moves_video_artwork_and_writes_episode_nfo(monkeypatch, tmp_pat
     assert not video.exists()
     assert not artwork.exists()
     xml = target_nfo.read_text(encoding="utf-8")
+    assert xml.startswith('<?xml version="1.0" encoding="utf-8" standalone="yes"?>')
     assert "<title>中文标题</title>" in xml
     assert "<season>1</season>" in xml
     assert "<episode>1</episode>" in xml
     assert "<aired>2025-07-16</aired>" in xml
     assert "<premiered>2025-07-16</premiered>" in xml
+    assert "<plot>Original English Title</plot>" in xml
 
 
 def test_metadata_copy_preserves_structure_and_overwrites(monkeypatch, tmp_path):

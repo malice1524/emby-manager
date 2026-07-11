@@ -82,6 +82,7 @@ def test_file_organizer_has_published_date_artwork_and_nfo_controls():
         assert 'generateNfo' in html
         assert 'target_artwork_path' in html
         assert 'target_nfo_path' in html
+        assert "plot:i.title||''" in html
         assert 'published_date' in html
 
 
