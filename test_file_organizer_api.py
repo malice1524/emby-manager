@@ -159,3 +159,21 @@ def test_media_organizer_actor_info_prefills_existing_tvshow(monkeypatch, tmp_pa
     assert data["tvshow"]["sorttitle"] == "Actor Sort"
     assert data["tvshow"]["displayorder"] == "dvd"
     assert data["tvshow"]["lockdata"] is True
+
+
+def test_media_organizer_upload_artwork_updates_actor_file(monkeypatch, tmp_path):
+    _, strm, _ = setup_roots(monkeypatch, tmp_path)
+    monkeypatch.setenv("NFO_MEDIA_ROOT", str(strm))
+    actor = strm / "Actor"
+    actor.mkdir()
+    client = TestClient(app)
+
+    res = client.post(
+        "/api/media-organizer/upload-artwork",
+        data={"actor_dir": str(actor), "kind": "poster", "overwrite": "true"},
+        files={"image": ("poster.jpg", b"fake-jpg", "image/jpeg")},
+    )
+
+    assert res.status_code == 200
+    assert res.json()["filename"] == "poster.jpg"
+    assert (actor / "poster.jpg").read_bytes() == b"fake-jpg"

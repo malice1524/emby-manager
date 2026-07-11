@@ -61,6 +61,9 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert "{path:'/media-organizer',component:FileOrganizer}" in html
         assert '/media-organizer/tvshow' in html
         assert '/media-organizer/upload-artwork' in html
+        assert 'opts.body instanceof FormData' in html
+        assert 'Array.isArray(detail)' in html
+        assert "await this.loadActorInfo(this.mediaDir)" in html
         assert '/media-organizer/actor-info' in html
         assert 'loadActorInfo' in html
         assert 'applyActorInfo' in html

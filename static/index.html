@@ -725,7 +725,7 @@ body {
       
       <a href="#/settings" onclick="navClose()"><span class="nav-icon">⚙️</span> 设置</a>
     </nav>
-    <div class="sidebar-version">v1.48</div>
+    <div class="sidebar-version">v1.49</div>
   </aside>
 
   <!-- Main -->
@@ -749,8 +749,10 @@ function navClose() {
 const API = '/api'
 
 async function fetchJSON(url, opts = {}) {
-  const res = await fetch(API+url, {headers:{'Content-Type':'application/json'},...opts})
-  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail||res.statusText) }
+  const headers = {...(opts.headers||{})}
+  if (!(opts.body instanceof FormData) && !headers['Content-Type']) headers['Content-Type'] = 'application/json'
+  const res = await fetch(API+url, {...opts, headers})
+  if (!res.ok) { const e = await res.json().catch(()=>({})); let detail=e.detail||res.statusText; if(Array.isArray(detail)) detail=detail.map(i=>i.msg||JSON.stringify(i)).join('; '); else if(detail && typeof detail==='object') detail=JSON.stringify(detail); throw new Error(detail) }
   return res.json()
 }
 
@@ -1565,7 +1567,7 @@ const FileOrganizer = {
     async browsePath(path){ this.browsePicker.loading=true; this.browsePicker.error=''; try{ const query='?root='+encodeURIComponent(this.browsePicker.root)+(path?'&path='+encodeURIComponent(path):''); const d=await fetchJSON('/media-organizer/browse'+query); this.browsePicker.current=d.path; this.browsePicker.parent=d.parent||''; this.browsePicker.directories=d.directories||[] }catch(e){ this.browsePicker.error=e.message||'目录浏览失败' }finally{ this.browsePicker.loading=false } },
     async selectBrowsePath(path){ if(!path) return; this[this.browsePicker.field]=path; if(this.browsePicker.field==='mediaDir'){ await this.loadActorInfo(path) } if(this.browsePicker.field==='targetDir'){ if(!this.actorName) this.actorName=this.actorNameFromPath(path); this.suggestNextEpisode() } this.browsePicker.visible=false },
     async saveTvshow(){ if(!this.mediaDir) return ElementPlus.ElMessage.warning('请先选择目录'); this.savingTvshow=true; try{ const payload={actor_dir:this.mediaDir,title:(this.mediaTv.title||this.actorNameFromPath(this.mediaDir)).trim(),plot:this.mediaTv.plot||'',outline:this.mediaTv.outline||'',tmdb_id:this.mediaTv.tmdb_id||'',dateadded:this.mediaTv.dateadded||'',sorttitle:this.mediaTv.sorttitle||'',displayorder:this.mediaTv.displayorder||'aired',lockdata:!!this.mediaTv.lockdata,overwrite:!!this.mediaTv.overwrite}; const d=await fetchJSON('/media-organizer/tvshow',{method:'POST',body:JSON.stringify(payload)}); ElementPlus.ElMessage.success('已生成 tvshow.nfo'); await this.loadActorInfo(this.mediaDir); return d }catch(e){ ElementPlus.ElMessage.error(e.message||'生成 tvshow.nfo 失败') }finally{ this.savingTvshow=false } },
-    async uploadArtwork(kind, event){ if(!this.mediaDir) return ElementPlus.ElMessage.warning('请先选择目录'); const file=(event && event.target && event.target.files && event.target.files[0]) || null; if(!file) return; this.uploadingArtwork[kind]=true; try{ const fd=new FormData(); fd.append('actor_dir', this.mediaDir); fd.append('kind', kind); fd.append('overwrite', String(!!this.mediaTv.overwrite)); fd.append('image', file); await fetchJSON('/media-organizer/upload-artwork',{method:'POST',body:fd}); ElementPlus.ElMessage.success(kind==='poster'?'poster.jpg 已上传':kind==='fanart'?'fanart.jpg 已上传':'logo.png 已上传') }catch(e){ ElementPlus.ElMessage.error(e.message||'上传图片失败') }finally{ this.uploadingArtwork[kind]=false; if(event && event.target) event.target.value='' } },
+    async uploadArtwork(kind, event){ if(!this.mediaDir) return ElementPlus.ElMessage.warning('请先选择目录'); const file=(event && event.target && event.target.files && event.target.files[0]) || null; if(!file) return; this.uploadingArtwork[kind]=true; try{ const fd=new FormData(); fd.append('actor_dir', this.mediaDir); fd.append('kind', kind); fd.append('overwrite', String(!!this.mediaTv.overwrite)); fd.append('image', file); await fetchJSON('/media-organizer/upload-artwork',{method:'POST',body:fd}); ElementPlus.ElMessage.success(kind==='poster'?'poster.jpg 已上传':kind==='fanart'?'fanart.jpg 已上传':'logo.png 已上传'); await this.loadActorInfo(this.mediaDir) }catch(e){ ElementPlus.ElMessage.error(e.message||'上传图片失败') }finally{ this.uploadingArtwork[kind]=false; if(event && event.target) event.target.value='' } },
     async suggestNextEpisode(){ if(!this.targetDir) return; try{ const d=await fetchJSON('/media-organizer/suggest-next-episode',{method:'POST',body:JSON.stringify({target_dir:this.targetDir,season:this.season||1})}); this.startEpisode=d.next_episode||1; this.episodeHint=d.matched_count ? '已根据目标目录 S'+String(this.season||1).padStart(2,'0')+' 最大 E'+String(d.max_episode).padStart(2,'0')+'，建议从 E'+String(d.next_episode).padStart(2,'0')+' 开始' : '目标目录未找到当前季已有集数，建议从 E01 开始' }catch(e){ this.episodeHint='' } },
     moveItem(index,delta){ const next=index+delta; if(next<0||next>=this.items.length) return; const copy=[...this.items]; const item=copy.splice(index,1)[0]; copy.splice(next,0,item); this.items=copy; this.precheckOk=false; this.precheckResult='' },
     async scan(){ this.loading=true; try{ const d=await fetchJSON('/media-organizer/scan',{method:'POST',body:JSON.stringify({source_dir:this.sourceDir,recursive:this.recursive,sort:this.sort})}); this.items=(d.items||[]).map((i,idx)=>({...i,chinese_title:i.title,status:i.suspected_organized?'疑似已整理':'待翻译',episode:this.startEpisode+idx})); if(!this.actorName&&this.targetDir) this.actorName=this.actorNameFromPath(this.targetDir); ElementPlus.ElMessage.success('扫描完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'扫描失败') }finally{ this.loading=false } },
