@@ -16,9 +16,17 @@ PUBLISHED_DATE_COMPACT_RE = re.compile(r"^(?P<year>\d{4})(?P<month>\d{2})(?P<day
 VIEWKEY_RE = re.compile(r"(?P<viewkey>[A-Za-z0-9]{11,16})(?=\.[^.]+$|$)")
 INVALID_FILENAME_CHARS_RE = re.compile(r"[/\\:*?\"<>|]+")
 
+def _first_existing_root(values: list[str | None]) -> Path:
+    candidates = [Path(value).expanduser() for value in values if value]
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+    return candidates[0]
+
+
 ROOTS = {
-    "cloud115": Path(os.getenv("CLOUD115_ROOT", "/CloudDrive115")),
-    "strm": Path(os.getenv("STRM_ROOT", "/strm")),
+    "cloud115": _first_existing_root([os.getenv("CLOUD115_ROOT"), "/CloudDrive115", "/vol1/1000/docker/CloudDrive115/CloudDrive"]),
+    "strm": _first_existing_root([os.getenv("NFO_MEDIA_ROOT"), os.getenv("STRM_ROOT"), "/vol1/1000/docker/strm", "/strm"]),
 }
 DATA_ROOT = Path(os.getenv("MONITOR_DATA_DIR", "/data"))
 
