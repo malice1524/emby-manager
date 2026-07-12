@@ -349,11 +349,11 @@ APScheduler
   → POST /api/media-organizer/tvshow 保存 tvshow.nfo（复用 nfo 路由能力，写媒体目录，不写 /data）
   → POST /api/media-organizer/upload-artwork 上传 poster/fanart/logo（写媒体目录，不写 /data）
   → GET /api/media-organizer/browse?root=cloud115 浏览 115 挂载并选择源/目标目录
-  → POST /api/media-organizer/scan 扫描视频与同名图片，识别文件名前缀发布时间
+  → POST /api/media-organizer/scan 扫描视频与同名图片，识别文件名前缀发布时间，并返回 clean_title 作为每集 NFO 英文简介来源
   → POST /api/media-organizer/translate 调 DeepSeek 翻译标题
   → POST /api/media-organizer/suggest-next-episode 根据目标目录建议下一集集数
   → POST /api/media-organizer/precheck 检查目标冲突
-  → POST /api/media-organizer/execute 移动/重命名视频与同名图片，可生成每集 .nfo
+  → POST /api/media-organizer/execute 移动/重命名视频与同名图片，可生成每集 .nfo（title 写中文标题，plot 写清洗后的英文标题，不含日期/viewkey/下划线）
   → 写 /data/file-organizer/logs/*.json 记录执行结果
 ```
 

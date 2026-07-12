@@ -721,7 +721,7 @@ Content-Type: application/json
 {"source_dir":"/CloudDrive115/待整理","recursive":false,"sort":"name"}
 ```
 
-`sort` 支持 `name`、`mtime`、`published_date`。只返回视频文件，并识别同名图片和文件名前缀发布时间。
+`sort` 支持 `name`、`mtime`、`published_date`。只返回视频文件，并识别同名图片和文件名前缀发布时间。每个条目同时返回 `title`（原始 stem）与 `clean_title`（供每集 NFO `<plot>` 使用的英文标题）：`clean_title` 会去掉开头日期、末尾 PornHub viewkey，并把下划线转为空格。
 
 ### 9.5 翻译标题
 
@@ -752,7 +752,7 @@ POST /api/media-organizer/precheck
 POST /api/media-organizer/execute
 ```
 
-请求包含 `confirmed` 和 `items[].source_path/target_path`，可附带 `artwork_path/target_artwork_path` 与 `nfo`。执行移动/重命名视频和同名图片；勾选生成 NFO 时写同名 `.nfo`。不覆盖目标视频，部分失败会写日志并保留错误信息。
+请求包含 `confirmed` 和 `items[].source_path/target_path`，可附带 `artwork_path/target_artwork_path` 与 `nfo`。执行移动/重命名视频和同名图片；勾选生成 NFO 时写同名 `.nfo`。每集 NFO 约定：`nfo.title` 写入 `<title>`（通常为翻译后的中文标题），`nfo.plot` 写入 `<plot>` 前会兜底清洗为纯英文标题，去掉日期前缀、PornHub viewkey 后缀和下划线。不覆盖目标视频，部分失败会写日志并保留错误信息。
 
 ### 9.8 文件整理兼容 API `/api/file-organizer`
 

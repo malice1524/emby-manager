@@ -230,10 +230,10 @@ static/index.html
 
 2. 扫描视频 / 翻译标题 / 生成每集 NFO / 移动到目标目录
   → 通过 /api/media-organizer/browse?root=cloud115 选择源目录和目标目录
-  → 扫描 CloudDrive115 视频，可按文件名、mtime、发布时间排序
+  → 扫描 CloudDrive115 视频，可按文件名、mtime、发布时间排序；扫描结果提供 title 与 clean_title，clean_title 用于每集 NFO 英文简介
   → DeepSeek 翻译标题，支持手动调整顺序和起始集数
   → 预检查目标冲突
-  → 移动/重命名视频与同名图片，并按勾选生成每集 .nfo
+  → 移动/重命名视频与同名图片，并按勾选生成每集 .nfo（title=中文标题，plot=去日期/去 viewkey/下划线转空格后的英文标题）
 ```
 
 前端注意：
