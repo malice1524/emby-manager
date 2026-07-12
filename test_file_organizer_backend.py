@@ -75,6 +75,7 @@ def test_scan_videos_parses_filename_published_date_and_artwork(monkeypatch, tmp
     item = result["items"][0]
     assert item["path"] == str(video)
     assert item["published_date"] == "2025-07-16"
+    assert item["clean_title"] == "My Title"
     assert item["published_date_source"] == "filename"
     assert item["artwork_path"] == str(image)
     assert item["artwork_name"] == image.name
@@ -248,3 +249,19 @@ def test_metadata_copy_preserves_structure_and_overwrites(monkeypatch, tmp_path)
     assert (target / "Season 1" / "a.nfo").read_text(encoding="utf-8") == "nfo"
     assert not (target / "Season 1" / "a.strm").exists()
     assert not (target / "Season 1" / "a.mp4").exists()
+
+
+def test_episode_nfo_sanitizes_plot_from_download_filename():
+    xml = file_organizer._episode_nfo_xml(
+        "继妹撞见继兄自慰并让他射了出来",
+        1,
+        2,
+        "2023-04-10",
+        "2023-04-10_Stepsister_caught_her_stepbrother_with_masturbation_and_made_him_cum._64340a80e5130",
+    )
+
+    assert "<title>继妹撞见继兄自慰并让他射了出来</title>" in xml
+    assert "<plot>Stepsister caught her stepbrother with masturbation and made him cum.</plot>" in xml
+    assert "2023-04-10_Stepsister" not in xml
+    assert "64340a80e5130" not in xml
+    assert "_" not in xml.split("<plot>", 1)[1].split("</plot>", 1)[0]

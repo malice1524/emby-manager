@@ -14,6 +14,8 @@ EPISODE_RE = re.compile(r"\.S(?P<season>\d{2})E(?P<episode>\d{2,})\.", re.I)
 PUBLISHED_DATE_DASH_RE = re.compile(r"^(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})(?:[_ .-]|$)")
 PUBLISHED_DATE_COMPACT_RE = re.compile(r"^(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?:[_ .-]|$)")
 VIEWKEY_RE = re.compile(r"(?P<viewkey>[A-Za-z0-9]{11,16})(?=\.[^.]+$|$)")
+DOWNLOAD_TITLE_DATE_PREFIX_RE = re.compile(r"^\d{4}(?:-?\d{2}-?\d{2})[_ .-]+")
+DOWNLOAD_TITLE_VIEWKEY_SUFFIX_RE = re.compile(r"[_\\s-]+[A-Za-z0-9]{11,16}$")
 INVALID_FILENAME_CHARS_RE = re.compile(r"[/\\:*?\"<>|]+")
 
 def _first_existing_root(values: list[str | None]) -> Path:
@@ -121,6 +123,7 @@ def scan_videos(source_dir: str, recursive: bool = False, sort: str = "name") ->
             stat = path.stat()
             suspected = bool(ORGANIZED_RE.match(path.name))
             title = path.stem
+            clean_title = clean_download_title_for_plot(title)
             published_date = _parse_published_date_from_name(path.name)
             artwork = _find_artwork_for_video(path, files_by_parent.get(path.parent, []))
             items.append({
@@ -129,6 +132,7 @@ def scan_videos(source_dir: str, recursive: bool = False, sort: str = "name") ->
                 "path": str(path),
                 "relative_path": str(path.relative_to(source)),
                 "title": title,
+                "clean_title": clean_title,
                 "suffix": path.suffix,
                 "mtime": stat.st_mtime,
                 "size": stat.st_size,
@@ -156,6 +160,24 @@ def scan_videos(source_dir: str, recursive: bool = False, sort: str = "name") ->
     return {"source_dir": str(source), "items": items}
 
 
+def clean_download_title_for_plot(text: str) -> str:
+    """Return a human English title from MeTube/yt-dlp download filenames.
+
+    Examples:
+    2023-04-10_Stepsister_caught_him_64340a80e5130
+    -> Stepsister caught him
+    """
+    cleaned = str(text or "")
+    suffix = Path(cleaned).suffix.lower()
+    if suffix in VIDEO_SUFFIXES | METADATA_SUFFIXES:
+        cleaned = Path(cleaned).stem
+    cleaned = DOWNLOAD_TITLE_DATE_PREFIX_RE.sub("", cleaned)
+    cleaned = DOWNLOAD_TITLE_VIEWKEY_SUFFIX_RE.sub("", cleaned)
+    cleaned = cleaned.replace("_", " ")
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
+
+
 def sanitize_filename_part(text: str) -> str:
     cleaned = INVALID_FILENAME_CHARS_RE.sub(" ", text or "")
     cleaned = re.sub(r"\s+", " ", cleaned).strip().strip(".")
@@ -178,8 +200,9 @@ def _episode_nfo_xml(title: str, season: int, episode: int, published_date: str 
     if published_date:
         lines.append(f"  <aired>{escape(published_date)}</aired>")
         lines.append(f"  <premiered>{escape(published_date)}</premiered>")
-    if plot:
-        lines.append(f"  <plot>{escape(plot)}</plot>")
+    clean_plot = clean_download_title_for_plot(plot) if plot else ""
+    if clean_plot:
+        lines.append(f"  <plot>{escape(clean_plot)}</plot>")
     lines.append("</episodedetails>")
     return "\n".join(lines) + "\n"
 
