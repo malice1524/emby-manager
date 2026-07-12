@@ -692,12 +692,14 @@ Content-Type: application/json
   "dateadded":"2026-07-06 18:00:00",
   "sorttitle":"",
   "displayorder":"aired",
+  "tags":["中文字幕","高清","PornHub"],
+  "chinese_tags_only":false,
   "lockdata":false,
   "overwrite":true
 }
 ```
 
-复用 NFO 路由写入演员目录下的 `tvshow.nfo`。
+复用 NFO 路由写入演员目录下的 `tvshow.nfo`。`tags` 会同时写入 `<tag>` 与 `<genre>`；媒体整理手动输入标签时传 `chinese_tags_only=false`，允许英文标签（如 `PornHub`）与中文标签一起写入。旧 NFO 自动化默认仍只保留中文标签。
 
 ### 9.3 上传演员图片
 

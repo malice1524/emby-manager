@@ -75,6 +75,12 @@ def test_file_organizer_sidebar_route_and_api_markers_exist():
         assert 'applyActorInfo' in html
         assert 'mediaInfo.tvshow_exists' in html
         assert '已读取 tvshow.nfo' in html
+        assert 'mediaTv.tags' in html
+        assert 'placeholder="标签，逗号/顿号/空格分隔"' in html
+        assert 'parseMediaTags' in html
+        assert 'tags:this.parseMediaTags(this.mediaTv.tags)' in html
+        assert 'chinese_tags_only:false' in html
+        assert "tags:(tv.tags||[]).join(', ')" in html
     assert frontend.count("#/media-organizer") == static.count("#/media-organizer")
 
 

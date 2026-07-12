@@ -135,6 +135,8 @@ def test_media_organizer_actor_info_prefills_existing_tvshow(monkeypatch, tmp_pa
   <title>已有标题</title>
   <actor><tmdbid>12345</tmdbid></actor>
   <sorttitle>Actor Sort</sorttitle>
+  <tag>中文字幕</tag>
+  <genre>高清</genre>
   <displayorder>dvd</displayorder>
 </tvshow>
 """)
@@ -157,6 +159,7 @@ def test_media_organizer_actor_info_prefills_existing_tvshow(monkeypatch, tmp_pa
     assert data["tvshow"]["tmdb_id"] == "12345"
     assert data["tvshow"]["dateadded"] == "2026-07-06 18:00:00"
     assert data["tvshow"]["sorttitle"] == "Actor Sort"
+    assert data["tvshow"]["tags"] == ["中文字幕"]
     assert data["tvshow"]["displayorder"] == "dvd"
     assert data["tvshow"]["lockdata"] is True
 
@@ -177,3 +180,29 @@ def test_media_organizer_upload_artwork_updates_actor_file(monkeypatch, tmp_path
     assert res.status_code == 200
     assert res.json()["filename"] == "poster.jpg"
     assert (actor / "poster.jpg").read_bytes() == b"fake-jpg"
+
+
+def test_media_organizer_tvshow_save_writes_manual_tags_including_english(monkeypatch, tmp_path):
+    _, strm, _ = setup_roots(monkeypatch, tmp_path)
+    monkeypatch.setenv("NFO_MEDIA_ROOT", str(strm))
+    actor = strm / "Actor"
+    actor.mkdir()
+    client = TestClient(app)
+
+    res = client.post("/api/media-organizer/tvshow", json={
+        "actor_dir": str(actor),
+        "title": "Actor",
+        "plot": "简介",
+        "outline": "",
+        "tags": ["中文字幕", "高清", "PornHub"],
+        "chinese_tags_only": False,
+        "overwrite": True,
+    })
+
+    assert res.status_code == 200
+    tvshow = (actor / "tvshow.nfo").read_text(encoding="utf-8")
+    assert "<tag>中文字幕</tag>" in tvshow
+    assert "<genre>中文字幕</genre>" in tvshow
+    assert "<tag>高清</tag>" in tvshow
+    assert "<tag>PornHub</tag>" in tvshow
+    assert "<genre>PornHub</genre>" in tvshow

@@ -191,7 +191,7 @@ Cache-Control: no-cache, no-store, must-revalidate
 - 媒体库：列表、数量统计、海报墙、搜索、分页、跳页、详情弹窗
 - 完结监控：TMDB 搜索/详情/验证、TMDB 单集详情、TVmaze 播出时间补充、监控列表、定时检测、TG 通知、日志
 - 配置：TMDB Key、TG Bot、代理、Cron 检查规则
-- 媒体整理：侧边栏入口为 `媒体整理`，把旧 `NFO 自动化` 与 `文件整理` 合并为一个两步流程。第 1 步在 `/strm` 选择演员目录，生成/覆盖 `tvshow.nfo`，上传 `poster.jpg`、`fanart.jpg`、`logo.png`；目录浏览接口为 `/api/media-organizer/browse?root=strm`，返回 `directories`（兼容 `dirs`）。第 2 步在 `/CloudDrive115` 选择源/目标目录，扫描视频、按文件名/mtime/发布时间排序、DeepSeek 翻译标题、调整集数顺序、生成每集 NFO，并移动/重命名视频与同名图片。扫描结果包含 `title` 与 `clean_title`；每集 NFO 的 `<title>` 使用翻译后的中文标题，`<plot>` 使用 `clean_title`/后端兜底清洗后的英文标题，必须去掉日期前缀、PornHub viewkey 后缀并将下划线转为空格。前端调用统一写 `/media-organizer/...`，由 `fetchJSON` 自动补 `/api`，不要写成 `/api/media-organizer/...`。目录选择弹窗必须 `append-to-body`，避免第二步滚动后只出现遮罩不显示窗口。DeepSeek 设置在 `设置` 页，保存到 `/data/settings.json`，Key 可回落 `DEEPSEEK_API_KEY`。
+- 媒体整理：侧边栏入口为 `媒体整理`，把旧 `NFO 自动化` 与 `文件整理` 合并为一个两步流程。第 1 步在 `/strm` 选择演员目录，生成/覆盖 `tvshow.nfo`，上传 `poster.jpg`、`fanart.jpg`、`logo.png`，并可手动输入标签（逗号/顿号/空格分隔，保存时同时写 `<tag>` 与 `<genre>`，允许中英文标签）。目录浏览接口为 `/api/media-organizer/browse?root=strm`，返回 `directories`（兼容 `dirs`）。第 2 步在 `/CloudDrive115` 选择源/目标目录，扫描视频、按文件名/mtime/发布时间排序、DeepSeek 翻译标题、调整集数顺序、生成每集 NFO，并移动/重命名视频与同名图片。扫描结果包含 `title` 与 `clean_title`；每集 NFO 的 `<title>` 使用翻译后的中文标题，`<plot>` 使用 `clean_title`/后端兜底清洗后的英文标题，必须去掉日期前缀、PornHub viewkey 后缀并将下划线转为空格。前端调用统一写 `/media-organizer/...`，由 `fetchJSON` 自动补 `/api`，不要写成 `/api/media-organizer/...`。目录选择弹窗必须 `append-to-body`，避免第二步滚动后只出现遮罩不显示窗口。DeepSeek 设置在 `设置` 页，保存到 `/data/settings.json`，Key 可回落 `DEEPSEEK_API_KEY`。
 
 ## 环境变量
 

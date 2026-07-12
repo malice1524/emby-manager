@@ -70,6 +70,7 @@ class TvshowRequest(BaseModel):
     displayorder: str = "aired"
     overwrite: bool = False
     tags: list[str] = []
+    chinese_tags_only: bool = True
 
 
 def _media_root() -> Path:
@@ -456,7 +457,8 @@ def _tvshow_xml(req: TvshowRequest) -> str:
     actor_lines.append("  </actor>")
     actor = "\n".join(actor_lines)
     tag_lines = []
-    for tag in _chinese_tags(req.tags):
+    tags = _chinese_tags(req.tags) if req.chinese_tags_only else _split_tags(req.tags)
+    for tag in tags:
         tag_lines.append(f"  <tag>{escape(tag)}</tag>")
         tag_lines.append(f"  <genre>{escape(tag)}</genre>")
     tags_xml = "\n".join(tag_lines)

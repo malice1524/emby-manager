@@ -225,7 +225,7 @@ static/index.html
 ```text
 1. 生成 tvshow.nfo / poster.jpg / fanart.jpg / logo.png
   → 通过 /api/media-organizer/browse?root=strm 浏览 /strm 下演员目录
-  → 保存 tvshow.nfo（title/plot/outline/tmdb_id/dateadded/sorttitle/displayorder 等）
+  → 保存 tvshow.nfo（title/plot/outline/tmdb_id/dateadded/sorttitle/displayorder/tags 等），tags 同时写入 <tag>/<genre>
   → 上传 poster/fanart/logo 到演员目录
 
 2. 扫描视频 / 翻译标题 / 生成每集 NFO / 移动到目标目录

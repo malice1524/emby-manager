@@ -117,7 +117,7 @@ DockerHub 镜像：
 ### 1. 生成 tvshow.nfo / poster.jpg / fanart.jpg / logo.png
 
 1. 点击“选择目录”，从 `/strm` 选择演员目录。
-2. 填写标题、TMDB ID、dateadded、简介等信息。
+2. 填写标题、TMDB ID、dateadded、简介、标签等信息；标签支持逗号/顿号/空格分隔。
 3. 点击“生成 tvshow.nfo”写入演员目录。
 4. 上传或替换 `poster.jpg`、`fanart.jpg`、`logo.png`。
 

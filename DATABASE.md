@@ -346,7 +346,7 @@ APScheduler
 ```text
 前端媒体整理页
   → GET /api/media-organizer/browse?root=strm 浏览 STRM 根目录并选择演员目录
-  → POST /api/media-organizer/tvshow 保存 tvshow.nfo（复用 nfo 路由能力，写媒体目录，不写 /data）
+  → POST /api/media-organizer/tvshow 保存 tvshow.nfo（复用 nfo 路由能力，写媒体目录，不写 /data；tags 同时写入 <tag>/<genre>）
   → POST /api/media-organizer/upload-artwork 上传 poster/fanart/logo（写媒体目录，不写 /data）
   → GET /api/media-organizer/browse?root=cloud115 浏览 115 挂载并选择源/目标目录
   → POST /api/media-organizer/scan 扫描视频与同名图片，识别文件名前缀发布时间，并返回 clean_title 作为每集 NFO 英文简介来源
