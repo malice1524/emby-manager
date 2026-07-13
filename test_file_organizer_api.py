@@ -1,6 +1,8 @@
+from io import BytesIO
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from backend.app import file_organizer
 from backend.app.main import app
@@ -180,6 +182,33 @@ def test_media_organizer_upload_artwork_updates_actor_file(monkeypatch, tmp_path
     assert res.status_code == 200
     assert res.json()["filename"] == "poster.jpg"
     assert (actor / "poster.jpg").read_bytes() == b"fake-jpg"
+
+
+def test_media_organizer_upload_logo_normalizes_to_emby_canvas(monkeypatch, tmp_path):
+    _, strm, _ = setup_roots(monkeypatch, tmp_path)
+    monkeypatch.setenv("NFO_MEDIA_ROOT", str(strm))
+    actor = strm / "Actor"
+    actor.mkdir()
+    source = Image.new("RGBA", (420, 220), (0, 0, 0, 0))
+    for x in range(110, 310):
+        for y in range(70, 150):
+            source.putpixel((x, y), (255, 255, 255, 255))
+    buffer = BytesIO()
+    source.save(buffer, format="PNG")
+    client = TestClient(app)
+
+    res = client.post(
+        "/api/media-organizer/upload-artwork",
+        data={"actor_dir": str(actor), "kind": "logo", "overwrite": "true"},
+        files={"image": ("logo.png", buffer.getvalue(), "image/png")},
+    )
+
+    assert res.status_code == 200
+    assert res.json()["filename"] == "logo.png"
+    saved = Image.open(actor / "logo.png")
+    assert saved.mode == "RGBA"
+    assert saved.size == (1600, 600)
+    assert saved.getchannel("A").getbbox() == (425, 150, 1175, 450)
 
 
 def test_media_organizer_tvshow_save_writes_manual_tags_including_english(monkeypatch, tmp_path):

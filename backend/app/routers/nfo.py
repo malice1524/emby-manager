@@ -4,6 +4,7 @@ import json
 import httpx
 
 from ..config import get_http_client
+from ..logo_normalizer import normalize_logo_png_bytes
 from html import unescape as html_unescape
 from datetime import datetime
 from pathlib import Path
@@ -755,6 +756,8 @@ async def upload_artwork(
     content = await image.read()
     if not content:
         raise HTTPException(status_code=400, detail="上传图片为空")
+    if kind == "logo":
+        content = normalize_logo_png_bytes(content)
     target.write_bytes(content)
     return {"ok": True, "filename": target.name, "backup": backup}
 
