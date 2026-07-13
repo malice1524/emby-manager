@@ -1586,7 +1586,7 @@ const FileOrganizer = {
     async suggestNextEpisode(){ if(!this.targetDir) return; try{ const d=await fetchJSON('/media-organizer/suggest-next-episode',{method:'POST',body:JSON.stringify({target_dir:this.targetDir,season:this.season||1})}); this.startEpisode=d.next_episode||1; this.episodeHint=d.matched_count ? '已根据目标目录 S'+String(this.season||1).padStart(2,'0')+' 最大 E'+String(d.max_episode).padStart(2,'0')+'，建议从 E'+String(d.next_episode).padStart(2,'0')+' 开始' : '目标目录未找到当前季已有集数，建议从 E01 开始' }catch(e){ this.episodeHint='' } },
     moveItem(index,delta){ const next=index+delta; if(next<0||next>=this.items.length) return; const copy=[...this.items]; const item=copy.splice(index,1)[0]; copy.splice(next,0,item); this.items=copy; this.precheckOk=false; this.precheckResult='' },
     async scan(){ this.loading=true; try{ const d=await fetchJSON('/media-organizer/scan',{method:'POST',body:JSON.stringify({source_dir:this.sourceDir,recursive:this.recursive,sort:this.sort})}); this.items=(d.items||[]).map((i,idx)=>({...i,chinese_title:i.title,status:i.suspected_organized?'疑似已整理':'待翻译',episode:this.startEpisode+idx})); if(!this.actorName&&this.targetDir) this.actorName=this.actorNameFromPath(this.targetDir); ElementPlus.ElMessage.success('扫描完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'扫描失败') }finally{ this.loading=false } },
-    async translate(){ this.translating=true; try{ const rows=this.items.map(i=>({id:i.id,title:i.title})); const d=await fetchJSON('/media-organizer/translate',{method:'POST',body:JSON.stringify({items:rows})}); const map={}; (d.items||[]).forEach(r=>map[r.id]=r); this.items=this.items.map(i=>map[i.id]?{...i,chinese_title:map[i.id].title||i.chinese_title,status:map[i.id].ok?(map[i.id].skipped?'已是中文':'已翻译'):'翻译失败: '+map[i.id].error}:i); ElementPlus.ElMessage.success('翻译完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'翻译失败') }finally{ this.translating=false } },
+    async translate(){ this.translating=true; try{ const rows=this.items.map(i=>({id:i.id,title:i.title})); const d=await fetchJSON('/media-organizer/translate',{method:'POST',body:JSON.stringify({items:rows})}); const map={}; (d.items||[]).forEach(r=>map[r.id]=r); let ok=0,fail=0; this.items=this.items.map(i=>{ const r=map[i.id]; if(!r) return i; if(r.ok) ok++; else fail++; return {...i,chinese_title:r.title||i.chinese_title,status:r.ok?(r.skipped?'已是中文':'已翻译'):'翻译失败: '+(r.error||'未知错误')} }); if(fail) ElementPlus.ElMessage.warning('翻译完成：成功 '+ok+' 条，失败 '+fail+' 条'); else ElementPlus.ElMessage.success('翻译完成：成功 '+ok+' 条') }catch(e){ ElementPlus.ElMessage.error(e.message||'翻译失败') }finally{ this.translating=false } },
     plannedItems(){ return this.items.map((i,idx)=>{ const ep=this.startEpisode+idx; const title=i.chinese_title||i.title; const base=(this.actorName||'Actor')+'.S'+String(this.season).padStart(2,'0')+'E'+String(ep).padStart(2,'0')+'.'+title; const targetBase=this.targetDir.replace(/\/$/,'')+'/'+base; const row={id:i.id,source_path:i.path,target_path:targetBase+i.suffix}; if(i.artwork_path&&i.artwork_suffix){ row.artwork_path=i.artwork_path; row.target_artwork_path=targetBase+i.artwork_suffix } if(this.generateNfo){ row.target_nfo_path=targetBase+'.nfo'; row.nfo={title:title,season:this.season,episode:ep,published_date:i.published_date||'',plot:i.clean_title||i.title||''} } return row }) },
     async precheck(){ try{ const d=await fetchJSON('/media-organizer/precheck',{method:'POST',body:JSON.stringify({confirmed:this.confirmed,items:this.plannedItems()})}); this.precheckOk=!!d.ok; this.precheckResult=JSON.stringify(d,null,2); d.ok?ElementPlus.ElMessage.success('预检查通过'):ElementPlus.ElMessage.warning('预检查未通过') }catch(e){ ElementPlus.ElMessage.error(e.message||'预检查失败') } },
     async execute(){ this.executing=true; try{ const d=await fetchJSON('/media-organizer/execute',{method:'POST',body:JSON.stringify({confirmed:this.confirmed,items:this.plannedItems()})}); this.precheckResult=JSON.stringify(d,null,2); d.ok?ElementPlus.ElMessage.success('执行完成'):ElementPlus.ElMessage.warning('部分失败，可修改后重试') }catch(e){ ElementPlus.ElMessage.error(e.message||'执行失败') }finally{ this.executing=false } },
@@ -1663,9 +1663,38 @@ const DownloadUpload = {
         </div>
         <div v-else class="empty-state" style="padding:16px">暂无上传失败</div>
       </section>
+
+      <section class="du-failed-card" v-if="loaded">
+        <div class="section-title" style="margin-bottom:8px">🔎 PornHub 查漏补缺</div>
+        <div class="du-subtitle" style="margin-bottom:12px">检查缺视频、缺图片，以及缺标题、日期、viewkey</div>
+        <div style="display:grid;gap:10px">
+          <input v-model="gap.url" placeholder="PornHub 演员/频道视频网址" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" />
+          <div style="display:flex;gap:8px"><input v-model="gap.target_dir" placeholder="/CloudDrive115/CloudDrive/PornHub待整理" style="flex:1;min-width:0;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:8px;color:var(--text)" /><el-button @click="openGapBrowse">选择目录</el-button></div>
+          <el-dialog v-model="gapBrowse.visible" title="选择 115 目录" width="min(760px,92vw)" append-to-body>
+            <div style="display:flex;gap:8px;margin-bottom:10px"><el-button @click="gapBrowsePath('')">根目录</el-button><el-button :disabled="!gapBrowse.parent" @click="gapBrowsePath(gapBrowse.parent)">上一级</el-button><el-button type="primary" @click="selectGapBrowse">选择当前目录</el-button></div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;word-break:break-all">{{gapBrowse.current}}</div>
+            <div v-loading="gapBrowse.loading" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;max-height:45vh;overflow:auto"><div v-for="dir in gapBrowse.directories" :key="dir.path" @click="gapBrowsePath(dir.path)" class="glass-card" style="padding:12px;cursor:pointer">📁 {{dir.name}}</div></div>
+          </el-dialog>
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><el-button type="primary" :loading="gapChecking" @click="gapCheck">开始检查</el-button><el-button type="warning" :loading="gapFixing" :disabled="!gapReport" @click="gapFix">一键补缺</el-button></div>
+        </div>
+        <div v-if="gapReport" style="margin-top:14px">
+          <div class="du-stats">
+            <div class="du-stat"><b>{{gapReport.site_total||0}}</b><span>官网视频</span></div>
+            <div class="du-stat"><b>{{gapReport.local_videos||0}}</b><span>115 视频</span></div>
+            <div class="du-stat"><b>{{gapReport.local_images||0}}</b><span>115 图片</span></div>
+          </div>
+          <div class="du-state-list" style="margin-top:10px">
+            <div class="du-state-row"><span>缺视频</span><b :class="gapReport.missing_videos?.length?'du-bad':'du-ok'">{{gapReport.missing_videos?.length||0}}</b></div>
+            <div class="du-state-row"><span>缺图片</span><b :class="gapReport.missing_images?.length?'du-warn':'du-ok'">{{gapReport.missing_images?.length||0}}</b></div>
+            <div class="du-state-row"><span>命名问题</span><b :class="gapReport.name_issues?.length?'du-warn':'du-ok'">{{gapReport.name_issues?.length||0}}</b></div>
+          </div>
+          <details v-if="gapReport.missing_videos?.length||gapReport.missing_images?.length||gapReport.name_issues?.length" style="margin-top:10px"><summary style="cursor:pointer;color:var(--text-muted)">查看明细</summary><pre style="white-space:pre-wrap;word-break:break-all;font-size:11px;max-height:320px;overflow:auto">{{JSON.stringify(gapReport,null,2)}}</pre></details>
+        </div>
+        <div v-if="gapResult" style="margin-top:12px;color:var(--text-muted)">已加入视频 {{gapResult.queued_videos||0}}，已生成图片 {{gapResult.queued_images||0}}，已重命名 {{gapResult.renamed||0}}，失败 {{gapResult.failed||0}}</div>
+      </section>
     </div>
   `,
-  data(){ return {loaded:false,data:{available:true,progress:{},metube:{},uploader:{statuses:{}},failed:[]}} },
+  data(){ return {loaded:false,data:{available:true,progress:{},metube:{},uploader:{statuses:{}},failed:[]},gap:{url:'',target_dir:'/CloudDrive115/CloudDrive/PornHub待整理'},gapReport:null,gapResult:null,gapChecking:false,gapFixing:false,gapBrowse:{visible:false,current:'',parent:'',directories:[],loading:false}} },
   computed:{
     progress(){ return this.data.progress || {} },
     metube(){ return this.data.metube || {} },
@@ -1676,6 +1705,11 @@ const DownloadUpload = {
   beforeUnmount(){ if(this._poll) clearInterval(this._poll) },
   methods:{
     async load(silent){ try{ this.data=await fetchJSON('/dashboard/metube') }catch(e){ if(!silent) this.data={available:false,error:e.message,progress:{},metube:{},uploader:{statuses:{}},failed:[]} } finally { this.loaded=true } },
+    async openGapBrowse(){ this.gapBrowse.visible=true; await this.gapBrowsePath(this.gap.target_dir||'') },
+    async gapBrowsePath(path){ this.gapBrowse.loading=true; try{ const q='?root=cloud115'+(path?'&path='+encodeURIComponent(path):''); const d=await fetchJSON('/media-organizer/browse'+q); this.gapBrowse.current=d.path||''; this.gapBrowse.parent=d.parent||''; this.gapBrowse.directories=d.directories||[] }catch(e){ ElementPlus.ElMessage.error(e.message||'目录读取失败') }finally{ this.gapBrowse.loading=false } },
+    selectGapBrowse(){ if(this.gapBrowse.current) this.gap.target_dir=this.gapBrowse.current; this.gapBrowse.visible=false; this.gapReport=null },
+    async gapCheck(){ if(!this.gap.url||!this.gap.target_dir) return ElementPlus.ElMessage.warning('请填写网址和 115 目录'); this.gapChecking=true; this.gapResult=null; try{ this.gapReport=await fetchJSON('/pornhub-gap/check',{method:'POST',body:JSON.stringify(this.gap)}); ElementPlus.ElMessage.success('检查完成') }catch(e){ ElementPlus.ElMessage.error(e.message||'检查失败') }finally{ this.gapChecking=false } },
+    async gapFix(){ try{ await ElementPlus.ElMessageBox.confirm('将调用 MeTube 补缺并修复可确认的文件名，是否继续？','确认补缺',{type:'warning'}); this.gapFixing=true; this.gapResult=await fetchJSON('/pornhub-gap/fix',{method:'POST',body:JSON.stringify(this.gap)}); ElementPlus.ElMessage.success('补缺任务已提交'); await this.gapCheck() }catch(e){ if(e!=='cancel'&&e!=='close') ElementPlus.ElMessage.error(e.message||'补缺失败') }finally{ this.gapFixing=false } },
     statusCount(name){ return (this.data.uploader && this.data.uploader.statuses && this.data.uploader.statuses[name]) || 0 },
     formatBytes(bytes){ const n=Number(bytes||0); if(!n) return '0 B'; const u=['B','KB','MB','GB','TB']; let v=n,i=0; while(v>=1024&&i<u.length-1){v/=1024;i++} return i ? v.toFixed(2)+' '+u[i] : Math.round(v)+' B' },
     statusLabel(status){ return ({starting:'准备中',computing_sha1:'计算 SHA1',uploading:'上传中',upload_returned:'等待确认',confirmed:'已确认'})[status] || (status || '暂无任务') },

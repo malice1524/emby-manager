@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-from .routers import users, libraries, dashboard, monitor, nfo, settings, file_organizer, media_organizer
+from .routers import users, libraries, dashboard, monitor, nfo, settings, file_organizer, media_organizer, pornhub_gap
 from .series_monitor import start_monitor
 import os
 
@@ -29,6 +29,7 @@ app.include_router(nfo.router)
 app.include_router(settings.router)
 app.include_router(file_organizer.router)
 app.include_router(media_organizer.router)
+app.include_router(pornhub_gap.router)
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
 if not os.path.exists(STATIC_DIR):

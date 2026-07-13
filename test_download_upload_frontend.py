@@ -25,6 +25,11 @@ def assert_download_upload_frontend(html: str):
     assert 'statusLabel(status)' in html
     assert "fetchJSON('/settings/metube')" in html
     assert "fetchJSON('/settings/metube',{method:'PUT'" in html
+    assert 'PornHub 查漏补缺' in html
+    assert "fetchJSON('/pornhub-gap/check'" in html
+    assert "fetchJSON('/pornhub-gap/fix'" in html
+    assert '选择 115 目录' in html
+    assert 'gapBrowsePath' in html
     assert 'MeTube 地址' in html
     assert 'class="du-home-card fade-in"' in html
     assert "goDownloadUpload" in html

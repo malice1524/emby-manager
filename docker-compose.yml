@@ -12,9 +12,10 @@ services:
       - DEEPSEEK_API_KEY=
     volumes:
       - /vol1/1000/docker/strm/已整理/PornHub:/vol1/1000/docker/strm/已整理/PornHub
-      - /vol1/1000/docker/CloudDrive115:/CloudDrive115
+      - /vol1/1000/docker/CloudDrive115:/CloudDrive115:rslave
       - /vol1/1000/docker/strm/已整理:/strm
       - /vol1/1000/docker/metube/uploader:/vol1/1000/docker/metube/uploader:ro
+      - /vol1/1000/docker/downloads/video:/downloads
       - ./data:/app/data
     ports:
       - "8117:8000"

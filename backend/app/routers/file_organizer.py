@@ -14,6 +14,18 @@ from ..file_organizer import (
 )
 from ..settings_store import load_deepseek_settings
 
+
+async def translate_titles_batched(rows: list[dict[str, Any]], settings: dict[str, Any]) -> list[dict[str, Any]]:
+    try:
+        batch_size = int(settings.get("batch_size") or 10)
+    except (TypeError, ValueError):
+        batch_size = 10
+    batch_size = max(1, min(batch_size, 50))
+    output: list[dict[str, Any]] = []
+    for start in range(0, len(rows), batch_size):
+        output.extend(await translate_titles(rows[start:start + batch_size], settings))
+    return output
+
 router = APIRouter(prefix="/api/file-organizer", tags=["file-organizer"])
 
 
@@ -51,7 +63,7 @@ async def translate(payload: dict[str, Any]):
     if not isinstance(rows, list):
         raise HTTPException(status_code=400, detail="翻译项目必须是列表")
     settings = load_deepseek_settings()
-    return {"items": await translate_titles(rows, settings)}
+    return {"items": await translate_titles_batched(rows, settings)}
 
 
 @router.post("/suggest-next-episode")
