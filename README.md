@@ -119,7 +119,7 @@ DockerHub 镜像：
 1. 点击“选择目录”，从 `/strm` 选择演员目录。
 2. 填写标题、TMDB ID、dateadded、简介、标签等信息；标签支持逗号/顿号/空格分隔。
 3. 点击“生成 tvshow.nfo”写入演员目录。
-4. 上传或替换 `poster.jpg`、`fanart.jpg`、`logo.png`；上传 `logo.png` 时会自动裁剪透明留白、过滤零星噪点，并等比例居中到 `1600×600` 透明画布，Logo 最大占用 `1200×300`，便于 Emby/Jellyfin 里保持统一视觉大小。
+4. 上传或替换 `poster.jpg`、`fanart.jpg`、`logo.png`；上传 Logo 支持 JPG/JPEG/PNG/WEBP，最终都会保存为 `logo.png`。上传 `logo.png` 时会自动识别纯色背景并转透明、裁剪透明留白、过滤零星噪点，并等比例居中到 `1600×600` 透明画布，Logo 最大占用 `1200×300`，便于 Emby/Jellyfin 里保持统一视觉大小。
 
 ### 2. 扫描视频 / 翻译标题 / 生成每集 NFO / 移动到目标目录
 

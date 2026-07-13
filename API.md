@@ -712,7 +712,7 @@ multipart/form-data:
   image=<file>
 ```
 
-保存为固定文件名：`poster.jpg`、`fanart.jpg`、`logo.png`。当 `kind=logo` 时，后端会先把上传图片标准化为透明 PNG：裁剪透明留白、过滤零星噪点、保持比例适配最大 `1200×300`，再居中写入 `1600×600` 透明画布。
+保存为固定文件名：`poster.jpg`、`fanart.jpg`、`logo.png`。当 `kind=logo` 时，上传的 JPG/JPEG/PNG/WEBP 都会输出为 `logo.png`，后端会先把上传图片标准化为透明 PNG：自动识别纯色背景并转透明、裁剪透明留白、过滤零星噪点、保持比例适配最大 `1200×300`，再居中写入 `1600×600` 透明画布。
 
 ### 9.4 扫描视频
 

@@ -215,7 +215,7 @@ backend/app/config.py
 ```text
 backend/app/routers/media_organizer.py   # 页面统一 API：/api/media-organizer
 backend/app/file_organizer.py            # 视频扫描/翻译/移动/日志核心
-backend/app/logo_normalizer.py           # logo.png 上传标准化：透明裁剪、噪点过滤、1600×600 画布适配
+backend/app/logo_normalizer.py           # logo 上传标准化：JPG/PNG/WEBP 转透明 PNG、背景透明化、透明裁剪、1600×600 画布适配
 backend/app/routers/nfo.py               # tvshow.nfo、封面上传、Emby 刷新等复用能力
 frontend/index.html
 static/index.html
@@ -227,7 +227,7 @@ static/index.html
 1. 生成 tvshow.nfo / poster.jpg / fanart.jpg / logo.png
   → 通过 /api/media-organizer/browse?root=strm 浏览 /strm 下演员目录
   → 保存 tvshow.nfo（title/plot/outline/tmdb_id/dateadded/sorttitle/displayorder/tags 等），tags 同时写入 <tag>/<genre>
-  → 上传 poster/fanart/logo 到演员目录；logo 上传会自动裁剪透明留白、过滤零星噪点、等比例适配最大 1200×300，并居中保存为 1600×600 透明 PNG
+  → 上传 poster/fanart/logo 到演员目录；logo 支持 JPG/JPEG/PNG/WEBP 上传并统一保存为 logo.png，会自动识别纯色背景转透明、裁剪透明留白、过滤零星噪点、等比例适配最大 1200×300，并居中保存为 1600×600 透明 PNG
 
 2. 扫描视频 / 翻译标题 / 生成每集 NFO / 移动到目标目录
   → 通过 /api/media-organizer/browse?root=cloud115 选择源目录和目标目录

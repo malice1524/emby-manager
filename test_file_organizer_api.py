@@ -211,6 +211,39 @@ def test_media_organizer_upload_logo_normalizes_to_emby_canvas(monkeypatch, tmp_
     assert saved.getchannel("A").getbbox() == (425, 150, 1175, 450)
 
 
+def test_media_organizer_upload_logo_jpeg_saves_transparent_png(monkeypatch, tmp_path):
+    _, strm, _ = setup_roots(monkeypatch, tmp_path)
+    monkeypatch.setenv("NFO_MEDIA_ROOT", str(strm))
+    actor = strm / "Actor"
+    actor.mkdir()
+    source = Image.new("RGB", (420, 220), (0, 0, 0))
+    for x in range(110, 310):
+        for y in range(70, 150):
+            source.putpixel((x, y), (255, 255, 255))
+    buffer = BytesIO()
+    source.save(buffer, format="JPEG", quality=95)
+    client = TestClient(app)
+
+    res = client.post(
+        "/api/media-organizer/upload-artwork",
+        data={"actor_dir": str(actor), "kind": "logo", "overwrite": "true"},
+        files={"image": ("logo.jpg", buffer.getvalue(), "image/jpeg")},
+    )
+
+    assert res.status_code == 200
+    assert res.json()["filename"] == "logo.png"
+    saved = Image.open(actor / "logo.png")
+    assert saved.format == "PNG"
+    assert saved.mode == "RGBA"
+    assert saved.size == (1600, 600)
+    assert saved.getpixel((0, 0))[3] == 0
+    bbox = saved.getchannel("A").getbbox()
+    assert bbox[1] == 150
+    assert bbox[3] == 450
+    assert 420 <= bbox[0] <= 430
+    assert 1170 <= bbox[2] <= 1180
+
+
 def test_media_organizer_tvshow_save_writes_manual_tags_including_english(monkeypatch, tmp_path):
     _, strm, _ = setup_roots(monkeypatch, tmp_path)
     monkeypatch.setenv("NFO_MEDIA_ROOT", str(strm))
